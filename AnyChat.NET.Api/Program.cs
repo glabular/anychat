@@ -10,6 +10,13 @@ public partial class Program
 
         builder.Services.AddControllers();
         builder.Services.AddOpenApi();
+        builder.Services.AddCors(options =>
+        {
+            options.AddDefaultPolicy(policy =>
+                policy.WithOrigins("https://app.local")
+                    .AllowAnyHeader()
+                    .AllowAnyMethod());
+        });
         builder.Services.AddSingleton(_ =>
         {
             var key = builder.Configuration["Anytype:ApiKey"]
@@ -24,6 +31,7 @@ public partial class Program
             app.MapOpenApi();
         }
 
+        app.UseCors();
         app.UseHttpsRedirection();
         app.MapControllers();
 
