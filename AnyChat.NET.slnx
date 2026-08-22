@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="AnyChat.NET.Api/AnyChat.NET.Api.csproj" />
+  <Project Path="AnyChat.NET.Desktop/AnyChat.NET.Desktop.csproj" />
+</Solution>
