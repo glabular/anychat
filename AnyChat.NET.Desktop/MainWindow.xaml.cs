@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Windows;
+using Microsoft.Web.WebView2.Core;
 
 namespace AnyChat.NET.Desktop;
 
@@ -15,7 +16,11 @@ public partial class MainWindow : Window
     {
         await WebView.EnsureCoreWebView2Async();
 
-        var htmlPath = Path.Combine(AppContext.BaseDirectory, "www", "index.html");
-        WebView.Source = new Uri(htmlPath);
+        var wwwFolder = Path.Combine(AppContext.BaseDirectory, "www");
+        WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+            "app.local",
+            wwwFolder,
+            CoreWebView2HostResourceAccessKind.Allow);
+        WebView.Source = new Uri("https://app.local/index.html");
     }
 }
