@@ -1,3 +1,5 @@
+using Anytype.NET;
+
 namespace AnyChat.NET.Api;
 
 public partial class Program
@@ -8,6 +10,12 @@ public partial class Program
 
         builder.Services.AddControllers();
         builder.Services.AddOpenApi();
+        builder.Services.AddSingleton(_ =>
+        {
+            var key = builder.Configuration["Anytype:ApiKey"]
+                ?? throw new InvalidOperationException("Anytype:ApiKey not configured");
+            return new AnytypeClient(key);
+        });
 
         var app = builder.Build();
 
