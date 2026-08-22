@@ -1,10 +1,62 @@
-body {
-  font-family: system-ui, sans-serif;
-  margin: 2rem;
-  background: #1a1a2e;
-  color: #eee;
+* {
+  box-sizing: border-box;
 }
 
-h1 {
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #1a1a2e;
+  color: #eee;
+  height: 100vh;
+}
+
+.layout {
+  display: flex;
+  height: 100%;
+}
+
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  padding: 1rem;
+  border-right: 1px solid #2a2a4a;
+  overflow-y: auto;
+}
+
+.sidebar h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
   color: #7fdbca;
+}
+
+.status {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: #aaa;
+}
+
+.chat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chat-list li {
+  padding: 0.5rem 0.6rem;
+  margin-bottom: 0.25rem;
+  border-radius: 4px;
+  background: #22223a;
+}
+
+.main {
+  flex: 1;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.placeholder {
+  color: #666;
+  margin: 0;
 }

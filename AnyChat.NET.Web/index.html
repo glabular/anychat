@@ -7,7 +7,16 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>AnyChat</h1>
-  <p>WebView2 is working if you see this styled page.</p>
+  <div class="layout">
+    <aside class="sidebar">
+      <h1>AnyChat</h1>
+      <p id="status" class="status">Loading chats…</p>
+      <ul id="chat-list" class="chat-list"></ul>
+    </aside>
+    <main class="main">
+      <p class="placeholder">Select a chat later — list only for now.</p>
+    </main>
+  </div>
+  <script src="app.js"></script>
 </body>
 </html>

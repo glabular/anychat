@@ -5,11 +5,21 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>c69df956-d55f-40fc-a889-21f3453d0d7a</UserSecretsId>
+    <!-- UI lives in sibling AnyChat.NET.Web; avoid generating a wwwroot static-assets manifest -->
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Anytype.NET" Version="4.0.0-alpha.2" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
+  </ItemGroup>
+
+  <!-- Bundled copy for running/publishing from bin when the sibling folder isn't next to ContentRoot -->
+  <ItemGroup>
+    <Content Include="..\AnyChat.NET.Web\**\*" CopyToPublishDirectory="PreserveNewest">
+      <Link>wwwroot\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>
