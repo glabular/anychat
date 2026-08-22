@@ -10,7 +10,11 @@
   <div class="layout">
     <aside class="sidebar">
       <h1>AnyChat</h1>
-      <p id="status" class="status">Loading chats…</p>
+      <label class="space-label" for="space-select">Space</label>
+      <select id="space-select" class="space-select" disabled>
+        <option value="">Loading spaces…</option>
+      </select>
+      <p id="status" class="status">Loading spaces…</p>
       <ul id="chat-list" class="chat-list"></ul>
     </aside>
     <main class="main">

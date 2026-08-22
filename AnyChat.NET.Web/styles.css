@@ -29,6 +29,29 @@ body {
   color: #7fdbca;
 }
 
+.space-label {
+  display: block;
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+  color: #aaa;
+}
+
+.space-select {
+  display: block;
+  width: 100%;
+  margin: 0 0 0.75rem;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid #2a2a4a;
+  border-radius: 4px;
+  background: #22223a;
+  color: #eee;
+  font: inherit;
+}
+
+.space-select:disabled {
+  opacity: 0.6;
+}
+
 .status {
   margin: 0 0 1rem;
   font-size: 0.85rem;
