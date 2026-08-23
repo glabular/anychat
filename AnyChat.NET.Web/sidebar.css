@@ -1,0 +1,99 @@
+.spaces-rail {
+  position: relative;
+  flex-shrink: 0;
+  width: 72px;
+  height: 100vh;
+  border-right: 1px solid var(--color-border);
+}
+
+.spaces-sidebar {
+  height: 100%;
+  margin: 0;
+  width: 100%;
+  padding: 0;
+  border: none;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.spaces-sidebar::-webkit-scrollbar {
+  display: none;
+}
+
+.spaces-scroll {
+  position: absolute;
+  left: 0;
+  z-index: 1;
+  width: 100%;
+  height: 32px;
+  padding: 0;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 0.65rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.spaces-scroll--up {
+  top: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-bg) 75%, transparent),
+    transparent
+  );
+}
+
+.spaces-scroll--down {
+  bottom: 0;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--color-bg) 75%, transparent),
+    transparent
+  );
+}
+
+.spaces-scroll--up:hover {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-surface-hover) 45%, transparent),
+    transparent
+  );
+  color: var(--color-text);
+}
+
+.spaces-scroll--down:hover {
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--color-surface-hover) 45%, transparent),
+    transparent
+  );
+  color: var(--color-text);
+}
+
+.spaces-sidebar input[type="radio"] {
+  display: none;
+}
+
+.spaces-sidebar label:has(input:checked) {
+  background-color: var(--color-accent-active);
+}
+
+.spaces-sidebar legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.spaces-sidebar label {
+  display: flex;
+  width: 72px;
+  height: 72px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.5rem;
+  font-weight: bold;
+}

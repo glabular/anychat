@@ -1,26 +1,88 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AnyChat</title>
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <div class="layout">
-    <aside class="sidebar">
-      <h1>AnyChat</h1>
-      <label class="space-label" for="space-select">Space</label>
-      <select id="space-select" class="space-select" disabled>
-        <option value="">Loading spaces…</option>
-      </select>
-      <p id="status" class="status">Loading spaces…</p>
-      <ul id="chat-list" class="chat-list"></ul>
-    </aside>
-    <main class="main">
-      <p class="placeholder">Select a chat later — list only for now.</p>
-    </main>
-  </div>
-  <script src="app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AnyChat</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="sidebar.css" />
+  </head>
+  <body>
+    <div class="layout">
+      <div class="spaces-rail">
+        <button
+          type="button"
+          class="spaces-scroll spaces-scroll--up"
+          aria-label="Scroll spaces up"
+          hidden
+        >
+          ▲
+        </button>
+        <fieldset class="spaces-sidebar">
+          <legend>Spaces</legend>
+          <label>
+            <input type="radio" name="space" value="A" />
+            <span>A</span>
+          </label>
+
+          <label>
+            <input type="radio" name="space" value="B" />
+            <span>B</span>
+          </label>
+
+          <label>
+            <input type="radio" name="space" value="C" />
+            <span>C</span>
+          </label>
+          <label>
+            <input type="radio" name="space" value="C" />
+            <span>C</span>
+          </label>
+          <label>
+            <input type="radio" name="space" value="C" />
+            <span>C</span>
+          </label>
+          <label>
+            <input type="radio" name="space" value="C" />
+            <span>C</span>
+          </label>
+          <label>
+            <input type="radio" name="space" value="C" />
+            <span>C</span>
+          </label>
+          <label>
+            <input type="radio" name="space" value="C" />
+            <span>C</span>
+          </label>
+          <label>
+            <input type="radio" name="space" value="C" />
+            <span>C</span>
+          </label>
+          <label>
+            <input type="radio" name="space" value="C" />
+            <span>C</span>
+          </label>
+        </fieldset>
+        <button
+          type="button"
+          class="spaces-scroll spaces-scroll--down"
+          aria-label="Scroll spaces down"
+          hidden
+        >
+          ▼
+        </button>
+      </div>
+
+      <aside class="chat-sidebar">
+        <h2>Chats</h2>
+        <p class="placeholder">
+          The lists of chats for selected space will appear here
+        </p>
+      </aside>
+      <main class="main">
+        <p class="placeholder">Select a chat to start conversation.</p>
+      </main>
+    </div>
+    <script src="app.js"></script>
+  </body>
 </html>
