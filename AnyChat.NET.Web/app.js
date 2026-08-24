@@ -58,18 +58,20 @@ async function fetchSpaces() {
 function populateSpacesSidebar(spaces) {
   const spacesSidebar = document.getElementById("spaces-sidebar");
 
-  for (const space of spaces) {
-    addSpaceButton(spacesSidebar, space);
-  }
+  // TODO: Read previously selected space instead of taking the first.
+  spaces.forEach((space, index) => {
+    addSpaceButton(spacesSidebar, space, index === 0);
+  });
 }
 
-function addSpaceButton(spacesSidebar, space) {
+function addSpaceButton(spacesSidebar, space, selected) {
   const label = document.createElement("label");
   const input = document.createElement("input");
 
   input.type = "radio";
   input.name = "space";
   input.value = space.id;
+  input.checked = selected;
 
   const span = document.createElement("span");
   span.textContent = space.name?.[0] ?? "";
