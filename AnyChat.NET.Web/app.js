@@ -85,6 +85,12 @@ async function initializeSpaces() {
   
   const spaces = await fetchSpaces();
   populateSpacesSidebar(spaces);
+
+  const loading = document.getElementById("spaces-loading");
+  if (loading) {
+    loading.hidden = true;
+  }
+  document.getElementById("spaces-sidebar")?.setAttribute("aria-busy", "false");
   
   const loadingTimeMs = performance.now() - loadingStartedAt;  
   console.log(
