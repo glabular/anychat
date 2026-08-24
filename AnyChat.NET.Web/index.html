@@ -19,8 +19,18 @@
         >
           ▲
         </button>
-        <fieldset class="spaces-sidebar" id="spaces-sidebar">
+        <fieldset class="spaces-sidebar" id="spaces-sidebar" aria-busy="true">
           <legend>Spaces</legend>
+          <div
+            class="spaces-loading"
+            id="spaces-loading"
+            role="status"
+            aria-label="Loading spaces"
+          >
+            <span class="spaces-loading-dot" aria-hidden="true"></span>
+            <span class="spaces-loading-dot" aria-hidden="true"></span>
+            <span class="spaces-loading-dot" aria-hidden="true"></span>
+          </div>
 
           <!-- <label>
             <input type="radio" name="space" value="A" />
