@@ -23,11 +23,26 @@ public partial class Program
             return new AnytypeClient(key);
         });
 
+        // Browser tools (Live Server, file preview, etc.) load the HTML from a
+        // different origin than the API. Development-only CORS lets fetch work there.
+        // WPF still loads http://localhost:5249/ (same origin) — CORS is irrelevant then.
+        if (builder.Environment.IsDevelopment())
+        {
+            builder.Services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(policy =>
+                    policy.AllowAnyOrigin()
+                          .AllowAnyHeader()
+                          .AllowAnyMethod());
+            });
+        }
+
         var app = builder.Build();
 
         if (app.Environment.IsDevelopment())
         {
             app.MapOpenApi();
+            app.UseCors();
         }
 
         // Same origin as the WebView page: UI + /api share http://localhost:5249
