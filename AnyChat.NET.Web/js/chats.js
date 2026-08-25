@@ -1,22 +1,75 @@
 import { fetchChats } from "./api.js";
 
-function setChatsLoading(isLoading) {
+/** Wait this long before showing the spinner (avoids flash on fast loads). */
+const SPINNER_SHOW_DELAY_MS = 200;
+/** Once shown, keep the spinner at least this long (avoids a brief blink). */
+const SPINNER_MIN_VISIBLE_MS = 300;
+
+let loadToken = 0;
+let showSpinnerTimer = null;
+let spinnerShownAt = null;
+
+function setSpinnerVisible(visible) {
   const chatsLoading = document.getElementById("chats-loading");
+  if (chatsLoading) {
+    chatsLoading.hidden = !visible;
+  }
+}
+
+function clearChatsContent() {
   const chatsEmpty = document.getElementById("chats-empty");
   const chatsList = document.getElementById("chats-list");
 
-  if (chatsLoading) {
-    chatsLoading.hidden = !isLoading;
+  if (chatsEmpty) {
+    chatsEmpty.hidden = true;
+  }
+  chatsList?.replaceChildren();
+}
+
+function beginChatsLoad() {
+  const chatsList = document.getElementById("chats-list");
+
+  if (showSpinnerTimer !== null) {
+    clearTimeout(showSpinnerTimer);
+    showSpinnerTimer = null;
   }
 
-  if (isLoading) {
-    if (chatsEmpty) {
-      chatsEmpty.hidden = true;
+  // Keep previous empty/list until data arrives (or until the delayed
+  // spinner fires). Avoids empty→empty flicker on fast switches.
+  setSpinnerVisible(false);
+  spinnerShownAt = null;
+  chatsList?.setAttribute("aria-busy", "true");
+
+  showSpinnerTimer = setTimeout(() => {
+    showSpinnerTimer = null;
+    clearChatsContent();
+    setSpinnerVisible(true);
+    spinnerShownAt = performance.now();
+  }, SPINNER_SHOW_DELAY_MS);
+}
+
+async function endChatsLoad(token) {
+  if (showSpinnerTimer !== null) {
+    clearTimeout(showSpinnerTimer);
+    showSpinnerTimer = null;
+  }
+
+  if (spinnerShownAt !== null) {
+    const remaining =
+      SPINNER_MIN_VISIBLE_MS - (performance.now() - spinnerShownAt);
+    if (remaining > 0) {
+      await new Promise((resolve) => setTimeout(resolve, remaining));
     }
-    chatsList?.replaceChildren();
   }
 
-  chatsList?.setAttribute("aria-busy", isLoading ? "true" : "false");
+  if (token !== loadToken) {
+    return false;
+  }
+
+  setSpinnerVisible(false);
+  spinnerShownAt = null;
+  document.getElementById("chats-list")?.setAttribute("aria-busy", "false");
+  return true;
 }
 
 export async function loadChatsForSelectedSpace() {
@@ -30,15 +83,22 @@ export async function loadChatsForSelectedSpace() {
   }
 
   const spaceId = selectedSpaceInput.value;
-  setChatsLoading(true);
+  const token = ++loadToken;
+  beginChatsLoad();
 
   const chats = await fetchChats(spaceId);
 
-  // Debug: artificial delay to make the loading indicator visible.
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  if (token !== loadToken) {
+    return;
+  }
 
   const stillSelected = document.querySelector('input[name="space"]:checked');
   if (!stillSelected || stillSelected.value !== spaceId) {
+    return;
+  }
+
+  const stillCurrent = await endChatsLoad(token);
+  if (!stillCurrent) {
     return;
   }
 
@@ -53,7 +113,6 @@ export function populateChatsList(chats) {
     return;
   }
 
-  setChatsLoading(false);
   chatsList.replaceChildren();
 
   if (chats.length === 0) {
