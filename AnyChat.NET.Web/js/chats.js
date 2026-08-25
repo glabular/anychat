@@ -17,12 +17,24 @@ export async function loadChatsForSelectedSpace() {
 
 export function populateChatsList(chats) {
   const chatsList = document.getElementById("chats-list");
+  const chatsEmpty = document.getElementById("chats-empty");
   if (!chatsList) {
     console.warn("Chats list element not found.");
     return;
   }
 
   chatsList.replaceChildren();
+
+  if (chats.length === 0) {
+    if (chatsEmpty) {
+      chatsEmpty.hidden = false;
+    }
+    return;
+  }
+
+  if (chatsEmpty) {
+    chatsEmpty.hidden = true;
+  }
 
   chats.forEach((chat) => {
     const chatListItem = document.createElement("li");

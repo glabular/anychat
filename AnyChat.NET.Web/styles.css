@@ -50,6 +50,8 @@ textarea,
   border-right: 1px solid var(--color-border);
   overflow-y: auto;
   background-color: var(--color-light-bg);
+  display: flex;
+  flex-direction: column;
 }
 
 .chat-sidebar h2 {
