@@ -52,7 +52,7 @@
     border-radius: 50%;
     overflow: hidden;
     flex-shrink: 0;
-    background-color: rgb(48, 51, 255);
+    background-color: var(--color-accent);
     align-self: center;
 }
 
