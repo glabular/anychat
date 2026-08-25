@@ -50,29 +50,21 @@
 
       <aside class="chat-sidebar">
         <h2>Chats</h2>
+        <div
+          class="chats-loading"
+          id="chats-loading"
+          role="status"
+          aria-label="Loading chats"
+        >
+          <span class="chats-loading-dot" aria-hidden="true"></span>
+          <span class="chats-loading-dot" aria-hidden="true"></span>
+          <span class="chats-loading-dot" aria-hidden="true"></span>
+        </div>
         <p class="chats-empty" id="chats-empty" hidden>
           You're all set ✨
           <span class="chats-empty-detail">No chats in this space yet.</span>
         </p>
-        <ul id="chats-list">
-          <!-- <li>
-            <button class="chat-item">
-              <div class="avatar"></div>
-
-              <div class="text-block">
-                <div class="chat-header">
-                  <p class="chat-name">General chat</p>
-                  <span class="chat-timestamp">10:30 AM</span>
-                </div>
-
-                <p class="chat-preview">
-                  Today we'll discuss the project timeline. And it was
-                  yesterday.
-                </p>
-              </div>
-            </button>
-          </li> -->
-        </ul>
+        <ul id="chats-list"></ul>
       </aside>
       <main class="main">
         <p class="placeholder">Select a chat to start conversation.</p>
