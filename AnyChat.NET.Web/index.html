@@ -7,6 +7,7 @@
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="sidebar.css" />
+    <link rel="stylesheet" href="chatslist.css" />
   </head>
   <body>
     <div class="layout">
@@ -49,9 +50,60 @@
 
       <aside class="chat-sidebar">
         <h2>Chats</h2>
-        <p class="placeholder">
+        <!-- <p class="placeholder" id="chats-placeholder" >
           The lists of chats for selected space will appear here
-        </p>
+        </p> -->
+        <ul id="chats-list">
+          <li>
+            <button class="chat-item">
+              <div class="avatar"></div>
+
+              <div class="text-block">
+                <div class="chat-header">
+                  <p class="chat-name">General chat</p>
+                  <span class="chat-timestamp">10:30 AM</span>
+                </div>
+
+                <p class="chat-preview">
+                  Today we'll discuss the project timeline. And it was
+                  yesterday.
+                </p>
+              </div>
+            </button>
+          </li>
+
+          <li>
+            <button class="chat-item">
+              <div class="avatar"></div>
+
+              <div class="text-block">
+                <div class="chat-header">
+                  <p class="chat-name">Julia</p>
+                  <span class="chat-timestamp">Yesterday</span>
+                </div>
+
+                <p class="chat-preview">
+                  I still can't believe you have God's powers...
+                </p>
+              </div>
+            </button>
+          </li>
+
+          <li>
+            <button class="chat-item">
+              <div class="avatar"></div>
+
+              <div class="text-block">
+                <div class="chat-header">
+                  <p class="chat-name">Q</p>
+                  <span class="chat-timestamp">Yesterday</span>
+                </div>
+
+                <p class="chat-preview">Follory awaits</p>
+              </div>
+            </button>
+          </li>
+        </ul>
       </aside>
       <main class="main">
         <p class="placeholder">Select a chat to start conversation.</p>

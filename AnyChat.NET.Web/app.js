@@ -58,27 +58,48 @@ async function fetchSpaces() {
 function populateSpacesSidebar(spaces) {
   const spacesSidebar = document.getElementById("spaces-sidebar");
 
-  // TODO: Read previously selected space instead of taking the first.
-  spaces.forEach((space, index) => {
-    addSpaceButton(spacesSidebar, space, index === 0);
+  spaces.forEach((space) => {
+    const spaceButton = getSpaceButton(space);
+    spacesSidebar.appendChild(spaceButton);
   });
+  
+  const chatsPlaceholder = document.getElementById("chats-placeholder");
+
+  // TODO: Read previously selected space instead of taking the first.
+  if (spaces.length > 0) {
+    selectSpace(spaces[0].id);
+  }
+  
+  if (chatsPlaceholder) {
+    chatsPlaceholder.hidden = spaces.length > 0;
+  }
 }
 
-function addSpaceButton(spacesSidebar, space, selected) {
+function selectSpace(spaceId) {
+  const spaceInput = document.querySelector(
+    `input[name="space"][value="${spaceId}"]`
+  );
+
+  if (spaceInput) {
+    spaceInput.checked = true;
+  }
+}
+
+function getSpaceButton(space) {
   const label = document.createElement("label");
   const input = document.createElement("input");
 
   input.type = "radio";
   input.name = "space";
   input.value = space.id;
-  input.checked = selected;
 
   const span = document.createElement("span");
   span.textContent = space.name?.[0] ?? "";
 
   label.appendChild(input);
   label.appendChild(span);
-  spacesSidebar.appendChild(label);
+  
+  return label;
 }
 
 async function initializeSpaces() {
