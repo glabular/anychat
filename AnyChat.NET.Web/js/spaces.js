@@ -1,0 +1,74 @@
+import { fetchSpaces } from "./api.js";
+import { loadChatsForSelectedSpace } from "./chats.js";
+
+export function populateSpacesSidebar(spaces) {
+  const spacesSidebar = document.getElementById("spaces-sidebar");
+
+  spaces.forEach((space) => {
+    const spaceButton = getSpaceButton(space);
+    spacesSidebar.appendChild(spaceButton);
+  });
+
+  // TODO: Read previously selected space instead of taking the first.
+  if (spaces.length > 0) {
+    selectSpace(spaces[0].id);
+    loadChatsForSelectedSpace();
+  }
+}
+
+export function selectSpace(spaceId) {
+  const spaceInput = document.querySelector(
+    `input[name="space"][value="${spaceId}"]`
+  );
+
+  if (spaceInput) {
+    spaceInput.checked = true;
+  }
+}
+
+export function bindSpaceChangeToChats() {
+  const spacesSidebar = document.getElementById("spaces-sidebar");
+  spacesSidebar?.addEventListener("change", (event) => {
+    if (event.target.matches('input[name="space"]')) {
+      loadChatsForSelectedSpace();
+    }
+  });
+}
+
+function getSpaceButton(space) {
+  const label = document.createElement("label");
+  const input = document.createElement("input");
+
+  input.type = "radio";
+  input.name = "space";
+  input.value = space.id;
+
+  const span = document.createElement("span");
+  span.textContent = space.name?.[0] ?? "";
+
+  label.appendChild(input);
+  label.appendChild(span);
+
+  return label;
+}
+
+export async function initializeSpaces() {
+  const loadingStartedAt = performance.now();
+  console.log("Please, wait. Loading Spaces.");
+
+  bindSpaceChangeToChats();
+
+  const spaces = await fetchSpaces();
+  populateSpacesSidebar(spaces);
+
+  const loading = document.getElementById("spaces-loading");
+  if (loading) {
+    loading.hidden = true;
+  }
+  document.getElementById("spaces-sidebar")?.setAttribute("aria-busy", "false");
+
+  const loadingTimeMs = performance.now() - loadingStartedAt;
+  console.log(
+    `Spaces loaded in ${loadingTimeMs.toFixed(2)} ms (${(loadingTimeMs / 1000).toFixed(2)} s).`
+  );
+}
