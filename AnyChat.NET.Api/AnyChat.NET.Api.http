@@ -9,3 +9,8 @@ GET {{AnyChat.NET.Api_HostAddress}}/api/spaces/{{spaceId}}/chats
 Accept: application/json
 
 ###
+
+GET {{AnyChat.NET.Api_HostAddress}}/api/spaces/{{spaceId}}/chats/{{chatId}}/messages?limit=1
+Accept: application/json
+
+###
