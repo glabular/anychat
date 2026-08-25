@@ -12,31 +12,41 @@ export function spacesUrl() {
 }
 
 export async function fetchSpaces() {
-  try {
-    const response = await fetch(spacesUrl());
+  const response = await fetch(spacesUrl());
 
-    if (!response.ok) {
-      throw new Error(`Response status: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error("Could not load spaces:", error);
-    return [];
+  if (!response.ok) {
+    const error = new Error(`Response status: ${response.status}`);
+    error.status = response.status;
+    throw error;
   }
+
+  return await response.json();
+}
+
+/**
+ * User-facing message for the three most common spaces-load failures.
+ * 1. HTTP error — API ran but returned 4xx/5xx
+ * 2. Unreachable — API down / connection refused / CORS-looking network fail
+ * 3. Invalid body — response was not usable JSON
+ */
+export function describeSpacesLoadError(error) {
+  if (typeof error?.status === "number") {
+    return `API returned HTTP ${error.status}. Check the server logs.`;
+  }
+
+  if (error instanceof TypeError) {
+    return "Cannot reach the API.";
+  }
+
+  return "Spaces response was invalid.";
 }
 
 export async function fetchChats(spaceId) {
-  try {
-    const response = await fetch(`${spacesUrl()}/${spaceId}/chats`);
+  const response = await fetch(`${spacesUrl()}/${spaceId}/chats`);
 
-    if (!response.ok) {
-      throw new Error(`Response status: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error(`Could not load chats for space ${spaceId}:`, error);
-    return [];
+  if (!response.ok) {
+    throw new Error(`Response status: ${response.status}`);
   }
+
+  return await response.json();
 }

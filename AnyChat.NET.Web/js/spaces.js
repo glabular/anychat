@@ -1,5 +1,8 @@
-import { fetchSpaces } from "./api.js";
-import { loadChatsForSelectedSpace } from "./chats.js";
+import { describeSpacesLoadError, fetchSpaces } from "./api.js";
+import {
+  loadChatsForSelectedSpace,
+  setMainPlaceholderVisible,
+} from "./chats.js";
 
 export function populateSpacesSidebar(spaces) {
   const spacesSidebar = document.getElementById("spaces-sidebar");
@@ -58,17 +61,35 @@ export async function initializeSpaces() {
 
   bindSpaceChangeToChats();
 
-  const spaces = await fetchSpaces();
-  populateSpacesSidebar(spaces);
+  try {
+    const spaces = await fetchSpaces();
+    populateSpacesSidebar(spaces);
+    setMainPlaceholderVisible(true);
 
-  const loading = document.getElementById("spaces-loading");
-  if (loading) {
-    loading.hidden = true;
+    const loadingTimeMs = performance.now() - loadingStartedAt;
+    console.log(
+      `Spaces loaded in ${loadingTimeMs.toFixed(2)} ms (${(loadingTimeMs / 1000).toFixed(2)} s).`
+    );
+  } catch (error) {
+    const loadingTimeMs = performance.now() - loadingStartedAt;
+    console.error(
+      `Failed to load spaces after ${loadingTimeMs.toFixed(2)} ms:`,
+      error
+    );
+
+    const chatsEmpty = document.getElementById("chats-empty");
+    if (chatsEmpty) {
+      chatsEmpty.hidden = false;
+      chatsEmpty.replaceChildren();
+      chatsEmpty.textContent = describeSpacesLoadError(error);
+    }
+
+    setMainPlaceholderVisible(false);
+  } finally {
+    const loading = document.getElementById("spaces-loading");
+    if (loading) {
+      loading.hidden = true;
+    }
+    document.getElementById("spaces-sidebar")?.setAttribute("aria-busy", "false");
   }
-  document.getElementById("spaces-sidebar")?.setAttribute("aria-busy", "false");
-
-  const loadingTimeMs = performance.now() - loadingStartedAt;
-  console.log(
-    `Spaces loaded in ${loadingTimeMs.toFixed(2)} ms (${(loadingTimeMs / 1000).toFixed(2)} s).`
-  );
 }

@@ -16,6 +16,23 @@ function setSpinnerVisible(visible) {
   }
 }
 
+/** Visible when spaces/chats are available; hide only on load errors. */
+export function setMainPlaceholderVisible(visible) {
+  const mainPlaceholder = document.getElementById("main-placeholder");
+  if (mainPlaceholder) {
+    mainPlaceholder.hidden = !visible;
+  }
+}
+
+function restoreChatsEmptyContent(chatsEmpty) {
+  chatsEmpty.replaceChildren();
+  chatsEmpty.append("You're all set ✨ ");
+  const detail = document.createElement("span");
+  detail.className = "chats-empty-detail";
+  detail.textContent = "No chats in this space yet.";
+  chatsEmpty.appendChild(detail);
+}
+
 function clearChatsContent() {
   const chatsEmpty = document.getElementById("chats-empty");
   const chatsList = document.getElementById("chats-list");
@@ -36,6 +53,7 @@ function beginChatsLoad() {
 
   // Keep previous empty/list until data arrives (or until the delayed
   // spinner fires). Avoids empty→empty flicker on fast switches.
+  // Do not toggle #main-placeholder here — that caused a flash.
   setSpinnerVisible(false);
   spinnerShownAt = null;
   chatsList?.setAttribute("aria-busy", "true");
@@ -86,7 +104,26 @@ export async function loadChatsForSelectedSpace() {
   const token = ++loadToken;
   beginChatsLoad();
 
-  const chats = await fetchChats(spaceId);
+  let chats;
+  try {
+    chats = await fetchChats(spaceId);
+  } catch (error) {
+    console.error(`Could not load chats for space ${spaceId}:`, error);
+    if (token !== loadToken) {
+      return;
+    }
+    await endChatsLoad(token);
+    clearChatsContent();
+    setMainPlaceholderVisible(false);
+
+    const chatsEmpty = document.getElementById("chats-empty");
+    if (chatsEmpty) {
+      chatsEmpty.hidden = false;
+      chatsEmpty.replaceChildren();
+      chatsEmpty.textContent = "Could not load chats.";
+    }
+    return;
+  }
 
   if (token !== loadToken) {
     return;
@@ -103,6 +140,7 @@ export async function loadChatsForSelectedSpace() {
   }
 
   populateChatsList(chats);
+  setMainPlaceholderVisible(true);
 }
 
 export function populateChatsList(chats) {
@@ -117,6 +155,7 @@ export function populateChatsList(chats) {
 
   if (chats.length === 0) {
     if (chatsEmpty) {
+      restoreChatsEmptyContent(chatsEmpty);
       chatsEmpty.hidden = false;
     }
     return;
