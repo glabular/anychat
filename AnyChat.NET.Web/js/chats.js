@@ -1,5 +1,6 @@
 import { fetchChats } from "./api.js";
 import { spacesUrl } from "./api.js";
+import { hideChatPanel, showChatHeader } from "./chat-view.js";
 
 /** Wait this long before showing the spinner (avoids flash on fast loads). */
 const SPINNER_SHOW_DELAY_MS = 200;
@@ -103,6 +104,7 @@ export async function loadChatsForSelectedSpace() {
 
   const spaceId = selectedSpaceInput.value;
   const token = ++loadToken;
+  hideChatPanel();
   beginChatsLoad();
 
   let chats;
@@ -115,6 +117,7 @@ export async function loadChatsForSelectedSpace() {
     }
     await endChatsLoad(token);
     clearChatsContent();
+    hideChatPanel();
     setMainPlaceholderVisible(false);
 
     const chatsEmpty = document.getElementById("chats-empty");
@@ -158,12 +161,14 @@ function createChatListItem(chat) {
   const chatButton = document.createElement("button");
   chatButton.type = "button";
   chatButton.className = "chat-item";
+  const chatName = chat.name ?? "-no name-";
   chatButton.addEventListener("click", () => {
     const previouslySelected = document.querySelector(
       "#chats-list .chat-item--selected"
     );
     previouslySelected?.classList.remove("chat-item--selected");
     chatButton.classList.add("chat-item--selected");
+    showChatHeader(chatName);
   });
 
   const avatarDiv = document.createElement("div");
@@ -178,7 +183,7 @@ function createChatListItem(chat) {
 
   const chatNameP = document.createElement("p");
   chatNameP.className = "chat-name";
-  chatNameP.textContent = chat.name ?? "-no name-";
+  chatNameP.textContent = chatName;
   chatHeaderDiv.appendChild(chatNameP);
 
   divTextBlock.appendChild(chatHeaderDiv);
