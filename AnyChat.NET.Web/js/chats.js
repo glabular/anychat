@@ -174,6 +174,10 @@ function createChatListItem(chat) {
   const chatName = chat.name ?? "-no name-";
   const chatId = chat.id ?? "";
   chatButton.addEventListener("click", () => {
+    if (chatButton.classList.contains("chat-item--selected")) {
+      return;
+    }
+
     const previouslySelected = document.querySelector(
       "#chats-list .chat-item--selected"
     );
