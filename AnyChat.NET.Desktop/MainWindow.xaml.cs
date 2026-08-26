@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using System.Windows.Input;
 
 namespace AnyChat.NET.Desktop;
 
@@ -11,6 +12,10 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         Loaded += OnLoaded;
+#if DEBUG
+        // WebView2 WPF forwards accelerator keys into WPF KeyDown when the view has focus.
+        KeyDown += OnDebugKeyDown;
+#endif
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -29,6 +34,8 @@ public partial class MainWindow : Window
                 MessageBoxImage.Error);
             return;
         }
+
+        ConfigureWebViewForDesktop();
 
         WebView.CoreWebView2.NavigationCompleted += (_, args) =>
         {
@@ -54,4 +61,36 @@ public partial class MainWindow : Window
 
         WebView.Source = new Uri(AppUrl);
     }
+
+    private void ConfigureWebViewForDesktop()
+    {
+        var s = WebView.CoreWebView2.Settings;
+        s.AreDefaultContextMenusEnabled = false;
+        s.AreBrowserAcceleratorKeysEnabled = false;
+        s.IsStatusBarEnabled = false;
+        s.IsZoomControlEnabled = false;
+        s.IsSwipeNavigationEnabled = false;
+#if DEBUG
+        s.AreDevToolsEnabled = true;
+#else
+        s.AreDevToolsEnabled = false;
+#endif
+
+        WebView.AllowExternalDrop = false;
+
+        WebView.CoreWebView2.NewWindowRequested += (_, e) => e.Handled = true;
+    }
+
+#if DEBUG
+    private void OnDebugKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.F12)
+        {
+            return;
+        }
+
+        WebView.CoreWebView2?.OpenDevToolsWindow();
+        e.Handled = true;
+    }
+#endif
 }
