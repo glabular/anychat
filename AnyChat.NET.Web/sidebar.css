@@ -149,6 +149,9 @@
 }
 
 .space-tooltip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   background-color: var(--color-bg);
   color: var(--color-text);
   white-space: nowrap;
@@ -165,6 +168,10 @@
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.25s ease;
+}
+
+.space-tooltip__shortcut {
+  color: var(--color-text-muted);
 }
 
 .spaces-sidebar label:hover .space-tooltip {

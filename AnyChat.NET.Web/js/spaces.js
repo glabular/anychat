@@ -7,8 +7,8 @@ import {
 export function populateSpacesSidebar(spaces) {
   const spacesSidebar = document.getElementById("spaces-sidebar");
 
-  spaces.forEach((space) => {
-    const spaceButton = getSpaceButton(space);
+  spaces.forEach((space, index) => {
+    const spaceButton = getSpaceButton(space, index + 1);
     spacesSidebar.appendChild(spaceButton);
   });
 
@@ -38,7 +38,39 @@ export function bindSpaceChangeToChats() {
   });
 }
 
-function getSpaceButton(space) {
+export function bindSpaceKeyboardShortcuts() {
+  document.addEventListener("keydown", (event) => {
+    if (!event.ctrlKey || event.altKey || event.metaKey) {
+      return;
+    }
+
+    if (!/^[1-9]$/.test(event.key)) {
+      return;
+    }
+
+    const target = event.target;
+    if (
+      target instanceof HTMLElement &&
+      (target.closest("input, textarea, [contenteditable='true']") ||
+        target.isContentEditable)
+    ) {
+      return;
+    }
+
+    const index = Number(event.key) - 1;
+    const spaceInputs = document.querySelectorAll('input[name="space"]');
+    const spaceInput = spaceInputs[index];
+    if (!spaceInput) {
+      return;
+    }
+
+    event.preventDefault();
+    selectSpace(spaceInput.value);
+    loadChatsForSelectedSpace();
+  });
+}
+
+function getSpaceButton(space, shortcutNumber) {
   const label = document.createElement("label");
   const input = document.createElement("input");
 
@@ -51,7 +83,17 @@ function getSpaceButton(space) {
 
   const tooltipSpan = document.createElement("span");
   tooltipSpan.className = "space-tooltip";
-  tooltipSpan.textContent = space.name ?? "";
+
+  const nameSpan = document.createElement("span");
+  nameSpan.className = "space-tooltip__name";
+  nameSpan.textContent = space.name ?? "";
+
+  const shortcutSpan = document.createElement("span");
+  shortcutSpan.className = "space-tooltip__shortcut";
+  shortcutSpan.textContent = `Ctrl + ${shortcutNumber}`;
+
+  tooltipSpan.appendChild(nameSpan);
+  tooltipSpan.appendChild(shortcutSpan);
 
   label.appendChild(input);
   label.appendChild(spaceLetterSpan);
@@ -65,6 +107,7 @@ export async function initializeSpaces() {
   console.log("Please, wait. Loading Spaces.");
 
   bindSpaceChangeToChats();
+  bindSpaceKeyboardShortcuts();
 
   try {
     const spaces = await fetchSpaces();
