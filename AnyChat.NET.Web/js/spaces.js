@@ -65,6 +65,14 @@ export function bindSpaceKeyboardShortcuts() {
     }
 
     event.preventDefault();
+
+    const currentlySelected = document.querySelector(
+      'input[name="space"]:checked'
+    );
+    if (currentlySelected && currentlySelected.value === spaceInput.value) {
+      return;
+    }
+
     selectSpace(spaceInput.value);
     loadChatsForSelectedSpace();
   });
