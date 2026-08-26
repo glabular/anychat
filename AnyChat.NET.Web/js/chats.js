@@ -11,12 +11,9 @@ import {
 
 /** Wait this long before showing the spinner (avoids flash on fast loads). */
 const SPINNER_SHOW_DELAY_MS = 200;
-/** Once shown, keep the spinner at least this long (avoids a brief blink). */
-const SPINNER_MIN_VISIBLE_MS = 300;
 
 let loadToken = 0;
 let showSpinnerTimer = null;
-let spinnerShownAt = null;
 
 function setSpinnerVisible(visible) {
   const chatsLoading = document.getElementById("chats-loading");
@@ -67,29 +64,19 @@ function beginChatsLoad() {
   // spinner fires). Avoids empty→empty flicker on fast switches.
   // Do not toggle #main-placeholder here — that caused a flash.
   setSpinnerVisible(false);
-  spinnerShownAt = null;
   chatsList?.setAttribute("aria-busy", "true");
 
   showSpinnerTimer = setTimeout(() => {
     showSpinnerTimer = null;
     clearChatsContent();
     setSpinnerVisible(true);
-    spinnerShownAt = performance.now();
   }, SPINNER_SHOW_DELAY_MS);
 }
 
-async function endChatsLoad(token) {
+function endChatsLoad(token) {
   if (showSpinnerTimer !== null) {
     clearTimeout(showSpinnerTimer);
     showSpinnerTimer = null;
-  }
-
-  if (spinnerShownAt !== null) {
-    const remaining =
-      SPINNER_MIN_VISIBLE_MS - (performance.now() - spinnerShownAt);
-    if (remaining > 0) {
-      await new Promise((resolve) => setTimeout(resolve, remaining));
-    }
   }
 
   if (token !== loadToken) {
@@ -97,7 +84,6 @@ async function endChatsLoad(token) {
   }
 
   setSpinnerVisible(false);
-  spinnerShownAt = null;
   document.getElementById("chats-list")?.setAttribute("aria-busy", "false");
   return true;
 }
@@ -125,7 +111,7 @@ export async function loadChatsForSelectedSpace() {
     if (token !== loadToken) {
       return;
     }
-    await endChatsLoad(token);
+    endChatsLoad(token);
     clearChatsContent();
     hideChatPanel();
     setMainPlaceholderVisible(false);
@@ -148,8 +134,7 @@ export async function loadChatsForSelectedSpace() {
     return;
   }
 
-  const stillCurrent = await endChatsLoad(token);
-  if (!stillCurrent) {
+  if (!endChatsLoad(token)) {
     return;
   }
 
