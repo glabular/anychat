@@ -17,6 +17,12 @@
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  pointer-events: none;
+}
+
+.spaces-sidebar label,
+.spaces-sidebar .spaces-loading {
+  pointer-events: auto;
 }
 
 .spaces-sidebar::-webkit-scrollbar {
