@@ -46,11 +46,16 @@ function getSpaceButton(space) {
   input.name = "space";
   input.value = space.id;
 
-  const span = document.createElement("span");
-  span.textContent = space.name?.[0] ?? "";
+  const spaceLetterSpan = document.createElement("span");
+  spaceLetterSpan.textContent = space.name?.[0] ?? "";
+
+  const tooltipSpan = document.createElement("span");
+  tooltipSpan.className = "space-tooltip";
+  tooltipSpan.textContent = space.name ?? "";
 
   label.appendChild(input);
-  label.appendChild(span);
+  label.appendChild(spaceLetterSpan);
+  label.appendChild(tooltipSpan);
 
   return label;
 }
