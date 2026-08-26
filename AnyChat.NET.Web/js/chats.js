@@ -1,4 +1,5 @@
 import { fetchChats } from "./api.js";
+import { spacesUrl } from "./api.js";
 
 /** Wait this long before showing the spinner (avoids flash on fast loads). */
 const SPINNER_SHOW_DELAY_MS = 200;
@@ -199,4 +200,24 @@ export function populateChatsList(chats) {
     chatListItem.appendChild(chatButton);
     chatsList.appendChild(chatListItem);
   });
+}
+
+export async function fetchChatMessages(spaceId, chatId, limit = 1) {
+  const response = await fetch(`${spacesUrl()}/${spaceId}/chats/${chatId}/messages?limit=${limit}`);
+
+  if (!response.ok) {
+    throw new Error(`Response status: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+function formatMessagePreview(message) {
+  const text = message.content?.text?.trim() ?? "";
+
+  if (!text) {
+    return "";
+  }
+
+  return text;
 }
