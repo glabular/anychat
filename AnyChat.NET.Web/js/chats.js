@@ -1,6 +1,13 @@
 import { fetchChats } from "./api.js";
 import { spacesUrl } from "./api.js";
-import { hideChatPanel, showChatHeader } from "./chat-view.js";
+import {
+  beginOpenChatMessages,
+  hideChatPanel,
+  isOpenChatMessagesCurrent,
+  renderOpenChatMessages,
+  renderOpenChatMessagesError,
+  showChatHeader,
+} from "./chat-view.js";
 
 /** Wait this long before showing the spinner (avoids flash on fast loads). */
 const SPINNER_SHOW_DELAY_MS = 200;
@@ -162,6 +169,7 @@ function createChatListItem(chat) {
   chatButton.type = "button";
   chatButton.className = "chat-item";
   const chatName = chat.name ?? "-no name-";
+  const chatId = chat.id ?? "";
   chatButton.addEventListener("click", () => {
     const previouslySelected = document.querySelector(
       "#chats-list .chat-item--selected"
@@ -169,6 +177,7 @@ function createChatListItem(chat) {
     previouslySelected?.classList.remove("chat-item--selected");
     chatButton.classList.add("chat-item--selected");
     showChatHeader(chatName);
+    void openChatMessages(chatId);
   });
 
   const avatarDiv = document.createElement("div");
@@ -196,7 +205,33 @@ function createChatListItem(chat) {
   chatButton.appendChild(divTextBlock);
   li.appendChild(chatButton);
 
-  return { li, previewEl, chatId: chat.id ?? "" };
+  return { li, previewEl, chatId };
+}
+
+async function openChatMessages(chatId) {
+  const selectedSpaceInput = document.querySelector(
+    'input[name="space"]:checked'
+  );
+  if (!selectedSpaceInput || !chatId) {
+    return;
+  }
+
+  const spaceId = selectedSpaceInput.value;
+  const token = beginOpenChatMessages();
+
+  try {
+    const messages = await fetchChatMessages(spaceId, chatId, 10);
+    if (!isOpenChatMessagesCurrent(token)) {
+      return;
+    }
+    renderOpenChatMessages(messages);
+  } catch (error) {
+    console.error(`Could not load messages for chat ${chatId}:`, error);
+    if (!isOpenChatMessagesCurrent(token)) {
+      return;
+    }
+    renderOpenChatMessagesError("Could not load messages.");
+  }
 }
 
 export function populateChatsList(chats) {
