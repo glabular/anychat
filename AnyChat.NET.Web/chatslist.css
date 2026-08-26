@@ -104,6 +104,14 @@
     background-color: var(--color-surface-hover);
 }
 
+.chat-item--selected {
+    background-color: var(--color-selection);
+}
+
+.chat-item--selected:hover {
+    background-color: var(--color-selection);
+}
+
 .chat-header {
     display: flex;
     justify-content: space-between;

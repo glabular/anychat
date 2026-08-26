@@ -158,6 +158,13 @@ function createChatListItem(chat) {
   const chatButton = document.createElement("button");
   chatButton.type = "button";
   chatButton.className = "chat-item";
+  chatButton.addEventListener("click", () => {
+    const previouslySelected = document.querySelector(
+      "#chats-list .chat-item--selected"
+    );
+    previouslySelected?.classList.remove("chat-item--selected");
+    chatButton.classList.add("chat-item--selected");
+  });
 
   const avatarDiv = document.createElement("div");
   avatarDiv.className = "avatar";
