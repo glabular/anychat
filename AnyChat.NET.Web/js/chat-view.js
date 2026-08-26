@@ -5,6 +5,17 @@ function clearChatMessages() {
   document.getElementById("chat-messages")?.replaceChildren();
 }
 
+function isChatPanelOpen() {
+  const panel = document.getElementById("chat-panel");
+  return Boolean(panel && !panel.hidden);
+}
+
+function clearChatListSelection() {
+  document
+    .querySelector("#chats-list .chat-item--selected")
+    ?.classList.remove("chat-item--selected");
+}
+
 /** Show the main chat panel header with the given chat name. */
 export function showChatHeader(name) {
   const main = document.querySelector(".main");
@@ -44,6 +55,56 @@ export function hideChatPanel() {
     placeholder.hidden = false;
   }
   main?.classList.remove("main--chat-open");
+}
+
+/**
+ * Close the open chat panel and clear list selection.
+ * @returns {boolean} true if a chat was open and is now closed
+ */
+export function closeOpenChat() {
+  if (!isChatPanelOpen()) {
+    return false;
+  }
+
+  hideChatPanel();
+  clearChatListSelection();
+
+  // Escape switches Chromium to keyboard modality, so :focus-visible would
+  // draw a ring on the still-focused chat button (WebView2). Firefox often
+  // does not. Blur removes that ring after close.
+  const active = document.activeElement;
+  if (active instanceof HTMLElement && active.classList.contains("chat-item")) {
+    active.blur();
+  }
+
+  return true;
+}
+
+/** Escape and mouse Back (button 3) close the open chat. */
+export function initChatViewCloseBindings() {
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    if (closeOpenChat()) {
+      event.preventDefault();
+    }
+  });
+
+  // Mouse X1 ("Back") is button 3. Prevent the browser from navigating away.
+  document.addEventListener("mousedown", (event) => {
+    if (event.button !== 3) {
+      return;
+    }
+
+    if (!isChatPanelOpen()) {
+      return;
+    }
+
+    event.preventDefault();
+    closeOpenChat();
+  });
 }
 
 /**

@@ -104,6 +104,13 @@
     background-color: var(--color-surface-hover);
 }
 
+/* Selection uses .chat-item--selected. Suppress the UA focus ring so
+   keyboard modality (e.g. Escape held, then click) does not draw a border. */
+.chat-item:focus,
+.chat-item:focus-visible {
+    outline: none;
+}
+
 .chat-item--selected {
     background-color: var(--color-selection);
 }
