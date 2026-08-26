@@ -74,6 +74,10 @@
 .chats-empty-detail {
     display: block;
     margin-top: 4px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     color: var(--color-text-placeholder);
     font-size: 0.85rem;
 }

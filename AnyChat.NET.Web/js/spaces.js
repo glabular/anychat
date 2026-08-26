@@ -77,6 +77,7 @@ function getSpaceButton(space, shortcutNumber) {
   input.type = "radio";
   input.name = "space";
   input.value = space.id;
+  input.dataset.spaceName = space.name ?? "";
 
   const spaceLetterSpan = document.createElement("span");
   spaceLetterSpan.textContent = space.name?.[0] ?? "";

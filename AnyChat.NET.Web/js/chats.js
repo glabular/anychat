@@ -34,11 +34,14 @@ export function setMainPlaceholderVisible(visible) {
 }
 
 function restoreChatsEmptyContent(chatsEmpty) {
+  const selected = document.querySelector('input[name="space"]:checked');
+  const spaceName = selected?.dataset.spaceName?.trim() || "this space";
+
   chatsEmpty.replaceChildren();
-  chatsEmpty.append("You're all set ✨ ");
+  chatsEmpty.append("No chats in this space yet");
   const detail = document.createElement("span");
   detail.className = "chats-empty-detail";
-  detail.textContent = "No chats in this space yet.";
+  detail.textContent = spaceName;
   chatsEmpty.appendChild(detail);
 }
 

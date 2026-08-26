@@ -55,7 +55,7 @@ textarea,
 }
 
 .chat-sidebar h2 {
-  margin-top: 0;
+  margin-block: 7px;
   text-align: center;
 }
 
