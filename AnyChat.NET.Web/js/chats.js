@@ -140,8 +140,9 @@ export async function loadChatsForSelectedSpace() {
     return;
   }
 
-  populateChatsList(chats);
+  const rows = populateChatsList(chats);
   setMainPlaceholderVisible(true);
+  void loadChatPreviews(spaceId, rows, token);
 }
 
 /**
@@ -191,7 +192,7 @@ export function populateChatsList(chats) {
   const chatsEmpty = document.getElementById("chats-empty");
   if (!chatsList) {
     console.warn("Chats list element not found.");
-    return;
+    return [];
   }
 
   chatsList.replaceChildren();
@@ -201,17 +202,59 @@ export function populateChatsList(chats) {
       restoreChatsEmptyContent(chatsEmpty);
       chatsEmpty.hidden = false;
     }
-    return;
+    return [];
   }
 
   if (chatsEmpty) {
     chatsEmpty.hidden = true;
   }
 
-  chats.forEach((chat) => {
-    const { li } = createChatListItem(chat);
+  const rows = chats.map((chat) => {
+    const row = createChatListItem(chat);
+    const { li } = row;
     chatsList.appendChild(li);
+    return row;
   });
+
+  return rows;
+}
+
+function isStillCurrentSpace(spaceId, token) {
+  if (token !== loadToken) {
+    return false;
+  }
+
+  const stillSelected = document.querySelector('input[name="space"]:checked');
+  
+  return Boolean(stillSelected && stillSelected.value === spaceId);
+}
+
+async function loadChatPreviews(spaceId, rows, token) {
+  for (const row of rows) {
+    if (!isStillCurrentSpace(spaceId, token)) {
+      return;
+    }
+
+    if (!row.chatId) {
+      continue;
+    }
+
+    try {
+      const messages = await fetchChatMessages(spaceId, row.chatId, 1);
+      if (!isStillCurrentSpace(spaceId, token)) {
+        return;
+      }
+
+      const latestMessage =
+        Array.isArray(messages) && messages.length > 0 ? messages[0] : null;
+      row.previewEl.textContent = latestMessage
+        ? formatMessagePreview(latestMessage)
+        : "";
+    } catch (error) {
+      console.error(`Could not load latest message for chat ${row.chatId}:`, error);
+      row.previewEl.textContent = "";
+    }
+  }
 }
 
 export async function fetchChatMessages(spaceId, chatId, limit = 1) {
