@@ -151,3 +151,49 @@ textarea,
   background-color: var(--color-accent);
   color: var(--color-text);
 }
+
+.chat-composer {
+  flex-shrink: 0;
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-light-bg);
+}
+
+.chat-message-input {
+  flex: 1;
+  min-width: 0;
+  resize: none;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  outline: none;
+}
+
+.chat-message-input:focus,
+.chat-message-input:focus-visible {
+  outline: none;
+}
+
+.chat-message-input::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.chat-send-button {
+  padding: 0.65rem 1rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background-color: var(--color-accent);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.chat-send-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}

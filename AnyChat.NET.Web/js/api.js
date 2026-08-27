@@ -50,3 +50,22 @@ export async function fetchChats(spaceId) {
 
   return await response.json();
 }
+
+export async function postChatMessage(spaceId, chatId, text) {
+  const response = await fetch(
+    `${spacesUrl()}/${spaceId}/chats/${chatId}/messages`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = new Error(`Response status: ${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
+
+  return await response.json();
+}

@@ -1,11 +1,13 @@
-import { fetchChats } from "./api.js";
-import { spacesUrl } from "./api.js";
+import { fetchChats, postChatMessage, spacesUrl } from "./api.js";
 import {
   beginOpenChatMessages,
   hideChatPanel,
+  initChatComposer,
   isOpenChatMessagesCurrent,
   renderOpenChatMessages,
   renderOpenChatMessagesError,
+  setOpenChat,
+  setOpenChatMessagesReload,
   showChatHeader,
 } from "./chat-view.js";
 
@@ -169,6 +171,12 @@ function createChatListItem(chat) {
     previouslySelected?.classList.remove("chat-item--selected");
     chatButton.classList.add("chat-item--selected");
     showChatHeader(chatName);
+    const selectedSpaceInput = document.querySelector(
+      'input[name="space"]:checked'
+    );
+    if (selectedSpaceInput) {
+      setOpenChat(selectedSpaceInput.value, chatId);
+    }
     void openChatMessages(chatId);
   });
 
@@ -225,6 +233,19 @@ async function openChatMessages(chatId) {
     renderOpenChatMessagesError("Could not load messages.");
   }
 }
+
+setOpenChatMessagesReload(async (spaceId, chatId) => {
+  const selectedSpaceInput = document.querySelector(
+    'input[name="space"]:checked'
+  );
+  if (!selectedSpaceInput || selectedSpaceInput.value !== spaceId) {
+    return;
+  }
+
+  await openChatMessages(chatId);
+});
+
+initChatComposer(postChatMessage);
 
 export function populateChatsList(chats) {
   const chatsList = document.getElementById("chats-list");

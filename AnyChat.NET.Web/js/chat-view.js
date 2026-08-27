@@ -1,5 +1,8 @@
 /** Bumps when opening a chat or clearing the panel so stale fetches are ignored. */
 let openChatToken = 0;
+let openChat = null;
+let sendPending = false;
+let reloadOpenChatMessages = null;
 
 function clearChatMessages() {
   document.getElementById("chat-messages")?.replaceChildren();
@@ -43,6 +46,7 @@ export function hideChatPanel() {
   const placeholder = document.getElementById("main-placeholder");
 
   openChatToken += 1;
+  openChat = null;
   clearChatMessages();
 
   if (title) {
@@ -117,6 +121,14 @@ export function beginOpenChatMessages() {
   return token;
 }
 
+export function setOpenChat(spaceId, chatId) {
+  openChat = { spaceId, chatId };
+}
+
+export function setOpenChatMessagesReload(callback) {
+  reloadOpenChatMessages = callback;
+}
+
 export function isOpenChatMessagesCurrent(token) {
   return token === openChatToken;
 }
@@ -177,4 +189,55 @@ export function renderOpenChatMessagesError(text) {
   const line = document.createElement("div");
   line.textContent = text;
   container.appendChild(line);
+}
+
+export function initChatComposer(postChatMessage) {
+  const composer = document.getElementById("chat-composer");
+  const input = document.getElementById("chat-message-input");
+  const sendButton = document.getElementById("chat-send-button");
+  if (!(composer instanceof HTMLFormElement)
+      || !(input instanceof HTMLTextAreaElement)
+      || !(sendButton instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.shiftKey || event.isComposing) {
+      return;
+    }
+
+    event.preventDefault();
+    composer.requestSubmit();
+  });
+
+  composer.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const text = input.value.trim();
+    const target = openChat;
+    if (!text || !target || sendPending) {
+      return;
+    }
+
+    sendPending = true;
+    input.disabled = true;
+    sendButton.disabled = true;
+
+    try {
+      await postChatMessage(target.spaceId, target.chatId, text);
+      if (openChat?.spaceId !== target.spaceId || openChat?.chatId !== target.chatId) {
+        return;
+      }
+
+      input.value = "";
+      await reloadOpenChatMessages?.(target.spaceId, target.chatId);
+    } catch (error) {
+      console.error("Could not send message:", error);
+    } finally {
+      sendPending = false;
+      input.disabled = false;
+      sendButton.disabled = false;
+      input.focus();
+    }
+  });
 }

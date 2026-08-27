@@ -76,6 +76,19 @@
             <h1 id="chat-panel-title" class="chat-panel-title"></h1>
           </header>
           <div id="chat-messages" class="chat-messages selectable"></div>
+          <form id="chat-composer" class="chat-composer">
+            <textarea
+              id="chat-message-input"
+              class="chat-message-input"
+              rows="1"
+              placeholder="Enter your message"
+              aria-label="Message"
+              required
+            ></textarea>
+            <button id="chat-send-button" class="chat-send-button" type="submit">
+              Send
+            </button>
+          </form>
         </section>
       </main>
     </div>
