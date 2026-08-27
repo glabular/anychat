@@ -4,6 +4,17 @@ let openChat = null;
 let sendPending = false;
 let reloadOpenChatMessages = null;
 
+/** Wait this long before showing the spinner (avoids flash on fast loads). */
+const MESSAGES_SPINNER_SHOW_DELAY_MS = 200;
+let showMessagesSpinnerTimer = null;
+
+function cancelMessagesSpinnerTimer() {
+  if (showMessagesSpinnerTimer !== null) {
+    clearTimeout(showMessagesSpinnerTimer);
+    showMessagesSpinnerTimer = null;
+  }
+}
+
 function getChatMessageList() {
   return document.getElementById("chat-message-list");
 }
@@ -15,7 +26,27 @@ function setEmptyMessagesVisible(visible) {
   }
 }
 
+function setMessagesLoadingVisible(visible) {
+  const loading = document.getElementById("chat-messages-loading");
+  if (loading) {
+    loading.hidden = !visible;
+  }
+}
+
+function setMessagesBusy(busy) {
+  document
+    .getElementById("chat-messages")
+    ?.setAttribute("aria-busy", busy ? "true" : "false");
+}
+
+function endMessagesLoad() {
+  cancelMessagesSpinnerTimer();
+  setMessagesLoadingVisible(false);
+  setMessagesBusy(false);
+}
+
 function clearChatMessages() {
+  endMessagesLoad();
   getChatMessageList()?.replaceChildren();
   setEmptyMessagesVisible(false);
 }
@@ -128,8 +159,41 @@ export function initChatViewCloseBindings() {
  * Ignore fetch results when the token no longer matches.
  */
 export function beginOpenChatMessages() {
+  const loadingEl = document.getElementById("chat-messages-loading");
+  const wasLoadingVisible = Boolean(loadingEl && !loadingEl.hidden);
+  const emptyEl = document.getElementById("chat-messages-empty");
+  const keepStaleContent =
+    (getChatMessageList()?.childElementCount ?? 0) > 0 ||
+    Boolean(emptyEl && !emptyEl.hidden);
+
+  cancelMessagesSpinnerTimer();
   const token = ++openChatToken;
-  clearChatMessages();
+  setMessagesBusy(true);
+
+  if (wasLoadingVisible) {
+    setEmptyMessagesVisible(false);
+    getChatMessageList()?.replaceChildren();
+    setMessagesLoadingVisible(true);
+    return token;
+  }
+
+  if (!keepStaleContent) {
+    getChatMessageList()?.replaceChildren();
+    setEmptyMessagesVisible(false);
+  }
+
+  setMessagesLoadingVisible(false);
+
+  showMessagesSpinnerTimer = setTimeout(() => {
+    showMessagesSpinnerTimer = null;
+    if (token !== openChatToken) {
+      return;
+    }
+    getChatMessageList()?.replaceChildren();
+    setEmptyMessagesVisible(false);
+    setMessagesLoadingVisible(true);
+  }, MESSAGES_SPINNER_SHOW_DELAY_MS);
+
   return token;
 }
 
@@ -153,6 +217,7 @@ export function renderOpenChatMessages(messages) {
     return;
   }
 
+  endMessagesLoad();
   list.replaceChildren();
   setEmptyMessagesVisible(false);
 
@@ -208,6 +273,7 @@ export function renderOpenChatMessagesError(text) {
     return;
   }
 
+  endMessagesLoad();
   setEmptyMessagesVisible(false);
   list.replaceChildren();
 
