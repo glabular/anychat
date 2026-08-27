@@ -1,14 +1,20 @@
+using AnyChat.NET.Api.Models;
+using AnyChat.NET.Api.Services;
 using Anytype.NET;
 using Anytype.NET.Models;
-using Anytype.NET.Models.Responses;
+using Anytype.NET.Models.Requests;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AnyChat.NET.Api.Controllers;
 
 [ApiController]
 [Route("api/spaces/{spaceId}/chats")]
-public class ChatsController(AnytypeClient client) : ControllerBase
+public class ChatsController(AnytypeClient client, CurrentUserIdentityStore identityStore)
+    : ControllerBase
 {
+    private const int IdentityLearnMaxAttempts = 3;
+    private static readonly TimeSpan IdentityLearnRetryDelay = TimeSpan.FromMilliseconds(200);
+
     [HttpGet]
     public async Task<IActionResult> List(string spaceId)
     {
@@ -32,7 +38,84 @@ public class ChatsController(AnytypeClient client) : ControllerBase
         }
 
         var response = await client.Chats.ListMessagesAsync(spaceId, chatId, limit: limit);
-        
+
         return Ok(response.Messages ?? []);
+    }
+
+    [HttpPost("{chatId}/messages")]
+    public async Task<IActionResult> SendMessage(
+        string spaceId,
+        string chatId,
+        [FromBody] SendChatMessageRequest request)
+    {
+        var text = request.Text?.Trim();
+        if (string.IsNullOrEmpty(text))
+        {
+            return BadRequest(new { error = "Message text is required." });
+        }
+
+        var addResponse = await client.Chats.AddMessageAsync(
+            spaceId,
+            chatId,
+            new AddChatMessageRequest { Text = text });
+
+        var messageId = addResponse.MessageId;
+        if (string.IsNullOrWhiteSpace(messageId))
+        {
+            return StatusCode(
+                StatusCodes.Status502BadGateway,
+                new { error = "Anytype did not return a message id." });
+        }
+
+        var identityLearned = identityStore.IsKnown;
+
+        if (!identityLearned)
+        {
+            identityLearned = await TryLearnIdentityAsync(spaceId, chatId, messageId);
+        }
+
+        return StatusCode(
+            StatusCodes.Status201Created,
+            new SendChatMessageResponse
+            {
+                MessageId = messageId,
+                IdentityLearned = identityLearned,
+            });
+    }
+
+    private async Task<bool> TryLearnIdentityAsync(string spaceId, string chatId, string messageId)
+    {
+        for (var attempt = 1; attempt <= IdentityLearnMaxAttempts; attempt++)
+        {
+            try
+            {
+                var message = await client.Chats.GetMessageAsync(spaceId, chatId, messageId);
+                
+                if (string.IsNullOrWhiteSpace(message.Creator))
+                {
+                    // Fall through to retry/delay.
+                }
+                else
+                {
+                    var member = await client.Members.GetByIdAsync(spaceId, message.Creator);
+                    if (member is not null && !string.IsNullOrWhiteSpace(member.Identity))
+                    {
+                        identityStore.Learn(member.Identity);
+                        return true;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Learning must not turn a successful send into a retryable failure.
+            }
+
+            if (attempt < IdentityLearnMaxAttempts)
+            {
+                await Task.Delay(IdentityLearnRetryDelay);
+            }
+        }
+
+        return false;
     }
 }

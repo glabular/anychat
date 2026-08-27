@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+using AnyChat.NET.Api.Services;
 using Anytype.NET;
 
 namespace AnyChat.NET.Api;
@@ -16,11 +19,19 @@ public partial class Program
 
         builder.Services.AddControllers();
         builder.Services.AddOpenApi();
+
+        var apiKey = builder.Configuration["Anytype:ApiKey"]
+            ?? throw new InvalidOperationException("Anytype:ApiKey not configured");
+
+        builder.Services.AddSingleton(_ => new AnytypeClient(apiKey));
         builder.Services.AddSingleton(_ =>
         {
-            var key = builder.Configuration["Anytype:ApiKey"]
-                ?? throw new InvalidOperationException("Anytype:ApiKey not configured");
-            return new AnytypeClient(key);
+            var fingerprint = ComputeApiKeyFingerprint(apiKey);
+            var storagePath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "AnyChat.NET",
+                "current-identity.json");
+            return new CurrentUserIdentityStore(fingerprint, storagePath);
         });
 
         // Browser tools (Live Server, file preview, etc.) load the HTML from a
@@ -83,5 +94,11 @@ public partial class Program
         throw new DirectoryNotFoundException(
             "Web UI folder not found. Expected AnyChat.NET.Web next to the API project, " +
             "or a wwwroot folder beside the running app.");
+    }
+
+    private static string ComputeApiKeyFingerprint(string apiKey)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(apiKey));
+        return Convert.ToHexString(hash);
     }
 }

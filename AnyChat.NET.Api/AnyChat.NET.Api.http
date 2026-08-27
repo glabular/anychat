@@ -14,3 +14,13 @@ GET {{AnyChat.NET.Api_HostAddress}}/api/spaces/{{spaceId}}/chats/{{chatId}}/mess
 Accept: application/json
 
 ###
+
+POST {{AnyChat.NET.Api_HostAddress}}/api/spaces/{{spaceId}}/chats/{{chatId}}/messages
+Content-Type: application/json
+Accept: application/json
+
+{
+  "text": "Hello from AnyChat"
+}
+
+###
