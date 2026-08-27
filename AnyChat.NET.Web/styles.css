@@ -14,6 +14,30 @@
   --color-ice: #2aa7ee;
   --color-teal: #0fc8ba;
   --color-selection: rgba(24, 163, 241, 0.3);
+
+  --scrollbar-size: 4px;
+  --scrollbar-thumb: rgba(248, 248, 248, 0.35);
+  --scrollbar-track: rgba(248, 248, 248, 0.08);
+  --scrollbar-fade-in-ms: 180ms;
+  --scrollbar-fade-out-ms: 280ms;
+}
+
+/*
+  Tell the browser these two custom properties are COLORS that can animate.
+  Without @property, a custom property is just a string blob — CSS cannot
+  smoothly go from "transparent" to "rgba(...)" because it does not know
+  the value is a color.
+*/
+@property --idle-scrollbar-thumb {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: transparent;
+}
+
+@property --idle-scrollbar-track {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: transparent;
 }
 
 * {
@@ -48,7 +72,7 @@ textarea,
   width: 340px;
   flex-shrink: 0;
   border-right: 1px solid var(--color-border);
-  overflow-y: auto;
+  overflow: hidden;
   background-color: var(--color-light-bg);
   display: flex;
   flex-direction: column;
@@ -121,6 +145,47 @@ textarea,
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+/* Thin native scrollbar; fades via registered custom properties. */
+.idle-scrollbar {
+  --idle-scrollbar-thumb: transparent;
+  --idle-scrollbar-track: transparent;
+  scrollbar-width: thin;
+  scrollbar-color: var(--idle-scrollbar-thumb) var(--idle-scrollbar-track);
+  /* Used when .is-scrollbar-visible is removed (fade out). */
+  transition:
+    --idle-scrollbar-thumb var(--scrollbar-fade-out-ms) ease,
+    --idle-scrollbar-track var(--scrollbar-fade-out-ms) ease;
+}
+
+.idle-scrollbar.is-scrollbar-visible {
+  --idle-scrollbar-thumb: var(--scrollbar-thumb);
+  --idle-scrollbar-track: var(--scrollbar-track);
+  /* Used when .is-scrollbar-visible is added (fade in). */
+  transition:
+    --idle-scrollbar-thumb var(--scrollbar-fade-in-ms) ease,
+    --idle-scrollbar-track var(--scrollbar-fade-in-ms) ease;
+}
+
+.idle-scrollbar::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+.idle-scrollbar::-webkit-scrollbar-track {
+  background: var(--idle-scrollbar-track);
+}
+
+.idle-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--idle-scrollbar-thumb);
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .idle-scrollbar {
+    transition: none;
+  }
 }
 
 .message-row {

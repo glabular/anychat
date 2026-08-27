@@ -65,7 +65,7 @@
           No chats in this space yet
           <span class="chats-empty-detail">this space</span>
         </p>
-        <ul id="chats-list"></ul>
+        <ul id="chats-list" class="idle-scrollbar"></ul>
       </aside>
       <main class="main">
         <p class="placeholder" id="main-placeholder" hidden>
@@ -75,7 +75,10 @@
           <header class="chat-panel-header">
             <h1 id="chat-panel-title" class="chat-panel-title"></h1>
           </header>
-          <div id="chat-messages" class="chat-messages selectable"></div>
+          <div
+            id="chat-messages"
+            class="chat-messages selectable idle-scrollbar"
+          ></div>
           <form id="chat-composer" class="chat-composer">
             <textarea
               id="chat-message-input"
