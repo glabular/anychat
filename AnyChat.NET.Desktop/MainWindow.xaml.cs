@@ -2,6 +2,7 @@
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
+using Microsoft.Web.WebView2.Core;
 
 namespace AnyChat.NET.Desktop;
 
@@ -10,14 +11,25 @@ public partial class MainWindow : Window
     // Must match AnyChat.NET.Api launchSettings (http profile).
     private const string AppUrl = "http://localhost:5249/";
 
+    // Matches --color-bg in AnyChat.NET.Web/styles.css.
+    private static readonly System.Drawing.Color AppBackground =
+        System.Drawing.Color.FromArgb(255, 0x17, 0x17, 0x17);
+
     private static readonly string PlacementPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "AnyChat.NET",
         "window-placement.json");
 
+    private bool _hasRevealedWebView;
+
     public MainWindow()
     {
         InitializeComponent();
+
+        // Also set on the control before EnsureCoreWebView2Async (belt + suspenders
+        // with the process env var in App).
+        WebView.DefaultBackgroundColor = AppBackground;
+
         SourceInitialized += OnSourceInitialized;
         Closing += OnClosing;
         Loaded += OnLoaded;
@@ -55,7 +67,7 @@ public partial class MainWindow : Window
             }
 
             var bounds = new Rect(placement.Left, placement.Top, placement.Width, placement.Height);
-            
+
             if (!IsReasonablyOnScreen(bounds))
             {
                 return;
@@ -134,7 +146,12 @@ public partial class MainWindow : Window
     {
         try
         {
-            await WebView.EnsureCoreWebView2Async();
+            // Set DefaultBackgroundColor at controller creation so WebView2 never
+            // paints its default white before our first navigation completes.
+            var environment = await CoreWebView2Environment.CreateAsync();
+            var controllerOptions = environment.CreateCoreWebView2ControllerOptions();
+            controllerOptions.DefaultBackgroundColor = AppBackground;
+            await WebView.EnsureCoreWebView2Async(environment, controllerOptions);
         }
         catch (Exception ex)
         {
@@ -149,29 +166,56 @@ public partial class MainWindow : Window
 
         ConfigureWebViewForDesktop();
 
-        WebView.CoreWebView2.NavigationCompleted += (_, args) =>
-        {
-            if (args.IsSuccess)
-            {
-                return;
-            }
-
-            WebView.CoreWebView2.NavigateToString(
-                """
-                <!DOCTYPE html>
-                <html lang="en">
-                <head><meta charset="UTF-8"><title>AnyChat</title></head>
-                <body style="font-family: system-ui, sans-serif; margin: 2rem;">
-                  <h1>API not reachable</h1>
-                  <p>Start <code>AnyChat.NET.Api</code> on
-                     <a href="http://localhost:5249/">http://localhost:5249/</a>,
-                     then restart this app.</p>
-                </body>
-                </html>
-                """);
-        };
+        WebView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
 
         WebView.Source = new Uri(AppUrl);
+    }
+
+    private void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs args)
+    {
+        if (args.IsSuccess)
+        {
+            RevealWebView();
+            return;
+        }
+
+        // Keep StartupSurface visible until the fallback HTML finishes loading.
+        if (_hasRevealedWebView)
+        {
+            return;
+        }
+
+        WebView.CoreWebView2.NavigateToString(
+            """
+            <!DOCTYPE html>
+            <html lang="en">
+            <head><meta charset="UTF-8"><title>AnyChat</title></head>
+            <body style="font-family: system-ui, sans-serif; margin: 2rem; background: #171717; color: #f8f8f8;">
+              <h1>API not reachable</h1>
+              <p>Start <code>AnyChat.NET.Api</code> on
+                 <a href="http://localhost:5249/" style="color: #377aff;">http://localhost:5249/</a>,
+                 then restart this app.</p>
+            </body>
+            </html>
+            """);
+    }
+
+    private void RevealWebView()
+    {
+        if (_hasRevealedWebView)
+        {
+            return;
+        }
+
+        _hasRevealedWebView = true;
+
+        // Make WebView visible first (dark via env var / DefaultBackgroundColor),
+        // then drop the native surface on the next dispatcher pass so we never
+        // show an empty white HWND for a frame.
+        WebView.Visibility = Visibility.Visible;
+        Dispatcher.BeginInvoke(
+            () => StartupSurface.Visibility = Visibility.Collapsed,
+            System.Windows.Threading.DispatcherPriority.Render);
     }
 
     private void ConfigureWebViewForDesktop()

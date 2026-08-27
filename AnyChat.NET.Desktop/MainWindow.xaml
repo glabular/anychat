@@ -8,8 +8,29 @@
         Title="AnyChat"
         Height="600"
         Width="900"
-        WindowStartupLocation="CenterScreen">
-    <Grid>
-        <wv2:WebView2 x:Name="WebView" />
+        WindowStartupLocation="CenterScreen"
+        Background="#171717">
+    <Grid Background="#171717">
+        <!--
+          Native first paint. WebView2 starts Hidden so its HWND never paints white
+          over this surface. After NavigationCompleted we collapse StartupSurface
+          and show WebView — one clean handoff, no airspace fight.
+        -->
+        <wv2:WebView2 x:Name="WebView" Visibility="Hidden" />
+
+        <Grid x:Name="StartupSurface" Background="#171717">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <TextBlock Text="anychat"
+                           Foreground="#F8F8F8"
+                           FontSize="48"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="Loading…"
+                           Foreground="#ABABAB"
+                           FontSize="14"
+                           Margin="0,12,0,0"
+                           HorizontalAlignment="Center" />
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>
