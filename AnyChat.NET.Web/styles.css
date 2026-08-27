@@ -128,8 +128,13 @@ textarea,
   width: 100%;
 }
 
-.message-row--neutral {
+.message-row--neutral,
+.message-row--other {
   justify-content: flex-start;
+}
+
+.message-row--mine {
+  justify-content: flex-end;
 }
 
 .message-bubble {
@@ -140,4 +145,9 @@ textarea,
   background-color: var(--color-light-bg);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.message-row--mine .message-bubble {
+  background-color: var(--color-accent);
+  color: var(--color-text);
 }

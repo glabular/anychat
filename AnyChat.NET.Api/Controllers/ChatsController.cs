@@ -9,7 +9,10 @@ namespace AnyChat.NET.Api.Controllers;
 
 [ApiController]
 [Route("api/spaces/{spaceId}/chats")]
-public class ChatsController(AnytypeClient client, CurrentUserIdentityStore identityStore)
+public class ChatsController(
+    AnytypeClient client,
+    CurrentUserIdentityStore identityStore,
+    CurrentMemberResolver memberResolver)
     : ControllerBase
 {
     private const int IdentityLearnMaxAttempts = 3;
@@ -38,8 +41,10 @@ public class ChatsController(AnytypeClient client, CurrentUserIdentityStore iden
         }
 
         var response = await client.Chats.ListMessagesAsync(spaceId, chatId, limit: limit);
+        var participantId = await memberResolver.ResolveParticipantIdAsync(spaceId);
+        var messages = (response.Messages ?? []).Select(message => MapMessage(message, participantId));
 
-        return Ok(response.Messages ?? []);
+        return Ok(messages);
     }
 
     [HttpPost("{chatId}/messages")]
@@ -117,5 +122,26 @@ public class ChatsController(AnytypeClient client, CurrentUserIdentityStore iden
         }
 
         return false;
+    }
+
+    private static ChatMessageDto MapMessage(ChatMessage message, string? participantId)
+    {
+        bool? isMine = null;
+        if (participantId is not null)
+        {
+            isMine = string.Equals(message.Creator, participantId, StringComparison.Ordinal);
+        }
+
+        return new ChatMessageDto
+        {
+            Id = message.Id,
+            Creator = message.Creator,
+            CreatorName = message.CreatorName,
+            Content = new ChatMessageContentDto
+            {
+                Text = message.Content?.Text,
+            },
+            IsMine = isMine,
+        };
     }
 }

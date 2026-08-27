@@ -121,7 +121,7 @@ export function isOpenChatMessagesCurrent(token) {
   return token === openChatToken;
 }
 
-/** Render text messages chronologically as neutral left-aligned bubbles. */
+/** Render text messages chronologically; align by isMine when known. */
 export function renderOpenChatMessages(messages) {
   const container = document.getElementById("chat-messages");
   if (!container) {
@@ -133,7 +133,8 @@ export function renderOpenChatMessages(messages) {
   if (!Array.isArray(messages) || messages.length === 0) {
     return;
   }
-    
+
+  // Anytype already returns this window oldest → newest. Do not reverse.
   for (const message of messages) {
     const text = message.content?.text;
     if (typeof text !== "string" || text.length === 0) {
@@ -141,7 +142,7 @@ export function renderOpenChatMessages(messages) {
     }
 
     const row = document.createElement("div");
-    row.className = "message-row message-row--neutral";
+    row.className = `message-row ${rowModifierClass(message.isMine)}`;
 
     const bubble = document.createElement("div");
     bubble.className = "message-bubble";
@@ -152,6 +153,18 @@ export function renderOpenChatMessages(messages) {
   }
 
   container.scrollTop = container.scrollHeight;
+}
+
+function rowModifierClass(isMine) {
+  if (isMine === true) {
+    return "message-row--mine";
+  }
+
+  if (isMine === false) {
+    return "message-row--other";
+  }
+
+  return "message-row--neutral";
 }
 
 export function renderOpenChatMessagesError(text) {

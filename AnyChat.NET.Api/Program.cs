@@ -33,6 +33,7 @@ public partial class Program
                 "current-identity.json");
             return new CurrentUserIdentityStore(fingerprint, storagePath);
         });
+        builder.Services.AddSingleton<CurrentMemberResolver>();
 
         // Browser tools (Live Server, file preview, etc.) load the HTML from a
         // different origin than the API. Development-only CORS lets fetch work there.
