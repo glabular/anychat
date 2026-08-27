@@ -122,3 +122,22 @@ textarea,
   flex-direction: column;
   gap: 0.5rem;
 }
+
+.message-row {
+  display: flex;
+  width: 100%;
+}
+
+.message-row--neutral {
+  justify-content: flex-start;
+}
+
+.message-bubble {
+  width: fit-content;
+  max-width: min(70%, 42rem);
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.75rem;
+  background-color: var(--color-light-bg);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

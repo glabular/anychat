@@ -121,7 +121,7 @@ export function isOpenChatMessagesCurrent(token) {
   return token === openChatToken;
 }
 
-/** Primitive dump: one text node per message, API order, no styling. */
+/** Render text messages chronologically as neutral left-aligned bubbles. */
 export function renderOpenChatMessages(messages) {
   const container = document.getElementById("chat-messages");
   if (!container) {
@@ -133,12 +133,25 @@ export function renderOpenChatMessages(messages) {
   if (!Array.isArray(messages) || messages.length === 0) {
     return;
   }
-
+    
   for (const message of messages) {
-    const line = document.createElement("div");
-    line.textContent = message.content?.text ?? "";
-    container.appendChild(line);
+    const text = message.content?.text;
+    if (typeof text !== "string" || text.length === 0) {
+      continue;
+    }
+
+    const row = document.createElement("div");
+    row.className = "message-row message-row--neutral";
+
+    const bubble = document.createElement("div");
+    bubble.className = "message-bubble";
+    bubble.textContent = text;
+
+    row.appendChild(bubble);
+    container.appendChild(row);
   }
+
+  container.scrollTop = container.scrollHeight;
 }
 
 export function renderOpenChatMessagesError(text) {
