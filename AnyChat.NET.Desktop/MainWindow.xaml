@@ -5,7 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         mc:Ignorable="d"
-        Title="AnyChat" Height="600" Width="900">
+        Title="AnyChat"
+        Height="600"
+        Width="900"
+        WindowStartupLocation="CenterScreen">
     <Grid>
         <wv2:WebView2 x:Name="WebView" />
     </Grid>
