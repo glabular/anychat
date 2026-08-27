@@ -4,8 +4,20 @@ let openChat = null;
 let sendPending = false;
 let reloadOpenChatMessages = null;
 
+function getChatMessageList() {
+  return document.getElementById("chat-message-list");
+}
+
+function setEmptyMessagesVisible(visible) {
+  const empty = document.getElementById("chat-messages-empty");
+  if (empty) {
+    empty.hidden = !visible;
+  }
+}
+
 function clearChatMessages() {
-  document.getElementById("chat-messages")?.replaceChildren();
+  getChatMessageList()?.replaceChildren();
+  setEmptyMessagesVisible(false);
 }
 
 function isChatPanelOpen() {
@@ -135,21 +147,26 @@ export function isOpenChatMessagesCurrent(token) {
 
 /** Render text messages chronologically; align by isMine when known. */
 export function renderOpenChatMessages(messages) {
+  const list = getChatMessageList();
   const container = document.getElementById("chat-messages");
-  if (!container) {
+  if (!list || !container) {
     return;
   }
 
-  container.replaceChildren();
+  list.replaceChildren();
+  setEmptyMessagesVisible(false);
 
-  if (!Array.isArray(messages) || messages.length === 0) {
+  if (!Array.isArray(messages)) {
+    setEmptyMessagesVisible(true);
     return;
   }
+
+  let renderedCount = 0;
 
   // Anytype already returns this window oldest → newest. Do not reverse.
   for (const message of messages) {
     const text = message.content?.text;
-    if (typeof text !== "string" || text.length === 0) {
+    if (typeof text !== "string" || text.trim().length === 0) {
       continue;
     }
 
@@ -161,7 +178,13 @@ export function renderOpenChatMessages(messages) {
     bubble.textContent = text;
 
     row.appendChild(bubble);
-    container.appendChild(row);
+    list.appendChild(row);
+    renderedCount += 1;
+  }
+
+  if (renderedCount === 0) {
+    setEmptyMessagesVisible(true);
+    return;
   }
 
   container.scrollTop = container.scrollHeight;
@@ -180,15 +203,19 @@ function rowModifierClass(isMine) {
 }
 
 export function renderOpenChatMessagesError(text) {
-  const container = document.getElementById("chat-messages");
-  if (!container) {
+  const list = getChatMessageList();
+  if (!list) {
     return;
   }
 
-  container.replaceChildren();
+  setEmptyMessagesVisible(false);
+  list.replaceChildren();
+
   const line = document.createElement("div");
+  line.className = "chat-messages-error";
+  line.setAttribute("role", "alert");
   line.textContent = text;
-  container.appendChild(line);
+  list.appendChild(line);
 }
 
 export function initChatComposer(postChatMessage) {

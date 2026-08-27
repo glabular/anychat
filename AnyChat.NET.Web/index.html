@@ -78,7 +78,15 @@
           <div
             id="chat-messages"
             class="chat-messages selectable idle-scrollbar"
-          ></div>
+          >
+            <div id="chat-messages-empty" class="chat-messages-empty" hidden>
+              <h2 class="chat-messages-empty-title">No messages yet</h2>
+              <p class="chat-messages-empty-text">
+                Start the conversation by sending the first message.
+              </p>
+            </div>
+            <div id="chat-message-list" class="chat-message-list"></div>
+          </div>
           <form id="chat-composer" class="chat-composer">
             <textarea
               id="chat-message-input"
