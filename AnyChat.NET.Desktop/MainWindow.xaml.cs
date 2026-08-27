@@ -191,10 +191,8 @@ public partial class MainWindow : Window
             <html lang="en">
             <head><meta charset="UTF-8"><title>AnyChat</title></head>
             <body style="font-family: system-ui, sans-serif; margin: 2rem; background: #171717; color: #f8f8f8;">
-              <h1>API not reachable</h1>
-              <p>Start <code>AnyChat.NET.Api</code> on
-                 <a href="http://localhost:5249/" style="color: #377aff;">http://localhost:5249/</a>,
-                 then restart this app.</p>
+              <h1>Cannot reach Anytype</h1>
+              <p>Please make sure your Anytype client is running and try again.</p>
             </body>
             </html>
             """);
