@@ -1,4 +1,6 @@
 :root {  
+  --font-inter: Inter, system-ui, sans-serif;
+
   --color-bg: #171717;
   --color-light-bg: #292929;
   --color-text: #f8f8f8;
@@ -176,6 +178,7 @@ textarea,
 
 .chat-messages-empty-title {
   margin: 0;
+  font-family: var(--font-inter);
   font-size: 1.3rem;
   font-weight: 600;
   color: var(--color-text);
@@ -185,6 +188,7 @@ textarea,
 
 .chat-messages-empty-text {
   margin: 0;
+  font-family: var(--font-inter);
   max-width: 22rem;
   font-size: 0.95rem;
   line-height: 1.5;
