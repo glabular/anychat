@@ -215,7 +215,69 @@ export function isOpenChatMessagesCurrent(token) {
   return token === openChatToken;
 }
 
-/** Render text messages chronologically; align by isMine when known. */
+function isRenderableTextMessage(message) {
+  const text = message?.content?.text;
+  return typeof text === "string" && text.trim().length > 0;
+}
+
+function rowModifierClass(isMine) {
+  if (isMine === true) {
+    return "message-row--mine";
+  }
+
+  if (isMine === false) {
+    return "message-row--other";
+  }
+
+  return "message-row--neutral";
+}
+
+/**
+ * @param {object} message
+ * @returns {HTMLDivElement | null}
+ */
+function createMessageRow(message) {
+  if (!isRenderableTextMessage(message)) {
+    return null;
+  }
+
+  const row = document.createElement("div");
+  row.className = `message-row ${rowModifierClass(message.isMine)}`;
+  if (message.id) {
+    row.dataset.messageId = message.id;
+  }
+
+  const bubble = document.createElement("div");
+  bubble.className = "message-bubble";
+  bubble.textContent = message.content.text;
+  row.appendChild(bubble);
+
+  return row;
+}
+
+/**
+ * @param {object[]} messages
+ * @returns {{ fragment: DocumentFragment, renderedCount: number }}
+ */
+function buildMessageFragment(messages) {
+  const fragment = document.createDocumentFragment();
+  let renderedCount = 0;
+
+  // Anytype already returns each window oldest → newest. Do not reverse.
+  for (const message of messages) {
+    const row = createMessageRow(message);
+    if (!row) {
+      continue;
+    }
+
+    fragment.appendChild(row);
+    renderedCount += 1;
+  }
+
+  return { fragment, renderedCount };
+}
+
+/** Clear the list, render the latest page, and scroll to the bottom. */
 export function renderOpenChatMessages(messages) {
   const list = getChatMessageList();
   const container = document.getElementById("chat-messages");
@@ -232,45 +294,41 @@ export function renderOpenChatMessages(messages) {
     return;
   }
 
-  let renderedCount = 0;
-
-  // Anytype already returns this window oldest → newest. Do not reverse.
-  for (const message of messages) {
-    const text = message.content?.text;
-    if (typeof text !== "string" || text.trim().length === 0) {
-      continue;
-    }
-
-    const row = document.createElement("div");
-    row.className = `message-row ${rowModifierClass(message.isMine)}`;
-
-    const bubble = document.createElement("div");
-    bubble.className = "message-bubble";
-    bubble.textContent = text;
-
-    row.appendChild(bubble);
-    list.appendChild(row);
-    renderedCount += 1;
-  }
-
+  const { fragment, renderedCount } = buildMessageFragment(messages);
   if (renderedCount === 0) {
     setEmptyMessagesVisible(true);
     return;
   }
 
+  list.appendChild(fragment);
   container.scrollTop = container.scrollHeight;
 }
 
-function rowModifierClass(isMine) {
-  if (isMine === true) {
-    return "message-row--mine";
+/**
+ * Prepend older messages without moving the reader's viewport.
+ * @param {object[]} messages deduplicated batch, oldest → newest
+ * @returns {number} rows actually inserted
+ */
+export function prependOlderChatMessages(messages) {
+  const list = getChatMessageList();
+  const container = document.getElementById("chat-messages");
+  if (!list || !container || !Array.isArray(messages) || messages.length === 0) {
+    return 0;
   }
 
-  if (isMine === false) {
-    return "message-row--other";
+  const { fragment, renderedCount } = buildMessageFragment(messages);
+  if (renderedCount === 0) {
+    return 0;
   }
 
-  return "message-row--neutral";
+  const previousScrollHeight = container.scrollHeight;
+  const previousScrollTop = container.scrollTop;
+
+  list.insertBefore(fragment, list.firstChild);
+  container.scrollTop =
+    previousScrollTop + (container.scrollHeight - previousScrollHeight);
+
+  return renderedCount;
 }
 
 export function renderOpenChatMessagesError(text) {

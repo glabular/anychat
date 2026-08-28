@@ -317,8 +317,10 @@ async function openChatMessages(chatId) {
     }
     if (chatHistoryState?.token === token) {
       applyInitialPage(chatHistoryState, messages);
+      renderOpenChatMessages(chatHistoryState.messages);
+    } else {
+      renderOpenChatMessages(messages);
     }
-    renderOpenChatMessages(messages);
   } catch (error) {
     console.error(`Could not load messages for chat ${chatId}:`, error);
     if (!isOpenChatMessagesCurrent(token)) {
