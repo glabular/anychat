@@ -48,6 +48,10 @@ function endMessagesLoad() {
 
 function clearChatMessages() {
   endMessagesLoad();
+  const container = document.getElementById("chat-messages");
+  if (container) {
+    setMessagesPreparing(container, false);
+  }
   getChatMessageList()?.replaceChildren();
   setEmptyMessagesVisible(false);
 }
@@ -321,6 +325,17 @@ function buildMessageFragment(messages) {
   return { fragment, renderedCount };
 }
 
+function setMessagesPreparing(container, preparing) {
+  container.classList.toggle("chat-messages--preparing", preparing);
+}
+
+/** Pin the scroll container to the newest message after layout. */
+function scrollMessagesToBottom(container) {
+  // Force layout so scrollHeight reflects the rows just inserted.
+  void container.offsetHeight;
+  container.scrollTop = container.scrollHeight;
+}
+
 /** Clear the list, render the latest page, and scroll to the bottom. */
 export function renderOpenChatMessages(messages) {
   const list = getChatMessageList();
@@ -330,22 +345,27 @@ export function renderOpenChatMessages(messages) {
   }
 
   endMessagesLoad();
+  // Hide before clearing/appending so the browser never paints scrollTop=0.
+  setMessagesPreparing(container, true);
   list.replaceChildren();
   setEmptyMessagesVisible(false);
 
   if (!Array.isArray(messages)) {
     setEmptyMessagesVisible(true);
+    setMessagesPreparing(container, false);
     return;
   }
 
   const { fragment, renderedCount } = buildMessageFragment(messages);
   if (renderedCount === 0) {
     setEmptyMessagesVisible(true);
+    setMessagesPreparing(container, false);
     return;
   }
 
   list.appendChild(fragment);
-  container.scrollTop = container.scrollHeight;
+  scrollMessagesToBottom(container);
+  setMessagesPreparing(container, false);
 }
 
 /**
@@ -394,17 +414,21 @@ export function appendNewerChatMessages(messages) {
 
   setEmptyMessagesVisible(false);
   list.appendChild(fragment);
-  container.scrollTop = container.scrollHeight;
+  scrollMessagesToBottom(container);
   return renderedCount;
 }
 
 export function renderOpenChatMessagesError(text) {
   const list = getChatMessageList();
+  const container = document.getElementById("chat-messages");
   if (!list) {
     return;
   }
 
   endMessagesLoad();
+  if (container) {
+    setMessagesPreparing(container, false);
+  }
   setEmptyMessagesVisible(false);
   list.replaceChildren();
 

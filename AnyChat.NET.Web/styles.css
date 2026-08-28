@@ -143,6 +143,8 @@ textarea,
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  /* Reserve scrollbar width so content does not jump left when overflow starts. */
+  scrollbar-gutter: stable;
   padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
@@ -152,17 +154,15 @@ textarea,
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  flex: 1;
+  /* Size to content and sit on the bottom when the page is shorter than the panel. */
+  flex: 0 0 auto;
+  margin-top: auto;
   min-height: 0;
 }
 
-/* Empty state visible: list must not take half the column (that pins copy to ~top quarter). */
-.chat-messages-empty:not([hidden]) ~ .chat-message-list {
-  flex: 0 0 auto;
-}
-
-.chat-messages-loading:not([hidden]) ~ .chat-message-list {
-  flex: 0 0 auto;
+/* Hide until scrollTop is set so the first paint is already at the bottom. */
+.chat-messages.chat-messages--preparing {
+  visibility: hidden;
 }
 
 .chat-messages-history {
