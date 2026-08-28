@@ -173,6 +173,12 @@ export function hideChatPanel() {
   const title = document.getElementById("chat-panel-title");
   const placeholder = document.getElementById("main-placeholder");
 
+  saveComposerDraft(openChat);
+  const input = getChatMessageInput();
+  if (input) {
+    input.value = "";
+  }
+
   openChatToken += 1;
   openChat = null;
   clearChatMessages();
