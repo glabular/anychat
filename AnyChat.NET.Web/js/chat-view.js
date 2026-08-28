@@ -30,6 +30,13 @@ function setEmptyMessagesVisible(visible) {
   }
 }
 
+function setSendErrorVisible(visible) {
+  const error = document.getElementById("chat-send-error");
+  if (error) {
+    error.hidden = !visible;
+  }
+}
+
 function setMessagesLoadingVisible(visible) {
   const loading = document.getElementById("chat-messages-loading");
   if (loading) {
@@ -130,6 +137,7 @@ export function hideChatPanel() {
   openChat = null;
   clearChatMessages();
   resetChatHistoryStatus();
+  setSendErrorVisible(false);
   onChatPanelHidden?.();
 
   if (title) {
@@ -239,6 +247,7 @@ export function beginOpenChatMessages() {
 
 export function setOpenChat(spaceId, chatId) {
   openChat = { spaceId, chatId };
+  setSendErrorVisible(false);
 }
 
 export function setOpenChatMessagesReload(callback) {
