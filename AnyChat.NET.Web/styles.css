@@ -385,6 +385,20 @@ textarea,
   color: var(--color-text);
 }
 
+.chat-send-error {
+  flex-shrink: 0;
+  padding: 0.5rem 1.25rem 0;
+  color: var(--color-red);
+  font-size: 0.85rem;
+  text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.chat-send-error[hidden] {
+  display: none;
+}
+
 .chat-composer {
   flex-shrink: 0;
   display: flex;
