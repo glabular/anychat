@@ -579,6 +579,8 @@ export function initChatComposer(postChatMessage) {
         return;
       }
 
+      clearComposerDraft(target);
+
       if (
         openChat?.spaceId !== target.spaceId
         || openChat?.chatId !== target.chatId
@@ -592,7 +594,12 @@ export function initChatComposer(postChatMessage) {
       sendPending = false;
       input.disabled = false;
       sendButton.disabled = false;
-      input.focus();
+      if (
+        openChat?.spaceId === target.spaceId
+        && openChat?.chatId === target.chatId
+      ) {
+        input.focus();
+      }
     }
   });
 }
