@@ -10,7 +10,12 @@ Accept: application/json
 
 ###
 
-GET {{AnyChat.NET.Api_HostAddress}}/api/spaces/{{spaceId}}/chats/{{chatId}}/messages?limit=1
+GET {{AnyChat.NET.Api_HostAddress}}/api/spaces/{{spaceId}}/chats/{{chatId}}/messages?limit=10
+Accept: application/json
+
+###
+
+GET {{AnyChat.NET.Api_HostAddress}}/api/spaces/{{spaceId}}/chats/{{chatId}}/messages?limit=10&beforeOrderId={{oldestOrderId}}
 Accept: application/json
 
 ###

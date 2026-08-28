@@ -9,6 +9,11 @@ public sealed class ChatMessageDto
 {
     public string? Id { get; init; }
 
+    /// <summary>
+    /// Cursor order ID from Anytype; pass as <c>beforeOrderId</c> to load older messages.
+    /// </summary>
+    public string? OrderId { get; init; }
+
     public string? Creator { get; init; }
 
     public string? CreatorName { get; init; }

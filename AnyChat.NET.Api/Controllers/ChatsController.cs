@@ -29,7 +29,8 @@ public class ChatsController(
     public async Task<IActionResult> ListMessages(
         string spaceId,
         string chatId,
-        [FromQuery] int limit = 1)
+        [FromQuery] int limit = 1,
+        [FromQuery] string? beforeOrderId = null)
     {
         if (limit < 1)
         {
@@ -40,7 +41,12 @@ public class ChatsController(
             limit = 1000;
         }
 
-        var response = await client.Chats.ListMessagesAsync(spaceId, chatId, limit: limit);
+        var response = await client.Chats.ListMessagesAsync(
+            spaceId,
+            chatId,
+            beforeOrderId: beforeOrderId ?? string.Empty,
+            afterOrderId: string.Empty,
+            limit: limit);
         var participantId = await memberResolver.ResolveParticipantIdAsync(spaceId);
         var messages = (response.Messages ?? []).Select(message => MapMessage(message, participantId));
 
@@ -135,6 +141,7 @@ public class ChatsController(
         return new ChatMessageDto
         {
             Id = message.Id,
+            OrderId = message.OrderId,
             Creator = message.Creator,
             CreatorName = message.CreatorName,
             Content = new ChatMessageContentDto
