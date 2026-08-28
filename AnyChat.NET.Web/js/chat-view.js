@@ -286,7 +286,12 @@ export function beginOpenChatMessages() {
 }
 
 export function setOpenChat(spaceId, chatId) {
+  saveComposerDraft(openChat);
   openChat = { spaceId, chatId };
+  const input = getChatMessageInput();
+  if (input) {
+    input.value = getComposerDraft(openChat);
+  }
   setSendErrorVisible(false);
 }
 
