@@ -5,6 +5,9 @@ let sendPending = false;
 let reloadOpenChatMessages = null;
 let onChatPanelHidden = null;
 
+/** Unsent composer text keyed by spaceId + chatId for the current session. */
+const composerDrafts = new Map();
+
 /** Fast loads finish without showing a spinner. */
 const MESSAGES_SPINNER_SHOW_DELAY_MS = 300;
 /** Once shown, keep the spinner visible long enough to avoid a brief flash. */
@@ -35,6 +38,43 @@ function setSendErrorVisible(visible) {
   if (error) {
     error.hidden = !visible;
   }
+}
+
+function composerDraftKey(spaceId, chatId) {
+  return JSON.stringify([spaceId, chatId]);
+}
+
+function getChatMessageInput() {
+  const input = document.getElementById("chat-message-input");
+  return input instanceof HTMLTextAreaElement ? input : null;
+}
+
+function getComposerDraft(target) {
+  if (!target) {
+    return "";
+  }
+  return composerDrafts.get(composerDraftKey(target.spaceId, target.chatId)) ?? "";
+}
+
+function saveComposerDraft(target, text) {
+  if (!target) {
+    return;
+  }
+
+  const value = text ?? getChatMessageInput()?.value ?? "";
+  const key = composerDraftKey(target.spaceId, target.chatId);
+  if (value === "") {
+    composerDrafts.delete(key);
+  } else {
+    composerDrafts.set(key, value);
+  }
+}
+
+function clearComposerDraft(target) {
+  if (!target) {
+    return;
+  }
+  composerDrafts.delete(composerDraftKey(target.spaceId, target.chatId));
 }
 
 function setMessagesLoadingVisible(visible) {
