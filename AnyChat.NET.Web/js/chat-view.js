@@ -92,6 +92,7 @@ export function hideChatPanel() {
   openChatToken += 1;
   openChat = null;
   clearChatMessages();
+  resetChatHistoryStatus();
   onChatPanelHidden?.();
 
   if (title) {
@@ -213,6 +214,49 @@ export function setOnChatPanelHidden(callback) {
 
 export function isOpenChatMessagesCurrent(token) {
   return token === openChatToken;
+}
+
+/** @typedef {'hidden' | 'loading' | 'error' | 'end'} ChatHistoryStatusMode */
+
+/**
+ * @param {ChatHistoryStatusMode} mode
+ */
+export function setChatHistoryStatus(mode) {
+  const root = document.getElementById("chat-messages-history");
+  const loading = document.getElementById("chat-messages-history-loading");
+  const error = document.getElementById("chat-messages-history-error");
+  const end = document.getElementById("chat-messages-history-end");
+  if (!root || !loading || !error || !end) {
+    return;
+  }
+
+  if (mode === "hidden") {
+    root.hidden = true;
+    loading.hidden = true;
+    error.hidden = true;
+    end.hidden = true;
+    return;
+  }
+
+  root.hidden = false;
+  loading.hidden = mode !== "loading";
+  error.hidden = mode !== "error";
+  end.hidden = mode !== "end";
+}
+
+export function resetChatHistoryStatus() {
+  setChatHistoryStatus("hidden");
+}
+
+export function initChatHistoryRetry(onRetry) {
+  const retryButton = document.getElementById("chat-messages-history-retry");
+  if (!(retryButton instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  retryButton.addEventListener("click", () => {
+    onRetry();
+  });
 }
 
 function isRenderableTextMessage(message) {

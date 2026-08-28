@@ -97,6 +97,47 @@
                 Start the conversation by sending the first message.
               </p>
             </div>
+            <div
+              id="chat-messages-history"
+              class="chat-messages-history"
+              hidden
+              aria-live="polite"
+            >
+              <div
+                id="chat-messages-history-loading"
+                class="chat-messages-history-loading"
+                role="status"
+                aria-label="Loading older messages"
+                hidden
+              >
+                <span class="chat-messages-loading-dot" aria-hidden="true"></span>
+                <span class="chat-messages-loading-dot" aria-hidden="true"></span>
+                <span class="chat-messages-loading-dot" aria-hidden="true"></span>
+              </div>
+              <div
+                id="chat-messages-history-error"
+                class="chat-messages-history-error"
+                hidden
+              >
+                <span class="chat-messages-history-error-text">
+                  Could not load older messages.
+                </span>
+                <button
+                  type="button"
+                  id="chat-messages-history-retry"
+                  class="chat-messages-history-retry"
+                >
+                  Retry
+                </button>
+              </div>
+              <p
+                id="chat-messages-history-end"
+                class="chat-messages-history-end"
+                hidden
+              >
+                Beginning of conversation
+              </p>
+            </div>
             <div id="chat-message-list" class="chat-message-list"></div>
           </div>
           <form id="chat-composer" class="chat-composer">

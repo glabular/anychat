@@ -3,9 +3,13 @@ import {
   beginOpenChatMessages,
   hideChatPanel,
   initChatComposer,
+  initChatHistoryRetry,
   isOpenChatMessagesCurrent,
+  prependOlderChatMessages,
   renderOpenChatMessages,
   renderOpenChatMessagesError,
+  resetChatHistoryStatus,
+  setChatHistoryStatus,
   setOnChatPanelHidden,
   setOpenChat,
   setOpenChatMessagesReload,
@@ -14,6 +18,12 @@ import {
 
 /** Messages fetched per open-chat request and per older-history page. */
 const MESSAGE_PAGE_SIZE = 10;
+
+/** Load older history when the reader scrolls within this distance of the top. */
+const SCROLL_TOP_THRESHOLD_PX = 80;
+
+/** Cap automatic fill requests when the first page does not overflow. */
+const MAX_AUTO_FILL_PAGES = 5;
 
 /** Wait this long before showing the spinner (avoids flash on fast loads). */
 const SPINNER_SHOW_DELAY_MS = 200;
@@ -34,10 +44,14 @@ let chatHistoryState = null;
  * @property {string | null} oldestOrderId
  * @property {boolean} mayHaveMore
  * @property {boolean} isLoadingOlder
+ * @property {boolean} olderLoadError
  */
+
+let historyScrollBound = false;
 
 function resetChatHistoryState() {
   chatHistoryState = null;
+  resetChatHistoryStatus();
 }
 
 /**
@@ -56,6 +70,7 @@ function beginChatHistoryState(spaceId, chatId, token) {
     oldestOrderId: null,
     mayHaveMore: false,
     isLoadingOlder: false,
+    olderLoadError: false,
   };
   return chatHistoryState;
 }
@@ -83,6 +98,233 @@ function applyInitialPage(state, messages) {
 
   state.oldestOrderId = oldestOrderIdFromPage(messages);
   state.mayHaveMore = messages.length === MESSAGE_PAGE_SIZE;
+  state.olderLoadError = false;
+}
+
+/**
+ * @param {ChatHistoryState} state
+ * @param {object[]} page
+ * @returns {object[]}
+ */
+function dedupeOlderMessages(state, page) {
+  return page.filter(
+    (message) =>
+      typeof message?.id === "string"
+      && message.id.length > 0
+      && !state.messageIds.has(message.id)
+  );
+}
+
+/**
+ * @param {ChatHistoryState} state
+ * @param {unknown} olderMessages
+ * @returns {number} newly inserted row count
+ */
+function applyOlderPage(state, olderMessages) {
+  const page = Array.isArray(olderMessages) ? olderMessages : [];
+
+  if (page.length < MESSAGE_PAGE_SIZE) {
+    state.mayHaveMore = false;
+  }
+
+  if (page.length === 0) {
+    state.mayHaveMore = false;
+    return 0;
+  }
+
+  const pageOldestOrderId = oldestOrderIdFromPage(page);
+  if (pageOldestOrderId) {
+    state.oldestOrderId = pageOldestOrderId;
+  }
+
+  const newMessages = dedupeOlderMessages(state, page);
+  if (newMessages.length === 0) {
+    return 0;
+  }
+
+  state.messages = [...newMessages, ...state.messages];
+  for (const message of newMessages) {
+    state.messageIds.add(message.id);
+  }
+
+  prependOlderChatMessages(newMessages);
+  return newMessages.length;
+}
+
+/**
+ * @param {ChatHistoryState | null} state
+ */
+function updateHistoryStatus(state) {
+  if (!state) {
+    resetChatHistoryStatus();
+    return;
+  }
+
+  if (state.isLoadingOlder) {
+    setChatHistoryStatus("loading");
+    return;
+  }
+
+  if (state.olderLoadError) {
+    setChatHistoryStatus("error");
+    return;
+  }
+
+  if (!state.mayHaveMore && state.messages.length > 0) {
+    setChatHistoryStatus("end");
+    return;
+  }
+
+  setChatHistoryStatus("hidden");
+}
+
+function getChatMessagesContainer() {
+  return document.getElementById("chat-messages");
+}
+
+function isNearTop(container) {
+  return container.scrollTop < SCROLL_TOP_THRESHOLD_PX;
+}
+
+function isContainerOverflowing(container) {
+  return container.scrollHeight > container.clientHeight;
+}
+
+function initChatHistoryScroll() {
+  const container = getChatMessagesContainer();
+  if (!container || historyScrollBound) {
+    return;
+  }
+
+  container.addEventListener("scroll", onChatMessagesScroll, { passive: true });
+  historyScrollBound = true;
+}
+
+function onChatMessagesScroll() {
+  maybeLoadOlderMessages();
+}
+
+function maybeLoadOlderMessages() {
+  const state = chatHistoryState;
+  const container = getChatMessagesContainer();
+  if (!state || !container || state.isLoadingOlder || state.olderLoadError) {
+    return;
+  }
+
+  if (!state.mayHaveMore || !state.oldestOrderId) {
+    return;
+  }
+
+  if (!isNearTop(container)) {
+    return;
+  }
+
+  void loadOlderMessages();
+}
+
+/**
+ * @param {{ retry?: boolean }} [options]
+ */
+async function loadOlderMessages({ retry = false } = {}) {
+  const state = chatHistoryState;
+  if (!state || state.isLoadingOlder) {
+    return;
+  }
+
+  if (!state.mayHaveMore && !retry) {
+    updateHistoryStatus(state);
+    return;
+  }
+
+  if (!state.oldestOrderId) {
+    state.mayHaveMore = false;
+    updateHistoryStatus(state);
+    return;
+  }
+
+  if (retry) {
+    state.olderLoadError = false;
+  }
+
+  const { spaceId, chatId, token, oldestOrderId } = state;
+  state.isLoadingOlder = true;
+  updateHistoryStatus(state);
+
+  try {
+    const olderMessages = await fetchChatMessages(
+      spaceId,
+      chatId,
+      MESSAGE_PAGE_SIZE,
+      oldestOrderId
+    );
+
+    if (!isOpenChatMessagesCurrent(token) || chatHistoryState !== state) {
+      return;
+    }
+
+    const previousOldestOrderId = oldestOrderId;
+    applyOlderPage(state, olderMessages);
+
+    if (
+      Array.isArray(olderMessages)
+      && olderMessages.length > 0
+      && state.oldestOrderId === previousOldestOrderId
+    ) {
+      state.mayHaveMore = false;
+    }
+
+    state.olderLoadError = false;
+  } catch (error) {
+    console.error(
+      `Could not load older messages for chat ${chatId}:`,
+      error
+    );
+    if (!isOpenChatMessagesCurrent(token) || chatHistoryState !== state) {
+      return;
+    }
+    state.olderLoadError = true;
+  } finally {
+    if (chatHistoryState === state) {
+      state.isLoadingOlder = false;
+      updateHistoryStatus(state);
+    }
+  }
+
+  if (chatHistoryState !== state || !isOpenChatMessagesCurrent(token)) {
+    return;
+  }
+
+  const container = getChatMessagesContainer();
+  if (
+    container
+    && !state.olderLoadError
+    && state.mayHaveMore
+    && isNearTop(container)
+  ) {
+    void loadOlderMessages();
+  }
+}
+
+async function ensureHistoryFillsViewport() {
+  const state = chatHistoryState;
+  const container = getChatMessagesContainer();
+  if (!state || !container || state.isLoadingOlder || state.olderLoadError) {
+    return;
+  }
+
+  let pagesLoaded = 0;
+  while (
+    state.mayHaveMore
+    && state.oldestOrderId
+    && !isContainerOverflowing(container)
+    && pagesLoaded < MAX_AUTO_FILL_PAGES
+  ) {
+    pagesLoaded += 1;
+    await loadOlderMessages();
+    if (state.olderLoadError || state.isLoadingOlder) {
+      break;
+    }
+  }
 }
 
 /**
@@ -318,6 +560,9 @@ async function openChatMessages(chatId) {
     if (chatHistoryState?.token === token) {
       applyInitialPage(chatHistoryState, messages);
       renderOpenChatMessages(chatHistoryState.messages);
+      updateHistoryStatus(chatHistoryState);
+      await ensureHistoryFillsViewport();
+      maybeLoadOlderMessages();
     } else {
       renderOpenChatMessages(messages);
     }
@@ -332,6 +577,11 @@ async function openChatMessages(chatId) {
 }
 
 setOnChatPanelHidden(resetChatHistoryState);
+
+initChatHistoryScroll();
+initChatHistoryRetry(() => {
+  void loadOlderMessages({ retry: true });
+});
 
 setOpenChatMessagesReload(async (spaceId, chatId) => {
   const selectedSpaceInput = document.querySelector(
