@@ -19,7 +19,7 @@ import {
 } from "./chat-view.js";
 
 /** Messages fetched per open-chat request and per older-history page. */
-const MESSAGE_PAGE_SIZE = 10;
+const MESSAGE_PAGE_SIZE = 50;
 
 /** Load older history when the reader scrolls within this distance of the top. */
 const SCROLL_TOP_THRESHOLD_PX = 80;
