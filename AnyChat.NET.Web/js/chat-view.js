@@ -77,6 +77,19 @@ function clearComposerDraft(target) {
   composerDrafts.delete(composerDraftKey(target.spaceId, target.chatId));
 }
 
+function restoreComposerDraftToInput(target) {
+  const input = getChatMessageInput();
+  if (!input) {
+    return;
+  }
+
+  const draft = getComposerDraft(target);
+  input.value = draft;
+  const end = draft.length;
+  input.setSelectionRange(end, end);
+  input.focus();
+}
+
 function setMessagesLoadingVisible(visible) {
   const loading = document.getElementById("chat-messages-loading");
   if (loading) {
@@ -294,10 +307,7 @@ export function beginOpenChatMessages() {
 export function setOpenChat(spaceId, chatId) {
   saveComposerDraft(openChat);
   openChat = { spaceId, chatId };
-  const input = getChatMessageInput();
-  if (input) {
-    input.value = getComposerDraft(openChat);
-  }
+  restoreComposerDraftToInput(openChat);
   setSendErrorVisible(false);
 }
 
