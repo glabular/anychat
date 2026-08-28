@@ -5,9 +5,12 @@ let sendPending = false;
 let reloadOpenChatMessages = null;
 let onChatPanelHidden = null;
 
-/** Wait this long before showing the spinner (avoids flash on fast loads). */
-const MESSAGES_SPINNER_SHOW_DELAY_MS = 200;
+/** Fast loads finish without showing a spinner. */
+const MESSAGES_SPINNER_SHOW_DELAY_MS = 300;
+/** Once shown, keep the spinner visible long enough to avoid a brief flash. */
+const MESSAGES_SPINNER_MIN_VISIBLE_MS = 400;
 let showMessagesSpinnerTimer = null;
+let messagesSpinnerShownAt = null;
 
 function cancelMessagesSpinnerTimer() {
   if (showMessagesSpinnerTimer !== null) {
@@ -30,7 +33,13 @@ function setEmptyMessagesVisible(visible) {
 function setMessagesLoadingVisible(visible) {
   const loading = document.getElementById("chat-messages-loading");
   if (loading) {
+    const wasVisible = !loading.hidden;
     loading.hidden = !visible;
+    if (visible && !wasVisible) {
+      messagesSpinnerShownAt = performance.now();
+    } else if (!visible) {
+      messagesSpinnerShownAt = null;
+    }
   }
 }
 
@@ -44,6 +53,30 @@ function endMessagesLoad() {
   cancelMessagesSpinnerTimer();
   setMessagesLoadingVisible(false);
   setMessagesBusy(false);
+}
+
+/**
+ * Hide the initial spinner without flashing it for only a few milliseconds.
+ * Returns false if another chat was opened while waiting.
+ */
+export async function finishOpenChatMessagesLoad(token) {
+  cancelMessagesSpinnerTimer();
+
+  if (messagesSpinnerShownAt !== null) {
+    const elapsed = performance.now() - messagesSpinnerShownAt;
+    const remaining = MESSAGES_SPINNER_MIN_VISIBLE_MS - elapsed;
+    if (remaining > 0) {
+      await new Promise((resolve) => setTimeout(resolve, remaining));
+    }
+  }
+
+  if (token !== openChatToken) {
+    return false;
+  }
+
+  setMessagesLoadingVisible(false);
+  setMessagesBusy(false);
+  return true;
 }
 
 function clearChatMessages() {

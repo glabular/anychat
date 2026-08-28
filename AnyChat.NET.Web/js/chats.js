@@ -1,6 +1,7 @@
 import { fetchChats, postChatMessage, spacesUrl } from "./api.js";
 import {
   beginOpenChatMessages,
+  finishOpenChatMessagesLoad,
   hideChatPanel,
   initChatComposer,
   initChatHistoryRetry,
@@ -26,6 +27,10 @@ const SCROLL_TOP_THRESHOLD_PX = 80;
 /** Cap automatic fill requests when the first page does not overflow. */
 const MAX_AUTO_FILL_PAGES = 5;
 
+/** Avoid flashing the older-history spinner for fast cursor requests. */
+const HISTORY_SPINNER_SHOW_DELAY_MS = 300;
+const HISTORY_SPINNER_MIN_VISIBLE_MS = 400;
+
 /** Wait this long before showing the spinner (avoids flash on fast loads). */
 const SPINNER_SHOW_DELAY_MS = 200;
 
@@ -49,8 +54,24 @@ let chatHistoryState = null;
  */
 
 let historyScrollBound = false;
+let historySpinnerShowTimer = null;
+let historySpinnerHideTimer = null;
+let historySpinnerShownAt = null;
+
+function clearHistorySpinnerTimers() {
+  if (historySpinnerShowTimer !== null) {
+    clearTimeout(historySpinnerShowTimer);
+    historySpinnerShowTimer = null;
+  }
+  if (historySpinnerHideTimer !== null) {
+    clearTimeout(historySpinnerHideTimer);
+    historySpinnerHideTimer = null;
+  }
+}
 
 function resetChatHistoryState() {
+  clearHistorySpinnerTimers();
+  historySpinnerShownAt = null;
   chatHistoryState = null;
   resetChatHistoryStatus();
 }
@@ -62,6 +83,9 @@ function resetChatHistoryState() {
  * @returns {ChatHistoryState}
  */
 function beginChatHistoryState(spaceId, chatId, token) {
+  clearHistorySpinnerTimers();
+  historySpinnerShownAt = null;
+  resetChatHistoryStatus();
   chatHistoryState = {
     spaceId,
     chatId,
@@ -187,26 +211,89 @@ function applyOlderPage(state, olderMessages) {
  */
 function updateHistoryStatus(state) {
   if (!state) {
+    clearHistorySpinnerTimers();
+    historySpinnerShownAt = null;
     resetChatHistoryStatus();
     return;
   }
 
   if (state.isLoadingOlder) {
-    setChatHistoryStatus("loading");
+    showHistorySpinnerAfterDelay(state);
     return;
   }
 
-  if (state.olderLoadError) {
-    setChatHistoryStatus("error");
-    return;
+  settleHistoryStatus(state);
+}
+
+function showHistorySpinnerAfterDelay(state) {
+  if (historySpinnerHideTimer !== null) {
+    clearTimeout(historySpinnerHideTimer);
+    historySpinnerHideTimer = null;
   }
 
-  if (!state.mayHaveMore && state.messages.length > 0) {
-    setChatHistoryStatus("end");
+  if (historySpinnerShownAt !== null || historySpinnerShowTimer !== null) {
     return;
   }
 
   setChatHistoryStatus("hidden");
+  historySpinnerShowTimer = setTimeout(() => {
+    historySpinnerShowTimer = null;
+    if (chatHistoryState !== state || !state.isLoadingOlder) {
+      return;
+    }
+
+    setChatHistoryStatus("loading");
+    historySpinnerShownAt = performance.now();
+  }, HISTORY_SPINNER_SHOW_DELAY_MS);
+}
+
+/**
+ * @returns {'hidden' | 'error' | 'end'}
+ */
+function settledHistoryMode(state) {
+  if (state.olderLoadError) {
+    return "error";
+  }
+
+  if (!state.mayHaveMore && state.messages.length > 0) {
+    return "end";
+  }
+
+  return "hidden";
+}
+
+function settleHistoryStatus(state) {
+  if (historySpinnerShowTimer !== null) {
+    clearTimeout(historySpinnerShowTimer);
+    historySpinnerShowTimer = null;
+  }
+
+  const applyStatus = () => {
+    historySpinnerHideTimer = null;
+    if (chatHistoryState !== state || state.isLoadingOlder) {
+      return;
+    }
+
+    historySpinnerShownAt = null;
+    setChatHistoryStatus(settledHistoryMode(state));
+  };
+
+  if (historySpinnerShownAt === null) {
+    applyStatus();
+    return;
+  }
+
+  const elapsed = performance.now() - historySpinnerShownAt;
+  const remaining = HISTORY_SPINNER_MIN_VISIBLE_MS - elapsed;
+  if (remaining <= 0) {
+    applyStatus();
+    return;
+  }
+
+  if (historySpinnerHideTimer !== null) {
+    clearTimeout(historySpinnerHideTimer);
+  }
+  historySpinnerHideTimer = setTimeout(applyStatus, remaining);
 }
 
 function getChatMessagesContainer() {
@@ -624,6 +711,9 @@ async function openChatMessages(chatId) {
     if (!isOpenChatMessagesCurrent(token)) {
       return;
     }
+    if (!await finishOpenChatMessagesLoad(token)) {
+      return;
+    }
     if (chatHistoryState?.token === token) {
       applyInitialPage(chatHistoryState, messages);
       renderOpenChatMessages(chatHistoryState.messages);
@@ -636,6 +726,9 @@ async function openChatMessages(chatId) {
   } catch (error) {
     console.error(`Could not load messages for chat ${chatId}:`, error);
     if (!isOpenChatMessagesCurrent(token)) {
+      return;
+    }
+    if (!await finishOpenChatMessagesLoad(token)) {
       return;
     }
     resetChatHistoryState();
