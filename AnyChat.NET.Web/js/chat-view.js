@@ -509,20 +509,34 @@ export function initChatComposer(postChatMessage) {
       return;
     }
 
+    setSendErrorVisible(false);
     sendPending = true;
     input.disabled = true;
     sendButton.disabled = true;
 
     try {
-      await postChatMessage(target.spaceId, target.chatId, text);
-      if (openChat?.spaceId !== target.spaceId || openChat?.chatId !== target.chatId) {
+      try {
+        await postChatMessage(target.spaceId, target.chatId, text);
+      } catch (error) {
+        console.error("Could not send message:", error);
+        if (
+          openChat?.spaceId === target.spaceId
+          && openChat?.chatId === target.chatId
+        ) {
+          setSendErrorVisible(true);
+        }
+        return;
+      }
+
+      if (
+        openChat?.spaceId !== target.spaceId
+        || openChat?.chatId !== target.chatId
+      ) {
         return;
       }
 
       input.value = "";
       await reloadOpenChatMessages?.(target.spaceId, target.chatId);
-    } catch (error) {
-      console.error("Could not send message:", error);
     } finally {
       sendPending = false;
       input.disabled = false;
