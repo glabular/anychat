@@ -1,10 +1,5 @@
 namespace AnyChat.NET.Api.Models;
 
-public sealed class ChatMessageContentDto
-{
-    public string? Text { get; init; }
-}
-
 public sealed class ChatMessageDto
 {
     public string? Id { get; init; }
