@@ -375,6 +375,29 @@ export function prependOlderChatMessages(messages) {
   return renderedCount;
 }
 
+/**
+ * Append newer messages and scroll to the bottom.
+ * @param {object[]} messages deduplicated batch, oldest → newest
+ * @returns {number} rows actually inserted
+ */
+export function appendNewerChatMessages(messages) {
+  const list = getChatMessageList();
+  const container = document.getElementById("chat-messages");
+  if (!list || !container || !Array.isArray(messages) || messages.length === 0) {
+    return 0;
+  }
+
+  const { fragment, renderedCount } = buildMessageFragment(messages);
+  if (renderedCount === 0) {
+    return 0;
+  }
+
+  setEmptyMessagesVisible(false);
+  list.appendChild(fragment);
+  container.scrollTop = container.scrollHeight;
+  return renderedCount;
+}
+
 export function renderOpenChatMessagesError(text) {
   const list = getChatMessageList();
   if (!list) {

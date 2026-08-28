@@ -6,6 +6,7 @@ import {
   initChatHistoryRetry,
   isOpenChatMessagesCurrent,
   prependOlderChatMessages,
+  appendNewerChatMessages,
   renderOpenChatMessages,
   renderOpenChatMessagesError,
   resetChatHistoryStatus,
@@ -103,16 +104,46 @@ function applyInitialPage(state, messages) {
 
 /**
  * @param {ChatHistoryState} state
- * @param {object[]} page
+ * @param {object[]} messages
  * @returns {object[]}
  */
-function dedupeOlderMessages(state, page) {
-  return page.filter(
+function filterUnseenMessages(state, messages) {
+  return messages.filter(
     (message) =>
       typeof message?.id === "string"
       && message.id.length > 0
       && !state.messageIds.has(message.id)
   );
+}
+
+/**
+ * @param {ChatHistoryState} state
+ * @param {object[]} page
+ * @returns {object[]}
+ */
+function dedupeOlderMessages(state, page) {
+  return filterUnseenMessages(state, page);
+}
+
+/**
+ * Merge the latest API window after send without discarding older loaded pages.
+ * @param {ChatHistoryState} state
+ * @param {unknown} latestMessages
+ * @returns {number} newly inserted row count
+ */
+function applyLatestPageAfterSend(state, latestMessages) {
+  const page = Array.isArray(latestMessages) ? latestMessages : [];
+  const newMessages = filterUnseenMessages(state, page);
+  if (newMessages.length === 0) {
+    return 0;
+  }
+
+  state.messages = [...state.messages, ...newMessages];
+  for (const message of newMessages) {
+    state.messageIds.add(message.id);
+  }
+
+  return appendNewerChatMessages(newMessages);
 }
 
 /**
@@ -536,6 +567,42 @@ function createChatListItem(chat) {
   return { li, previewEl, chatId };
 }
 
+async function reloadMessagesAfterSend(spaceId, chatId) {
+  const state = chatHistoryState;
+  if (
+    !state
+    || state.spaceId !== spaceId
+    || state.chatId !== chatId
+  ) {
+    return;
+  }
+
+  const { token } = state;
+
+  try {
+    const latestMessages = await fetchChatMessages(
+      spaceId,
+      chatId,
+      MESSAGE_PAGE_SIZE
+    );
+
+    if (!isOpenChatMessagesCurrent(token) || chatHistoryState !== state) {
+      return;
+    }
+
+    if (state.spaceId !== spaceId || state.chatId !== chatId) {
+      return;
+    }
+
+    applyLatestPageAfterSend(state, latestMessages);
+  } catch (error) {
+    console.error(
+      `Could not refresh messages after send for chat ${chatId}:`,
+      error
+    );
+  }
+}
+
 async function openChatMessages(chatId) {
   const selectedSpaceInput = document.querySelector(
     'input[name="space"]:checked'
@@ -591,7 +658,7 @@ setOpenChatMessagesReload(async (spaceId, chatId) => {
     return;
   }
 
-  await openChatMessages(chatId);
+  await reloadMessagesAfterSend(spaceId, chatId);
 });
 
 initChatComposer(postChatMessage);
