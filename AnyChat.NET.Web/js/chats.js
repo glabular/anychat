@@ -6,16 +6,101 @@ import {
   isOpenChatMessagesCurrent,
   renderOpenChatMessages,
   renderOpenChatMessagesError,
+  setOnChatPanelHidden,
   setOpenChat,
   setOpenChatMessagesReload,
   showChatHeader,
 } from "./chat-view.js";
+
+/** Messages fetched per open-chat request and per older-history page. */
+const MESSAGE_PAGE_SIZE = 10;
 
 /** Wait this long before showing the spinner (avoids flash on fast loads). */
 const SPINNER_SHOW_DELAY_MS = 200;
 
 let loadToken = 0;
 let showSpinnerTimer = null;
+
+/** @type {ChatHistoryState | null} */
+let chatHistoryState = null;
+
+/**
+ * @typedef {object} ChatHistoryState
+ * @property {string} spaceId
+ * @property {string} chatId
+ * @property {number} token
+ * @property {object[]} messages
+ * @property {Set<string>} messageIds
+ * @property {string | null} oldestOrderId
+ * @property {boolean} mayHaveMore
+ * @property {boolean} isLoadingOlder
+ */
+
+function resetChatHistoryState() {
+  chatHistoryState = null;
+}
+
+/**
+ * @param {string} spaceId
+ * @param {string} chatId
+ * @param {number} token
+ * @returns {ChatHistoryState}
+ */
+function beginChatHistoryState(spaceId, chatId, token) {
+  chatHistoryState = {
+    spaceId,
+    chatId,
+    token,
+    messages: [],
+    messageIds: new Set(),
+    oldestOrderId: null,
+    mayHaveMore: false,
+    isLoadingOlder: false,
+  };
+  return chatHistoryState;
+}
+
+/**
+ * @param {ChatHistoryState} state
+ * @param {unknown} messages
+ */
+function applyInitialPage(state, messages) {
+  if (!Array.isArray(messages)) {
+    state.messages = [];
+    state.messageIds = new Set();
+    state.oldestOrderId = null;
+    state.mayHaveMore = false;
+    return;
+  }
+
+  state.messages = [...messages];
+  state.messageIds = new Set();
+  for (const message of messages) {
+    if (message?.id) {
+      state.messageIds.add(message.id);
+    }
+  }
+
+  state.oldestOrderId = oldestOrderIdFromPage(messages);
+  state.mayHaveMore = messages.length === MESSAGE_PAGE_SIZE;
+}
+
+/**
+ * Oldest cursor in an API page (oldest → newest). Uses the first row with
+ * orderId, including non-text messages the UI may skip when rendering.
+ * @param {object[]} messages
+ * @returns {string | null}
+ */
+function oldestOrderIdFromPage(messages) {
+  for (const message of messages) {
+    const orderId = message?.orderId;
+    if (typeof orderId === "string" && orderId.length > 0) {
+      return orderId;
+    }
+  }
+
+  return null;
+}
 
 function setSpinnerVisible(visible) {
   const chatsLoading = document.getElementById("chats-loading");
@@ -102,6 +187,7 @@ export async function loadChatsForSelectedSpace() {
 
   const spaceId = selectedSpaceInput.value;
   const token = ++loadToken;
+  resetChatHistoryState();
   hideChatPanel();
   beginChatsLoad();
 
@@ -218,11 +304,19 @@ async function openChatMessages(chatId) {
 
   const spaceId = selectedSpaceInput.value;
   const token = beginOpenChatMessages();
+  beginChatHistoryState(spaceId, chatId, token);
 
   try {
-    const messages = await fetchChatMessages(spaceId, chatId, 10);
+    const messages = await fetchChatMessages(
+      spaceId,
+      chatId,
+      MESSAGE_PAGE_SIZE
+    );
     if (!isOpenChatMessagesCurrent(token)) {
       return;
+    }
+    if (chatHistoryState?.token === token) {
+      applyInitialPage(chatHistoryState, messages);
     }
     renderOpenChatMessages(messages);
   } catch (error) {
@@ -230,9 +324,12 @@ async function openChatMessages(chatId) {
     if (!isOpenChatMessagesCurrent(token)) {
       return;
     }
+    resetChatHistoryState();
     renderOpenChatMessagesError("Could not load messages.");
   }
 }
+
+setOnChatPanelHidden(resetChatHistoryState);
 
 setOpenChatMessagesReload(async (spaceId, chatId) => {
   const selectedSpaceInput = document.querySelector(
@@ -317,8 +414,21 @@ async function loadChatPreviews(spaceId, rows, token) {
   }
 }
 
-export async function fetchChatMessages(spaceId, chatId, limit = 1) {
-  const response = await fetch(`${spacesUrl()}/${spaceId}/chats/${chatId}/messages?limit=${limit}`);
+export async function fetchChatMessages(
+  spaceId,
+  chatId,
+  limit = 1,
+  beforeOrderId = null
+) {
+  const params = new URLSearchParams();
+  params.set("limit", String(limit));
+  if (beforeOrderId) {
+    params.set("beforeOrderId", beforeOrderId);
+  }
+
+  const response = await fetch(
+    `${spacesUrl()}/${spaceId}/chats/${chatId}/messages?${params}`
+  );
 
   if (!response.ok) {
     throw new Error(`Response status: ${response.status}`);

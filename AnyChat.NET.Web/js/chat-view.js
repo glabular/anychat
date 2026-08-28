@@ -3,6 +3,7 @@ let openChatToken = 0;
 let openChat = null;
 let sendPending = false;
 let reloadOpenChatMessages = null;
+let onChatPanelHidden = null;
 
 /** Wait this long before showing the spinner (avoids flash on fast loads). */
 const MESSAGES_SPINNER_SHOW_DELAY_MS = 200;
@@ -91,6 +92,7 @@ export function hideChatPanel() {
   openChatToken += 1;
   openChat = null;
   clearChatMessages();
+  onChatPanelHidden?.();
 
   if (title) {
     title.textContent = "";
@@ -203,6 +205,10 @@ export function setOpenChat(spaceId, chatId) {
 
 export function setOpenChatMessagesReload(callback) {
   reloadOpenChatMessages = callback;
+}
+
+export function setOnChatPanelHidden(callback) {
+  onChatPanelHidden = callback;
 }
 
 export function isOpenChatMessagesCurrent(token) {
