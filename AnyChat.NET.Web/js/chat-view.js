@@ -100,11 +100,13 @@ function markListDraftIndicator(target) {
     return;
   }
 
-  if (!hasDraftContent(getComposerDraft(target))) {
+  const key = composerDraftKey(target.spaceId, target.chatId);
+  // Only saveComposerDraft writes composerDrafts; it never stores whitespace-only text.
+  if (!composerDrafts.has(key)) {
     return;
   }
 
-  listDraftIndicators.add(composerDraftKey(target.spaceId, target.chatId));
+  listDraftIndicators.add(key);
   notifyListDraftIndicatorChanged(target);
 }
 
