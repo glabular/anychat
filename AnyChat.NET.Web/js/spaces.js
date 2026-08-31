@@ -4,6 +4,24 @@ import {
   setMainPlaceholderVisible,
 } from "./chats.js";
 
+const SELECTED_SPACE_STORAGE_KEY = "anychat.selectedSpaceId";
+
+function readPersistedSpaceId() {
+  try {
+    return localStorage.getItem(SELECTED_SPACE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function persistSelectedSpaceId(spaceId) {
+  try {
+    localStorage.setItem(SELECTED_SPACE_STORAGE_KEY, spaceId);
+  } catch {
+    // non-fatal; app still works without persistence
+  }
+}
+
 export function populateSpacesSidebar(spaces) {
   const spacesSidebar = document.getElementById("spaces-sidebar");
 
