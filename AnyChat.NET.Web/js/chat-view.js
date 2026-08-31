@@ -73,18 +73,21 @@ function persistOutgoingDraft(target, { markInList = false, text } = {}) {
 
   const value = text ?? getChatMessageInput()?.value ?? "";
   const key = composerDraftKey(target.spaceId, target.chatId);
-  const markable = hasDraftContent(value);
-  if (!markable) {
+
+  if (value === "") {
     composerDrafts.delete(key);
     clearListDraftIndicator(target);
     return none;
   }
 
   composerDrafts.set(key, value);
-  if (markInList) {
+  const markable = hasDraftContent(value);
+  if (markInList && markable) {
     markListDraftIndicator(target);
+  } else if (!markable) {
+    clearListDraftIndicator(target);
   }
-  return { stored: true, markable: true };
+  return { stored: true, markable };
 }
 
 function saveComposerDraft(target, text) {
@@ -112,8 +115,7 @@ function markListDraftIndicator(target) {
   }
 
   const key = composerDraftKey(target.spaceId, target.chatId);
-  // Only saveComposerDraft writes composerDrafts; it never stores whitespace-only text.
-  if (!composerDrafts.has(key)) {
+  if (!hasDraftContent(getComposerDraft(target))) {
     return;
   }
 
