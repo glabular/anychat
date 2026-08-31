@@ -34,6 +34,7 @@ public partial class Program
             return new CurrentUserIdentityStore(fingerprint, storagePath);
         });
         builder.Services.AddSingleton<CurrentMemberResolver>();
+        builder.Services.AddSingleton<SpaceDisplayResolver>();
 
         // Browser tools (Live Server, file preview, etc.) load the HTML from a
         // different origin than the API. Development-only CORS lets fetch work there.

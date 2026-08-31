@@ -106,24 +106,48 @@ export function bindSpaceKeyboardShortcuts() {
   });
 }
 
+export function getSpaceDisplayName(space) {
+  const fromApi = space?.displayName?.trim() || space?.name?.trim();
+  return fromApi || "Untitled space";
+}
+
+function getSpaceDisplayLetter(space, shortcutNumber) {
+  const label = space?.displayName?.trim() || space?.name?.trim();
+  if (label) {
+    return label[0].toLocaleUpperCase();
+  }
+  if (shortcutNumber >= 1 && shortcutNumber <= 9) {
+    return String(shortcutNumber);
+  }
+  return "#";
+}
+
 function getSpaceButton(space, shortcutNumber) {
   const label = document.createElement("label");
   const input = document.createElement("input");
+  const displayName = getSpaceDisplayName(space);
+  const letter = getSpaceDisplayLetter(space, shortcutNumber);
+  const resolvedFromApi = !!(
+    space?.displayName?.trim() || space?.name?.trim()
+  );
 
   input.type = "radio";
   input.name = "space";
   input.value = space.id;
-  input.dataset.spaceName = space.name ?? "";
+  input.dataset.spaceName = displayName;
 
   const spaceLetterSpan = document.createElement("span");
-  spaceLetterSpan.textContent = space.name?.[0] ?? "";
+  spaceLetterSpan.textContent = letter;
+  if (!resolvedFromApi) {
+    spaceLetterSpan.className = "space-letter--fallback";
+  }
 
   const tooltipSpan = document.createElement("span");
   tooltipSpan.className = "space-tooltip";
 
   const nameSpan = document.createElement("span");
   nameSpan.className = "space-tooltip__name";
-  nameSpan.textContent = space.name ?? "";
+  nameSpan.textContent = displayName;
 
   const shortcutSpan = document.createElement("span");
   shortcutSpan.className = "space-tooltip__shortcut";
@@ -131,6 +155,8 @@ function getSpaceButton(space, shortcutNumber) {
 
   tooltipSpan.appendChild(nameSpan);
   tooltipSpan.appendChild(shortcutSpan);
+
+  label.setAttribute("aria-label", displayName);
 
   label.appendChild(input);
   label.appendChild(spaceLetterSpan);

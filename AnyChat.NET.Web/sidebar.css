@@ -107,6 +107,10 @@
   position: relative;
 }
 
+.spaces-sidebar label .space-letter--fallback {
+  color: var(--color-text-muted);
+}
+
 .spaces-loading {
   display: flex;
   flex-direction: column;

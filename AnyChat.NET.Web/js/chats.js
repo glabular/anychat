@@ -489,7 +489,7 @@ export function setMainPlaceholderVisible(visible) {
 
 function restoreChatsEmptyContent(chatsEmpty) {
   const selected = document.querySelector('input[name="space"]:checked');
-  const spaceName = selected?.dataset.spaceName?.trim() || "this space";
+  const spaceName = selected?.dataset.spaceName?.trim() || "Untitled space";
 
   chatsEmpty.replaceChildren();
   chatsEmpty.append("No chats in this space yet");
