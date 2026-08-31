@@ -65,7 +65,7 @@ export function getComposerDraft(target) {
   return composerDrafts.get(composerDraftKey(target.spaceId, target.chatId)) ?? "";
 }
 
-function saveComposerDraft(target, text) {
+function persistOutgoingDraft(target, { markInList = false, text } = {}) {
   const none = { stored: false, markable: false };
   if (!target) {
     return none;
@@ -81,7 +81,14 @@ function saveComposerDraft(target, text) {
   }
 
   composerDrafts.set(key, value);
+  if (markInList) {
+    markListDraftIndicator(target);
+  }
   return { stored: true, markable: true };
+}
+
+function saveComposerDraft(target, text) {
+  return persistOutgoingDraft(target, { text });
 }
 
 function clearComposerDraft(target) {
@@ -241,10 +248,7 @@ export function hideChatPanel(options = {}) {
   const title = document.getElementById("chat-panel-title");
   const placeholder = document.getElementById("main-placeholder");
 
-  const { markable } = saveComposerDraft(openChat);
-  if (markListDraft && markable) {
-    markListDraftIndicator(openChat);
-  }
+  persistOutgoingDraft(openChat, { markInList: markListDraft });
   const input = getChatMessageInput();
   if (input) {
     input.value = "";
@@ -364,10 +368,7 @@ export function beginOpenChatMessages() {
 
 export function setOpenChat(spaceId, chatId) {
   const outgoing = openChat;
-  const { markable } = saveComposerDraft(outgoing);
-  if (markable) {
-    markListDraftIndicator(outgoing);
-  }
+  persistOutgoingDraft(outgoing, { markInList: true });
   openChat = { spaceId, chatId };
   restoreComposerDraftToInput(openChat);
   setSendErrorVisible(false);
