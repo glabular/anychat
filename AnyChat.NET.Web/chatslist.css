@@ -153,6 +153,14 @@
     text-overflow: ellipsis;
 }
 
+.chat-preview-draft-label {
+    color: var(--color-red);
+}
+
+.chat-preview-draft-text {
+    color: var(--color-text-muted);
+}
+
 .avatar {
     width: 45px;
     height: 45px;

@@ -53,7 +53,7 @@ function getChatMessageInput() {
   return input instanceof HTMLTextAreaElement ? input : null;
 }
 
-function getComposerDraft(target) {
+export function getComposerDraft(target) {
   if (!target) {
     return "";
   }

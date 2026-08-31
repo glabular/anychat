@@ -16,6 +16,8 @@ import {
   setOpenChat,
   setOpenChatMessagesReload,
   showChatHeader,
+  hasListDraftIndicator,
+  getComposerDraft,
 } from "./chat-view.js";
 
 /** Messages fetched per open-chat request and per older-history page. */
@@ -36,6 +38,13 @@ const SPINNER_SHOW_DELAY_MS = 200;
 
 let loadToken = 0;
 let showSpinnerTimer = null;
+
+/** Latest message preview text per chat, keyed by spaceId + chatId. */
+const chatMessagePreviews = new Map();
+
+function chatMessagePreviewKey(spaceId, chatId) {
+  return JSON.stringify([spaceId, chatId]);
+}
 
 /** @type {ChatHistoryState | null} */
 let chatHistoryState = null;
@@ -857,4 +866,45 @@ function formatMessagePreview(message) {
   }
 
   return text;
+}
+
+function showDraftChatPreview(previewEl, draftText) {
+  previewEl.className = "chat-preview chat-preview--draft";
+  previewEl.replaceChildren();
+
+  const label = document.createElement("span");
+  label.className = "chat-preview-draft-label";
+  label.textContent = "Draft: ";
+
+  const text = document.createElement("span");
+  text.className = "chat-preview-draft-text";
+  text.textContent = draftText;
+
+  previewEl.append(label, text);
+}
+
+function showMessageChatPreview(previewEl, messagePreviewText) {
+  previewEl.className = "chat-preview";
+  previewEl.textContent = messagePreviewText;
+}
+
+/**
+ * @param {HTMLParagraphElement} previewEl
+ * @param {string | undefined} messagePreviewText When provided, updates the cache.
+ */
+function renderChatPreview(previewEl, spaceId, chatId, messagePreviewText) {
+  const key = chatMessagePreviewKey(spaceId, chatId);
+  if (messagePreviewText !== undefined) {
+    chatMessagePreviews.set(key, messagePreviewText);
+  }
+
+  if (hasListDraftIndicator(spaceId, chatId)) {
+    showDraftChatPreview(
+      previewEl,
+      getComposerDraft({ spaceId, chatId })
+    );
+    return;
+  }
+
+  showMessageChatPreview(previewEl, chatMessagePreviews.get(key) ?? "");
 }
