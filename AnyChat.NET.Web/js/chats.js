@@ -13,6 +13,7 @@ import {
   resetChatHistoryStatus,
   setChatHistoryStatus,
   setOnChatPanelHidden,
+  setOnListDraftIndicatorChanged,
   setOpenChat,
   setOpenChatMessagesReload,
   showChatHeader,
@@ -747,6 +748,10 @@ async function openChatMessages(chatId) {
 
 setOnChatPanelHidden(resetChatHistoryState);
 
+setOnListDraftIndicatorChanged((spaceId, chatId) => {
+  updateChatListPreview(spaceId, chatId);
+});
+
 initChatHistoryScroll();
 initChatHistoryRetry(() => {
   void loadOlderMessages({ retry: true });
@@ -825,12 +830,15 @@ async function loadChatPreviews(spaceId, rows, token) {
 
       const latestMessage =
         Array.isArray(messages) && messages.length > 0 ? messages[0] : null;
-      row.previewEl.textContent = latestMessage
-        ? formatMessagePreview(latestMessage)
-        : "";
+      renderChatPreview(
+        row.previewEl,
+        spaceId,
+        row.chatId,
+        latestMessage ? formatMessagePreview(latestMessage) : ""
+      );
     } catch (error) {
       console.error(`Could not load latest message for chat ${row.chatId}:`, error);
-      row.previewEl.textContent = "";
+      renderChatPreview(row.previewEl, spaceId, row.chatId, "");
     }
   }
 }
@@ -907,4 +915,15 @@ function renderChatPreview(previewEl, spaceId, chatId, messagePreviewText) {
   }
 
   showMessageChatPreview(previewEl, chatMessagePreviews.get(key) ?? "");
+}
+
+function updateChatListPreview(spaceId, chatId) {
+  const previewEl = document.querySelector(
+    `#chats-list li[data-chat-id="${CSS.escape(chatId)}"] .chat-preview`
+  );
+  if (!(previewEl instanceof HTMLParagraphElement)) {
+    return;
+  }
+
+  renderChatPreview(previewEl, spaceId, chatId);
 }
