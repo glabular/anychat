@@ -48,6 +48,11 @@ function composerDraftKey(spaceId, chatId) {
   return JSON.stringify([spaceId, chatId]);
 }
 
+/** True when the composer has sendable draft text (matches submit trim semantics). */
+function hasDraftContent(text) {
+  return text.trim().length > 0;
+}
+
 function getChatMessageInput() {
   const input = document.getElementById("chat-message-input");
   return input instanceof HTMLTextAreaElement ? input : null;
@@ -67,7 +72,7 @@ function saveComposerDraft(target, text) {
 
   const value = text ?? getChatMessageInput()?.value ?? "";
   const key = composerDraftKey(target.spaceId, target.chatId);
-  if (value === "") {
+  if (!hasDraftContent(value)) {
     composerDrafts.delete(key);
     clearListDraftIndicator(target);
   } else {
@@ -95,7 +100,7 @@ function markListDraftIndicator(target) {
     return;
   }
 
-  if (getComposerDraft(target) === "") {
+  if (!hasDraftContent(getComposerDraft(target))) {
     return;
   }
 
