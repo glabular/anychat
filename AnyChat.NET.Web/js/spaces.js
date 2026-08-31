@@ -22,6 +22,14 @@ function persistSelectedSpaceId(spaceId) {
   }
 }
 
+function resolveInitialSpaceId(spaces) {
+  const savedId = readPersistedSpaceId();
+  if (savedId && spaces.some((space) => space.id === savedId)) {
+    return savedId;
+  }
+  return spaces[0]?.id ?? null;
+}
+
 export function populateSpacesSidebar(spaces) {
   const spacesSidebar = document.getElementById("spaces-sidebar");
 
@@ -30,9 +38,9 @@ export function populateSpacesSidebar(spaces) {
     spacesSidebar.appendChild(spaceButton);
   });
 
-  // TODO: Read previously selected space instead of taking the first.
   if (spaces.length > 0) {
-    selectSpace(spaces[0].id);
+    const spaceId = resolveInitialSpaceId(spaces);
+    selectSpace(spaceId);
     loadChatsForSelectedSpace();
   }
 }
@@ -44,6 +52,7 @@ export function selectSpace(spaceId) {
 
   if (spaceInput) {
     spaceInput.checked = true;
+    persistSelectedSpaceId(spaceId);
   }
 }
 
@@ -51,6 +60,7 @@ export function bindSpaceChangeToChats() {
   const spacesSidebar = document.getElementById("spaces-sidebar");
   spacesSidebar?.addEventListener("change", (event) => {
     if (event.target.matches('input[name="space"]')) {
+      persistSelectedSpaceId(event.target.value);
       loadChatsForSelectedSpace();
     }
   });

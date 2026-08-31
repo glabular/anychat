@@ -20,6 +20,14 @@ public partial class MainWindow : Window
         "AnyChat.NET",
         "window-placement.json");
 
+    // Default WebView2 profile lives next to the exe (bin\Debug\...\*.exe.WebView2),
+    // which is wiped on clean/rebuild and is a poor fit for a daily-driver shell.
+    // Keep browser storage beside other AnyChat app data under LocalApplicationData.
+    private static readonly string WebView2UserDataFolder = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "AnyChat.NET",
+        "WebView2");
+
     private bool _hasRevealedWebView;
 
     public MainWindow()
@@ -148,7 +156,9 @@ public partial class MainWindow : Window
         {
             // Set DefaultBackgroundColor at controller creation so WebView2 never
             // paints its default white before our first navigation completes.
-            var environment = await CoreWebView2Environment.CreateAsync();
+            var environment = await CoreWebView2Environment.CreateAsync(
+                browserExecutableFolder: null,
+                userDataFolder: WebView2UserDataFolder);
             var controllerOptions = environment.CreateCoreWebView2ControllerOptions();
             controllerOptions.DefaultBackgroundColor = AppBackground;
             await WebView.EnsureCoreWebView2Async(environment, controllerOptions);
