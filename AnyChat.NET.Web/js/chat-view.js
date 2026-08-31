@@ -4,9 +4,13 @@ let openChat = null;
 let sendPending = false;
 let reloadOpenChatMessages = null;
 let onChatPanelHidden = null;
+let onListDraftIndicatorChanged = null;
 
 /** Unsent composer text keyed by spaceId + chatId for the current session. */
 const composerDrafts = new Map();
+
+/** Chats whose sidebar preview should show "Draft:" for this session. */
+const listDraftIndicators = new Set();
 
 /** Fast loads finish without showing a spinner. */
 const MESSAGES_SPINNER_SHOW_DELAY_MS = 300;
@@ -65,6 +69,7 @@ function saveComposerDraft(target, text) {
   const key = composerDraftKey(target.spaceId, target.chatId);
   if (value === "") {
     composerDrafts.delete(key);
+    clearListDraftIndicator(target);
   } else {
     composerDrafts.set(key, value);
   }
@@ -75,6 +80,44 @@ function clearComposerDraft(target) {
     return;
   }
   composerDrafts.delete(composerDraftKey(target.spaceId, target.chatId));
+  clearListDraftIndicator(target);
+}
+
+function notifyListDraftIndicatorChanged(target) {
+  if (!target || !onListDraftIndicatorChanged) {
+    return;
+  }
+  onListDraftIndicatorChanged(target.spaceId, target.chatId);
+}
+
+function markListDraftIndicator(target) {
+  if (!target) {
+    return;
+  }
+
+  if (getComposerDraft(target) === "") {
+    return;
+  }
+
+  listDraftIndicators.add(composerDraftKey(target.spaceId, target.chatId));
+  notifyListDraftIndicatorChanged(target);
+}
+
+function clearListDraftIndicator(target) {
+  if (!target) {
+    return;
+  }
+
+  const key = composerDraftKey(target.spaceId, target.chatId);
+  if (!listDraftIndicators.delete(key)) {
+    return;
+  }
+
+  notifyListDraftIndicatorChanged(target);
+}
+
+export function hasListDraftIndicator(spaceId, chatId) {
+  return listDraftIndicators.has(composerDraftKey(spaceId, chatId));
 }
 
 function restoreComposerDraftToInput(target) {
@@ -180,13 +223,17 @@ export function showChatHeader(name) {
 }
 
 /** Hide the chat panel and clear the title (e.g. when the space changes). */
-export function hideChatPanel() {
+export function hideChatPanel(options = {}) {
+  const { markListDraft = false } = options;
   const main = document.querySelector(".main");
   const panel = document.getElementById("chat-panel");
   const title = document.getElementById("chat-panel-title");
   const placeholder = document.getElementById("main-placeholder");
 
   saveComposerDraft(openChat);
+  if (markListDraft) {
+    markListDraftIndicator(openChat);
+  }
   const input = getChatMessageInput();
   if (input) {
     input.value = "";
@@ -220,7 +267,7 @@ export function closeOpenChat() {
     return false;
   }
 
-  hideChatPanel();
+  hideChatPanel({ markListDraft: true });
   clearChatListSelection();
 
   // Escape switches Chromium to keyboard modality, so :focus-visible would
@@ -305,7 +352,9 @@ export function beginOpenChatMessages() {
 }
 
 export function setOpenChat(spaceId, chatId) {
-  saveComposerDraft(openChat);
+  const outgoing = openChat;
+  saveComposerDraft(outgoing);
+  markListDraftIndicator(outgoing);
   openChat = { spaceId, chatId };
   restoreComposerDraftToInput(openChat);
   setSendErrorVisible(false);
@@ -317,6 +366,10 @@ export function setOpenChatMessagesReload(callback) {
 
 export function setOnChatPanelHidden(callback) {
   onChatPanelHidden = callback;
+}
+
+export function setOnListDraftIndicatorChanged(callback) {
+  onListDraftIndicatorChanged = callback;
 }
 
 export function isOpenChatMessagesCurrent(token) {
