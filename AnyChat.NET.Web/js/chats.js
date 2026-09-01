@@ -6,6 +6,7 @@ import {
   hideChatPanel,
   initChatComposer,
   initChatHistoryRetry,
+  initInitialLoadRetry,
   isOpenChatMessagesCurrent,
   prependOlderChatMessages,
   appendNewerChatMessages,
@@ -859,6 +860,15 @@ setOnOutgoingPreviewChanged((target, parts) => {
 initChatHistoryScroll();
 initChatHistoryRetry(() => {
   void loadOlderMessages({ retry: true });
+});
+
+initInitialLoadRetry(() => {
+  const chatId = chatHistoryState?.chatId;
+  if (!chatId) {
+    return;
+  }
+
+  void openChatMessages(chatId);
 });
 
 setOpenChatMessagesReload(async (spaceId, chatId) => {

@@ -502,6 +502,17 @@ export function initChatHistoryRetry(onRetry) {
   });
 }
 
+export function initInitialLoadRetry(onRetry) {
+  const retryButton = document.getElementById("chat-messages-initial-retry");
+  if (!(retryButton instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  retryButton.addEventListener("click", () => {
+    onRetry();
+  });
+}
+
 function isRenderableTextMessage(message) {
   const text = message?.content?.text;
   return typeof text === "string" && text.trim().length > 0;
