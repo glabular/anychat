@@ -1,4 +1,5 @@
 import { fetchChats, postChatMessage, spacesUrl } from "./api.js";
+import { resolveOutgoingSendStatus } from "./message-send-status.js";
 import {
   beginOpenChatMessages,
   finishOpenChatMessagesLoad,
@@ -41,7 +42,7 @@ const SPINNER_SHOW_DELAY_MS = 200;
 let loadToken = 0;
 let showSpinnerTimer = null;
 
-/** @typedef {{ senderLabel: string | null, text: string }} ChatPreviewParts */
+/** @typedef {{ senderLabel: string | null, text: string, isMine?: boolean, sendStatus?: import("./message-send-status.js").SendStatus }} ChatPreviewParts */
 
 const ONE_TO_ONE_SPACE_OBJECT = "anytype.onetoone";
 
@@ -983,6 +984,11 @@ function formatMessagePreview(message, { isOneToOne }) {
     if (creatorName) {
       senderLabel = `${creatorName}: `;
     }
+  }
+
+  const sendStatus = resolveOutgoingSendStatus(message);
+  if (sendStatus) {
+    return { senderLabel, text, isMine: true, sendStatus };
   }
 
   return { senderLabel, text };
