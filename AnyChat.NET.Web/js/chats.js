@@ -1043,6 +1043,26 @@ function showDraftChatPreview(previewEl, draftText) {
 }
 
 /**
+ * @param {string} chatId
+ * @param {ChatPreviewParts | null | undefined} parts
+ */
+function updateChatHeaderStatus(chatId, parts) {
+  const statusEl = document.querySelector(
+    `#chats-list li[data-chat-id="${CSS.escape(chatId)}"] .chat-header-status`
+  );
+  if (!(statusEl instanceof HTMLElement)) {
+    return;
+  }
+
+  if (parts?.isMine && parts.sendStatus) {
+    statusEl.replaceChildren(createSendStatusElement(parts.sendStatus));
+    return;
+  }
+
+  statusEl.replaceChildren();
+}
+
+/**
  * @param {HTMLParagraphElement} previewEl
  * @param {ChatPreviewParts | null} parts
  */
@@ -1052,10 +1072,6 @@ function showMessageChatPreview(previewEl, parts) {
 
   if (!parts?.text) {
     return;
-  }
-
-  if (parts.isMine && parts.sendStatus) {
-    previewEl.appendChild(createSendStatusElement(parts.sendStatus));
   }
 
   if (parts.senderLabel) {
@@ -1082,6 +1098,7 @@ function renderChatPreview(previewEl, spaceId, chatId, messagePreviewParts) {
   }
 
   if (hasListDraftIndicator(spaceId, chatId)) {
+    updateChatHeaderStatus(chatId, null);
     showDraftChatPreview(
       previewEl,
       getComposerDraft({ spaceId, chatId })
@@ -1089,7 +1106,9 @@ function renderChatPreview(previewEl, spaceId, chatId, messagePreviewParts) {
     return;
   }
 
-  showMessageChatPreview(previewEl, chatMessagePreviews.get(key) ?? null);
+  const parts = chatMessagePreviews.get(key) ?? null;
+  updateChatHeaderStatus(chatId, parts);
+  showMessageChatPreview(previewEl, parts);
 }
 
 function updateChatListPreview(spaceId, chatId, messagePreviewParts) {
