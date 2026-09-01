@@ -40,7 +40,11 @@ const SPINNER_SHOW_DELAY_MS = 200;
 let loadToken = 0;
 let showSpinnerTimer = null;
 
-/** Latest message preview text per chat, keyed by spaceId + chatId. */
+/** @typedef {{ senderLabel: string | null, text: string }} ChatPreviewParts */
+
+const ONE_TO_ONE_SPACE_OBJECT = "anytype.onetoone";
+
+/** Latest message preview per chat, keyed by spaceId + chatId. */
 const chatMessagePreviews = new Map();
 
 function chatMessagePreviewKey(spaceId, chatId) {
@@ -812,7 +816,14 @@ function isStillCurrentSpace(spaceId, token) {
   return Boolean(stillSelected && stillSelected.value === spaceId);
 }
 
+function isOneToOneSpace() {
+  const selected = document.querySelector('input[name="space"]:checked');
+  return selected?.dataset.spaceObject === ONE_TO_ONE_SPACE_OBJECT;
+}
+
 async function loadChatPreviews(spaceId, rows, token) {
+  const isOneToOne = isOneToOneSpace();
+
   for (const row of rows) {
     if (!isStillCurrentSpace(spaceId, token)) {
       return;
@@ -834,11 +845,13 @@ async function loadChatPreviews(spaceId, rows, token) {
         row.previewEl,
         spaceId,
         row.chatId,
-        latestMessage ? formatMessagePreview(latestMessage) : ""
+        latestMessage
+          ? formatMessagePreview(latestMessage, { isOneToOne })
+          : null
       );
     } catch (error) {
       console.error(`Could not load latest message for chat ${row.chatId}:`, error);
-      renderChatPreview(row.previewEl, spaceId, row.chatId, "");
+      renderChatPreview(row.previewEl, spaceId, row.chatId, null);
     }
   }
 }
@@ -866,14 +879,27 @@ export async function fetchChatMessages(
   return await response.json();
 }
 
-function formatMessagePreview(message) {
+/**
+ * @param {object} message
+ * @param {{ isOneToOne: boolean }} options
+ * @returns {ChatPreviewParts | null}
+ */
+function formatMessagePreview(message, { isOneToOne }) {
   const text = message.content?.text?.trim() ?? "";
 
   if (!text) {
-    return "";
+    return null;
   }
 
-  return text;
+  let senderLabel = null;
+  if (!isOneToOne && message.isMine !== true) {
+    const creatorName = message.creatorName?.trim();
+    if (creatorName) {
+      senderLabel = `${creatorName}: `;
+    }
+  }
+
+  return { senderLabel, text };
 }
 
 function showDraftChatPreview(previewEl, draftText) {
@@ -891,19 +917,39 @@ function showDraftChatPreview(previewEl, draftText) {
   previewEl.append(label, text);
 }
 
-function showMessageChatPreview(previewEl, messagePreviewText) {
+/**
+ * @param {HTMLParagraphElement} previewEl
+ * @param {ChatPreviewParts | null} parts
+ */
+function showMessageChatPreview(previewEl, parts) {
   previewEl.className = "chat-preview";
-  previewEl.textContent = messagePreviewText;
+  previewEl.replaceChildren();
+
+  if (!parts?.text) {
+    return;
+  }
+
+  if (parts.senderLabel) {
+    const sender = document.createElement("span");
+    sender.className = "chat-preview-sender";
+    sender.textContent = parts.senderLabel;
+    previewEl.appendChild(sender);
+  }
+
+  const text = document.createElement("span");
+  text.className = "chat-preview-text";
+  text.textContent = parts.text;
+  previewEl.appendChild(text);
 }
 
 /**
  * @param {HTMLParagraphElement} previewEl
- * @param {string | undefined} messagePreviewText When provided, updates the cache.
+ * @param {ChatPreviewParts | null | undefined} messagePreviewParts When provided, updates the cache.
  */
-function renderChatPreview(previewEl, spaceId, chatId, messagePreviewText) {
+function renderChatPreview(previewEl, spaceId, chatId, messagePreviewParts) {
   const key = chatMessagePreviewKey(spaceId, chatId);
-  if (messagePreviewText !== undefined) {
-    chatMessagePreviews.set(key, messagePreviewText);
+  if (messagePreviewParts !== undefined) {
+    chatMessagePreviews.set(key, messagePreviewParts);
   }
 
   if (hasListDraftIndicator(spaceId, chatId)) {
@@ -914,7 +960,7 @@ function renderChatPreview(previewEl, spaceId, chatId, messagePreviewText) {
     return;
   }
 
-  showMessageChatPreview(previewEl, chatMessagePreviews.get(key) ?? "");
+  showMessageChatPreview(previewEl, chatMessagePreviews.get(key) ?? null);
 }
 
 function updateChatListPreview(spaceId, chatId) {

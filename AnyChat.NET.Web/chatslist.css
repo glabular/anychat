@@ -161,6 +161,14 @@
     color: var(--color-text-muted);
 }
 
+.chat-preview-sender {
+    color: var(--color-ice);
+}
+
+.chat-preview-text {
+    color: var(--color-text-muted);
+}
+
 .avatar {
     width: 45px;
     height: 45px;
