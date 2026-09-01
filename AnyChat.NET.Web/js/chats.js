@@ -14,6 +14,7 @@ import {
   setChatHistoryStatus,
   setOnChatPanelHidden,
   setOnListDraftIndicatorChanged,
+  setOnOutgoingPreviewChanged,
   setOpenChat,
   setOpenChatMessagesReload,
   showChatHeader,
@@ -754,6 +755,10 @@ setOnChatPanelHidden(resetChatHistoryState);
 
 setOnListDraftIndicatorChanged((spaceId, chatId) => {
   updateChatListPreview(spaceId, chatId);
+});
+
+setOnOutgoingPreviewChanged(() => {
+  // Wired in Step 5d.
 });
 
 initChatHistoryScroll();

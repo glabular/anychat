@@ -10,6 +10,7 @@ let sendPending = false;
 let reloadOpenChatMessages = null;
 let onChatPanelHidden = null;
 let onListDraftIndicatorChanged = null;
+let onOutgoingPreviewChanged = null;
 
 /** Unsent composer text keyed by spaceId + chatId for the current session. */
 const composerDrafts = new Map();
@@ -391,6 +392,18 @@ export function setOnChatPanelHidden(callback) {
 
 export function setOnListDraftIndicatorChanged(callback) {
   onListDraftIndicatorChanged = callback;
+}
+
+export function setOnOutgoingPreviewChanged(callback) {
+  onOutgoingPreviewChanged = callback;
+}
+
+/**
+ * @param {{ spaceId: string, chatId: string }} target
+ * @param {object} parts
+ */
+function notifyOutgoingPreviewChanged(target, parts) {
+  onOutgoingPreviewChanged?.(target, parts);
 }
 
 export function isOpenChatMessagesCurrent(token) {
