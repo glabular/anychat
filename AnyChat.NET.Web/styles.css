@@ -381,8 +381,23 @@ textarea,
 }
 
 .message-row--mine .message-bubble {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
   background-color: var(--color-accent);
   color: var(--color-text);
+}
+
+.message-send-status {
+  font-size: 0.75rem;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.message-send-status--failed {
+  color: var(--color-red);
+  opacity: 1;
 }
 
 .chat-send-error {
