@@ -115,6 +115,26 @@
                 <span class="chat-messages-loading-dot" aria-hidden="true"></span>
               </div>
               <div
+                id="chat-messages-initial-error"
+                class="chat-messages-history-error"
+                role="alert"
+                hidden
+              >
+                <span
+                  id="chat-messages-initial-error-text"
+                  class="chat-messages-history-error-text"
+                >
+                  Could not load messages.
+                </span>
+                <button
+                  type="button"
+                  id="chat-messages-initial-retry"
+                  class="chat-messages-history-retry"
+                >
+                  Retry
+                </button>
+              </div>
+              <div
                 id="chat-messages-history-error"
                 class="chat-messages-history-error"
                 hidden

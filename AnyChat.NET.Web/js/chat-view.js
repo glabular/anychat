@@ -412,6 +412,54 @@ export function isOpenChatMessagesCurrent(token) {
 
 /** @typedef {'hidden' | 'loading' | 'error' | 'end'} ChatHistoryStatusMode */
 
+function isInitialLoadErrorVisible() {
+  const initialError = document.getElementById("chat-messages-initial-error");
+  return initialError instanceof HTMLElement && !initialError.hidden;
+}
+
+function isChatHistoryStatusActive() {
+  const loading = document.getElementById("chat-messages-history-loading");
+  const error = document.getElementById("chat-messages-history-error");
+  const end = document.getElementById("chat-messages-history-end");
+  return (
+    (loading instanceof HTMLElement && !loading.hidden)
+    || (error instanceof HTMLElement && !error.hidden)
+    || (end instanceof HTMLElement && !end.hidden)
+  );
+}
+
+function syncChatMessagesHistoryRoot() {
+  const root = document.getElementById("chat-messages-history");
+  if (!(root instanceof HTMLElement)) {
+    return;
+  }
+
+  root.hidden = !isInitialLoadErrorVisible() && !isChatHistoryStatusActive();
+}
+
+/**
+ * @param {boolean} visible
+ * @param {string} [text]
+ */
+function setInitialLoadErrorVisible(visible, text) {
+  const initialError = document.getElementById("chat-messages-initial-error");
+  const initialErrorText = document.getElementById("chat-messages-initial-error-text");
+  if (!(initialError instanceof HTMLElement)) {
+    return;
+  }
+
+  if (text && initialErrorText) {
+    initialErrorText.textContent = text;
+  }
+
+  initialError.hidden = !visible;
+  syncChatMessagesHistoryRoot();
+}
+
+export function clearInitialLoadError() {
+  setInitialLoadErrorVisible(false);
+}
+
 /**
  * @param {ChatHistoryStatusMode} mode
  */
@@ -425,10 +473,10 @@ export function setChatHistoryStatus(mode) {
   }
 
   if (mode === "hidden") {
-    root.hidden = true;
     loading.hidden = true;
     error.hidden = true;
     end.hidden = true;
+    syncChatMessagesHistoryRoot();
     return;
   }
 
@@ -439,6 +487,7 @@ export function setChatHistoryStatus(mode) {
 }
 
 export function resetChatHistoryStatus() {
+  clearInitialLoadError();
   setChatHistoryStatus("hidden");
 }
 
@@ -662,12 +711,7 @@ export function renderOpenChatMessagesError(text) {
   }
   setEmptyMessagesVisible(false);
   list.replaceChildren();
-
-  const line = document.createElement("div");
-  line.className = "chat-messages-error";
-  line.setAttribute("role", "alert");
-  line.textContent = text;
-  list.appendChild(line);
+  setInitialLoadErrorVisible(true, text);
 }
 
 export function initChatComposer(

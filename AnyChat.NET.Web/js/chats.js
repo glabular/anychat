@@ -11,6 +11,7 @@ import {
   appendNewerChatMessages,
   renderOpenChatMessages,
   renderOpenChatMessagesError,
+  clearInitialLoadError,
   resetChatHistoryStatus,
   setChatHistoryStatus,
   setOnChatPanelHidden,
@@ -143,6 +144,7 @@ function applyInitialPage(state, messages) {
   state.mayHaveMore = messages.length === MESSAGE_PAGE_SIZE;
   state.olderLoadError = false;
   state.initialLoadError = false;
+  clearInitialLoadError();
 }
 
 /**

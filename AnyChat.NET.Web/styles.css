@@ -193,7 +193,8 @@ textarea,
 
 .chat-messages-history-loading[hidden],
 .chat-messages-history-error[hidden],
-.chat-messages-history-end[hidden] {
+.chat-messages-history-end[hidden],
+#chat-messages-initial-error[hidden] {
   display: none;
 }
 
