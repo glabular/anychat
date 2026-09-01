@@ -471,6 +471,9 @@ function createMessageRow(message) {
   if (message.id) {
     row.dataset.messageId = message.id;
   }
+  if (message.clientTempId) {
+    row.dataset.clientTempId = message.clientTempId;
+  }
 
   const bubble = document.createElement("div");
   bubble.className = "message-bubble";
