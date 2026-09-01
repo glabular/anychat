@@ -1,3 +1,8 @@
+import {
+  createSendStatusElement,
+  resolveOutgoingSendStatus,
+} from "./message-send-status.js";
+
 /** Bumps when opening a chat or clearing the panel so stale fetches are ignored. */
 let openChatToken = 0;
 let openChat = null;
@@ -470,6 +475,12 @@ function createMessageRow(message) {
   const bubble = document.createElement("div");
   bubble.className = "message-bubble";
   bubble.textContent = message.content.text;
+
+  const sendStatus = resolveOutgoingSendStatus(message);
+  if (sendStatus) {
+    bubble.appendChild(createSendStatusElement(sendStatus));
+  }
+
   row.appendChild(bubble);
 
   return row;
