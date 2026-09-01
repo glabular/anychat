@@ -670,7 +670,7 @@ export function renderOpenChatMessagesError(text) {
   list.appendChild(line);
 }
 
-export function initChatComposer(postChatMessage) {
+export function initChatComposer(postChatMessage, pushOptimisticMessage) {
   const composer = document.getElementById("chat-composer");
   const input = document.getElementById("chat-message-input");
   const sendButton = document.getElementById("chat-send-button");
@@ -702,6 +702,28 @@ export function initChatComposer(postChatMessage) {
     sendPending = true;
     input.disabled = true;
     sendButton.disabled = true;
+
+    const clientTempId = crypto.randomUUID?.() ?? `temp-${Date.now()}`;
+    const optimisticMessage = {
+      clientTempId,
+      isMine: true,
+      clientSendStatus: "sending",
+      content: { text },
+    };
+
+    pushOptimisticMessage?.(target.spaceId, target.chatId, optimisticMessage);
+    clearComposerDraft(target);
+    if (
+      openChat?.spaceId === target.spaceId
+      && openChat?.chatId === target.chatId
+    ) {
+      input.value = "";
+    }
+    notifyOutgoingPreviewChanged(target, {
+      text,
+      isMine: true,
+      sendStatus: "sending",
+    });
 
     try {
       try {

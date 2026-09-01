@@ -186,6 +186,25 @@ function applyLatestPageAfterSend(state, latestMessages) {
 }
 
 /**
+ * @param {string} spaceId
+ * @param {string} chatId
+ * @param {object} message
+ */
+export function pushOptimisticMessage(spaceId, chatId, message) {
+  const state = chatHistoryState;
+  if (
+    !state
+    || state.spaceId !== spaceId
+    || state.chatId !== chatId
+  ) {
+    return;
+  }
+
+  state.messages = [...state.messages, message];
+  appendNewerChatMessages([message]);
+}
+
+/**
  * @param {ChatHistoryState} state
  * @param {unknown} olderMessages
  * @returns {number} newly inserted row count
@@ -777,7 +796,7 @@ setOpenChatMessagesReload(async (spaceId, chatId) => {
   await reloadMessagesAfterSend(spaceId, chatId);
 });
 
-initChatComposer(postChatMessage);
+initChatComposer(postChatMessage, pushOptimisticMessage);
 
 export function populateChatsList(chats) {
   const chatsList = document.getElementById("chats-list");
