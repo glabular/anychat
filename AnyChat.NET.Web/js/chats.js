@@ -67,6 +67,7 @@ let chatHistoryState = null;
  * @property {boolean} mayHaveMore
  * @property {boolean} isLoadingOlder
  * @property {boolean} olderLoadError
+ * @property {boolean} initialLoadError
  */
 
 let historyScrollBound = false;
@@ -112,6 +113,7 @@ function beginChatHistoryState(spaceId, chatId, token) {
     mayHaveMore: false,
     isLoadingOlder: false,
     olderLoadError: false,
+    initialLoadError: false,
   };
   return chatHistoryState;
 }
@@ -140,6 +142,7 @@ function applyInitialPage(state, messages) {
   state.oldestOrderId = oldestOrderIdFromPage(messages);
   state.mayHaveMore = messages.length === MESSAGE_PAGE_SIZE;
   state.olderLoadError = false;
+  state.initialLoadError = false;
 }
 
 /**
@@ -823,7 +826,15 @@ async function openChatMessages(chatId) {
     if (!await finishOpenChatMessagesLoad(token)) {
       return;
     }
-    resetChatHistoryState();
+    if (chatHistoryState?.token === token) {
+      chatHistoryState.initialLoadError = true;
+      chatHistoryState.messages = [];
+      chatHistoryState.messageIds = new Set();
+      chatHistoryState.oldestOrderId = null;
+      chatHistoryState.mayHaveMore = false;
+      chatHistoryState.isLoadingOlder = false;
+      chatHistoryState.olderLoadError = false;
+    }
     renderOpenChatMessagesError("Could not load messages.");
   }
 }
