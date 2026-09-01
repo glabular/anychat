@@ -740,6 +740,10 @@ function createChatListItem(chat) {
   chatNameP.textContent = chatName;
   chatHeaderDiv.appendChild(chatNameP);
 
+  const headerStatusEl = document.createElement("div");
+  headerStatusEl.className = "chat-header-status";
+  chatHeaderDiv.appendChild(headerStatusEl);
+
   divTextBlock.appendChild(chatHeaderDiv);
 
   const previewEl = document.createElement("p");
