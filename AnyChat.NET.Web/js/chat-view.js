@@ -490,6 +490,38 @@ function createMessageRow(message) {
 }
 
 /**
+ * @param {{ clientTempId?: string, messageId?: string, status: import("./message-send-status.js").SendStatus }} options
+ */
+export function updateMessageRowSendStatus({ clientTempId, messageId, status }) {
+  const list = getChatMessageList();
+  if (!list || !status) {
+    return;
+  }
+
+  const selector = clientTempId
+    ? `[data-client-temp-id="${CSS.escape(clientTempId)}"]`
+    : messageId
+      ? `[data-message-id="${CSS.escape(messageId)}"]`
+      : null;
+  if (!selector) {
+    return;
+  }
+
+  const row = list.querySelector(selector);
+  const bubble = row?.querySelector(".message-bubble");
+  if (!bubble) {
+    return;
+  }
+
+  bubble.querySelector(".message-send-status")?.remove();
+  bubble.appendChild(createSendStatusElement(status));
+
+  if (messageId) {
+    row.dataset.messageId = messageId;
+  }
+}
+
+/**
  * @param {object[]} messages
  * @returns {{ fragment: DocumentFragment, renderedCount: number }}
  */
