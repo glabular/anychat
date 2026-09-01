@@ -196,6 +196,7 @@ function applyLatestPageAfterSend(state, latestMessages) {
  * @param {string} spaceId
  * @param {string} chatId
  * @param {object} message
+ * @returns {boolean}
  */
 export function pushOptimisticMessage(spaceId, chatId, message) {
   const state = chatHistoryState;
@@ -204,11 +205,11 @@ export function pushOptimisticMessage(spaceId, chatId, message) {
     || state.spaceId !== spaceId
     || state.chatId !== chatId
   ) {
-    return;
+    return false;
   }
 
   state.messages = [...state.messages, message];
-  appendNewerChatMessages([message]);
+  return appendNewerChatMessages([message]) > 0;
 }
 
 /**

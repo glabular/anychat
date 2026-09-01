@@ -771,7 +771,11 @@ export function initChatComposer(
       content: { text },
     };
 
-    pushOptimisticMessage?.(target.spaceId, target.chatId, optimisticMessage);
+    const optimisticPushed = pushOptimisticMessage?.(
+      target.spaceId,
+      target.chatId,
+      optimisticMessage
+    ) ?? false;
     clearComposerDraft(target);
     if (
       openChat?.spaceId === target.spaceId
@@ -779,11 +783,13 @@ export function initChatComposer(
     ) {
       input.value = "";
     }
-    notifyOutgoingPreviewChanged(target, {
-      text,
-      isMine: true,
-      sendStatus: "sending",
-    });
+    if (optimisticPushed) {
+      notifyOutgoingPreviewChanged(target, {
+        text,
+        isMine: true,
+        sendStatus: "sending",
+      });
+    }
 
     try {
       try {
@@ -811,11 +817,13 @@ export function initChatComposer(
           }
         }
 
-        notifyOutgoingPreviewChanged(target, {
-          text,
-          isMine: true,
-          sendStatus: "sent",
-        });
+        if (optimisticPushed) {
+          notifyOutgoingPreviewChanged(target, {
+            text,
+            isMine: true,
+            sendStatus: "sent",
+          });
+        }
 
         if (
           openChat?.spaceId === target.spaceId
@@ -839,11 +847,13 @@ export function initChatComposer(
             status: "failed",
           });
         }
-        notifyOutgoingPreviewChanged(target, {
-          text,
-          isMine: true,
-          sendStatus: "failed",
-        });
+        if (optimisticPushed) {
+          notifyOutgoingPreviewChanged(target, {
+            text,
+            isMine: true,
+            sendStatus: "failed",
+          });
+        }
         return;
       }
     } finally {
