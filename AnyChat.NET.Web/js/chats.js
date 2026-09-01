@@ -834,8 +834,13 @@ setOnListDraftIndicatorChanged((spaceId, chatId) => {
   updateChatListPreview(spaceId, chatId);
 });
 
-setOnOutgoingPreviewChanged(() => {
-  // Wired in Step 5d.
+setOnOutgoingPreviewChanged((target, parts) => {
+  updateChatListPreview(target.spaceId, target.chatId, {
+    senderLabel: null,
+    text: parts.text,
+    isMine: parts.isMine,
+    sendStatus: parts.sendStatus,
+  });
 });
 
 initChatHistoryScroll();
@@ -1059,7 +1064,7 @@ function renderChatPreview(previewEl, spaceId, chatId, messagePreviewParts) {
   showMessageChatPreview(previewEl, chatMessagePreviews.get(key) ?? null);
 }
 
-function updateChatListPreview(spaceId, chatId) {
+function updateChatListPreview(spaceId, chatId, messagePreviewParts) {
   const previewEl = document.querySelector(
     `#chats-list li[data-chat-id="${CSS.escape(chatId)}"] .chat-preview`
   );
@@ -1067,5 +1072,5 @@ function updateChatListPreview(spaceId, chatId) {
     return;
   }
 
-  renderChatPreview(previewEl, spaceId, chatId);
+  renderChatPreview(previewEl, spaceId, chatId, messagePreviewParts);
 }
