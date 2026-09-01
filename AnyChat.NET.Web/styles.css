@@ -382,23 +382,48 @@ textarea,
 }
 
 .message-row--mine .message-bubble {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.15rem;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
   background-color: var(--color-accent);
   color: var(--color-text);
 }
 
+.message-row--mine .message-bubble--has-status {
+  padding-right: 1.35rem;
+}
+
+.message-row--mine .message-bubble-text {
+  flex: 1;
+  text-align: center;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.message-bubble-status {
+  position: absolute;
+  right: 0.45rem;
+  top: 58%;
+  transform: translateY(-50%);
+  line-height: 1;
+  pointer-events: none;
+}
+
 .message-send-status {
+  display: inline-block;
   font-size: 0.75rem;
   line-height: 1;
   opacity: 0.85;
 }
 
-.message-send-status--failed {
-  color: var(--color-red);
+.message-send-status--failed,
+.message-send-status--failed .message-send-status-glyph {
+  color: #f55522 !important;
+  -webkit-text-fill-color: #f55522 !important;
   opacity: 1;
+  font-weight: 700;
 }
 
 .chat-send-error {

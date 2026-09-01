@@ -175,10 +175,38 @@ public partial class MainWindow : Window
         }
 
         ConfigureWebViewForDesktop();
+        await PrepareWebViewForNavigation();
 
         WebView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
 
         WebView.Source = new Uri(AppUrl);
+    }
+
+    private async Task PrepareWebViewForNavigation()
+    {
+        try
+        {
+            // The profile is intentionally persistent for localStorage, but its HTTP
+            // cache can otherwise keep an older CSS/JS bundle across app restarts.
+            // Clear only cached responses; site data and the saved app state remain.
+            await WebView.CoreWebView2.Profile.ClearBrowsingDataAsync(
+                CoreWebView2BrowsingDataKinds.DiskCache);
+        }
+        catch
+        {
+            // Best-effort; stale cache beats blocking startup on a locked profile.
+        }
+
+        try
+        {
+            // Zoom is stored per host in the WebView2 profile. Since desktop zoom
+            // controls are disabled, always start localhost at the CSS baseline.
+            WebView.ZoomFactor = 1.0;
+        }
+        catch
+        {
+            // Best-effort; navigation should still proceed.
+        }
     }
 
     private void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs args)

@@ -550,11 +550,19 @@ function createMessageRow(message) {
 
   const bubble = document.createElement("div");
   bubble.className = "message-bubble";
-  bubble.textContent = message.content.text;
+
+  const textEl = document.createElement("div");
+  textEl.className = "message-bubble-text";
+  textEl.textContent = message.content.text;
+  bubble.appendChild(textEl);
 
   const sendStatus = resolveOutgoingSendStatus(message);
   if (sendStatus) {
-    bubble.appendChild(createSendStatusElement(sendStatus));
+    bubble.classList.add("message-bubble--has-status");
+    const statusSlot = document.createElement("div");
+    statusSlot.className = "message-bubble-status";
+    statusSlot.appendChild(createSendStatusElement(sendStatus));
+    bubble.appendChild(statusSlot);
   }
 
   row.appendChild(bubble);
@@ -586,8 +594,14 @@ export function updateMessageRowSendStatus({ clientTempId, messageId, status }) 
     return;
   }
 
-  bubble.querySelector(".message-send-status")?.remove();
-  bubble.appendChild(createSendStatusElement(status));
+  let statusSlot = bubble.querySelector(".message-bubble-status");
+  if (!statusSlot) {
+    bubble.classList.add("message-bubble--has-status");
+    statusSlot = document.createElement("div");
+    statusSlot.className = "message-bubble-status";
+    bubble.appendChild(statusSlot);
+  }
+  statusSlot.replaceChildren(createSendStatusElement(status));
 
   if (messageId) {
     row.dataset.messageId = messageId;

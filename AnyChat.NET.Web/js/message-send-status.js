@@ -46,6 +46,12 @@ export function createSendStatusElement(status) {
   glyph.className = "message-send-status-glyph";
   glyph.setAttribute("aria-hidden", "true");
   glyph.textContent = SEND_STATUS_GLYPHS[status];
+  if (status === "failed") {
+    const failedColor = "#f55522";
+    statusEl.style.setProperty("color", failedColor, "important");
+    glyph.style.setProperty("color", failedColor, "important");
+    glyph.style.setProperty("-webkit-text-fill-color", failedColor, "important");
+  }
   statusEl.appendChild(glyph);
 
   return statusEl;
