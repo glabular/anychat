@@ -670,7 +670,11 @@ export function renderOpenChatMessagesError(text) {
   list.appendChild(line);
 }
 
-export function initChatComposer(postChatMessage, pushOptimisticMessage) {
+export function initChatComposer(
+  postChatMessage,
+  pushOptimisticMessage,
+  markOptimisticMessageSent
+) {
   const composer = document.getElementById("chat-composer");
   const input = document.getElementById("chat-message-input");
   const sendButton = document.getElementById("chat-send-button");
@@ -727,7 +731,42 @@ export function initChatComposer(postChatMessage, pushOptimisticMessage) {
 
     try {
       try {
-        await postChatMessage(target.spaceId, target.chatId, text);
+        const response = await postChatMessage(target.spaceId, target.chatId, text);
+        const messageId = typeof response?.messageId === "string"
+          ? response.messageId
+          : null;
+
+        if (messageId) {
+          markOptimisticMessageSent?.(
+            target.spaceId,
+            target.chatId,
+            clientTempId,
+            messageId
+          );
+          if (
+            openChat?.spaceId === target.spaceId
+            && openChat?.chatId === target.chatId
+          ) {
+            updateMessageRowSendStatus({
+              clientTempId,
+              messageId,
+              status: "sent",
+            });
+          }
+        }
+
+        notifyOutgoingPreviewChanged(target, {
+          text,
+          isMine: true,
+          sendStatus: "sent",
+        });
+
+        if (
+          openChat?.spaceId === target.spaceId
+          && openChat?.chatId === target.chatId
+        ) {
+          await reloadOpenChatMessages?.(target.spaceId, target.chatId);
+        }
       } catch (error) {
         console.error("Could not send message:", error);
         if (
@@ -738,18 +777,6 @@ export function initChatComposer(postChatMessage, pushOptimisticMessage) {
         }
         return;
       }
-
-      clearComposerDraft(target);
-
-      if (
-        openChat?.spaceId !== target.spaceId
-        || openChat?.chatId !== target.chatId
-      ) {
-        return;
-      }
-
-      input.value = "";
-      await reloadOpenChatMessages?.(target.spaceId, target.chatId);
     } finally {
       sendPending = false;
       input.disabled = false;
