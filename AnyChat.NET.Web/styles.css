@@ -418,6 +418,23 @@ textarea,
   opacity: 0.85;
 }
 
+.message-send-status--sending,
+.message-send-status--sending .message-send-status-glyph {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+.message-send-status--sent,
+.message-send-status--sent .message-send-status-glyph {
+  color: var(--color-ice);
+  opacity: 1;
+}
+
+.message-row--mine .message-bubble .message-send-status--sent,
+.message-row--mine .message-bubble .message-send-status--sent .message-send-status-glyph {
+  color: var(--color-text);
+}
+
 .message-send-status--failed,
 .message-send-status--failed .message-send-status-glyph {
   color: #f55522 !important;
