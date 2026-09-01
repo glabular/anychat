@@ -20,3 +20,33 @@ export function resolveOutgoingSendStatus(message) {
 
   return "sent";
 }
+
+const SEND_STATUS_LABELS = {
+  sending: "Sending",
+  sent: "Sent",
+  failed: "Failed to send",
+};
+
+const SEND_STATUS_GLYPHS = {
+  sending: "◷",
+  sent: "✓",
+  failed: "!",
+};
+
+/**
+ * @param {SendStatus} status
+ * @returns {HTMLSpanElement}
+ */
+export function createSendStatusElement(status) {
+  const statusEl = document.createElement("span");
+  statusEl.className = `message-send-status message-send-status--${status}`;
+  statusEl.setAttribute("aria-label", SEND_STATUS_LABELS[status]);
+
+  const glyph = document.createElement("span");
+  glyph.className = "message-send-status-glyph";
+  glyph.setAttribute("aria-hidden", "true");
+  glyph.textContent = SEND_STATUS_GLYPHS[status];
+  statusEl.appendChild(glyph);
+
+  return statusEl;
+}
