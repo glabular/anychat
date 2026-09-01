@@ -144,13 +144,19 @@
 }
 
 .chat-preview {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
     font-size: 0.85rem;
     color: var(--color-text-muted);
     margin: 0;
     margin-top: 5px;
-    white-space: nowrap;
+    min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
+}
+
+.chat-preview .message-send-status {
+    flex-shrink: 0;
 }
 
 .chat-preview-draft-label {
@@ -159,14 +165,26 @@
 
 .chat-preview-draft-text {
     color: var(--color-text-muted);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .chat-preview-sender {
     color: var(--color-ice);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .chat-preview-text {
     color: var(--color-text-muted);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .avatar {
