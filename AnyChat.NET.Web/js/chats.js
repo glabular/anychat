@@ -235,6 +235,33 @@ export function markOptimisticMessageSent(spaceId, chatId, clientTempId, message
 }
 
 /**
+ * @param {string} spaceId
+ * @param {string} chatId
+ * @param {string} clientTempId
+ * @returns {boolean}
+ */
+export function markOptimisticMessageFailed(spaceId, chatId, clientTempId) {
+  const state = chatHistoryState;
+  if (
+    !state
+    || state.spaceId !== spaceId
+    || state.chatId !== chatId
+  ) {
+    return false;
+  }
+
+  const message = state.messages.find(
+    (entry) => entry?.clientTempId === clientTempId
+  );
+  if (!message) {
+    return false;
+  }
+
+  message.clientSendStatus = "failed";
+  return true;
+}
+
+/**
  * @param {ChatHistoryState} state
  * @param {unknown} olderMessages
  * @returns {number} newly inserted row count
@@ -826,7 +853,12 @@ setOpenChatMessagesReload(async (spaceId, chatId) => {
   await reloadMessagesAfterSend(spaceId, chatId);
 });
 
-initChatComposer(postChatMessage, pushOptimisticMessage, markOptimisticMessageSent);
+initChatComposer(
+  postChatMessage,
+  pushOptimisticMessage,
+  markOptimisticMessageSent,
+  markOptimisticMessageFailed
+);
 
 export function populateChatsList(chats) {
   const chatsList = document.getElementById("chats-list");

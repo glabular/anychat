@@ -673,7 +673,8 @@ export function renderOpenChatMessagesError(text) {
 export function initChatComposer(
   postChatMessage,
   pushOptimisticMessage,
-  markOptimisticMessageSent
+  markOptimisticMessageSent,
+  markOptimisticMessageFailed
 ) {
   const composer = document.getElementById("chat-composer");
   const input = document.getElementById("chat-message-input");
@@ -769,12 +770,25 @@ export function initChatComposer(
         }
       } catch (error) {
         console.error("Could not send message:", error);
+        markOptimisticMessageFailed?.(
+          target.spaceId,
+          target.chatId,
+          clientTempId
+        );
         if (
           openChat?.spaceId === target.spaceId
           && openChat?.chatId === target.chatId
         ) {
-          setSendErrorVisible(true);
+          updateMessageRowSendStatus({
+            clientTempId,
+            status: "failed",
+          });
         }
+        notifyOutgoingPreviewChanged(target, {
+          text,
+          isMine: true,
+          sendStatus: "failed",
+        });
         return;
       }
     } finally {
