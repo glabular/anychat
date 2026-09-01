@@ -1,5 +1,5 @@
 import { fetchChats, postChatMessage, spacesUrl } from "./api.js";
-import { resolveOutgoingSendStatus } from "./message-send-status.js";
+import { createSendStatusElement, resolveOutgoingSendStatus } from "./message-send-status.js";
 import {
   beginOpenChatMessages,
   finishOpenChatMessagesLoad,
@@ -1019,6 +1019,10 @@ function showMessageChatPreview(previewEl, parts) {
 
   if (!parts?.text) {
     return;
+  }
+
+  if (parts.isMine && parts.sendStatus) {
+    previewEl.appendChild(createSendStatusElement(parts.sendStatus));
   }
 
   if (parts.senderLabel) {
