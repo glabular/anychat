@@ -1,4 +1,8 @@
 import {
+  formatDateDdMmYyyy,
+  localDayKey,
+} from "./date-format.js";
+import {
   createSendStatusElement,
   resolveOutgoingSendStatus,
 } from "./message-send-status.js";
@@ -531,6 +535,68 @@ function rowModifierClass(isMine) {
 }
 
 /**
+ * @param {string} dayKey
+ * @param {unknown} unixSeconds
+ * @returns {HTMLDivElement | null}
+ */
+function createMessageDateSeparator(dayKey, unixSeconds) {
+  const label = formatDateDdMmYyyy(unixSeconds);
+  if (!label) {
+    return null;
+  }
+
+  const separator = document.createElement("div");
+  separator.className = "message-date-separator";
+  separator.dataset.dayKey = dayKey;
+  separator.setAttribute("role", "separator");
+  separator.textContent = label;
+  return separator;
+}
+
+/**
+ * @param {Element | null | undefined} node
+ * @returns {string | null}
+ */
+function dayKeyFromNode(node) {
+  if (!(node instanceof HTMLElement)) {
+    return null;
+  }
+
+  const dayKey = node.dataset.dayKey;
+  return typeof dayKey === "string" && dayKey.length > 0 ? dayKey : null;
+}
+
+/**
+ * @param {HTMLElement} list
+ * @returns {string | null}
+ */
+function getFirstDayKey(list) {
+  for (const child of list.children) {
+    const dayKey = dayKeyFromNode(child);
+    if (dayKey) {
+      return dayKey;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * @param {HTMLElement} list
+ * @returns {string | null}
+ */
+function getLastDayKey(list) {
+  for (let index = list.children.length - 1; index >= 0; index -= 1) {
+    const dayKey = dayKeyFromNode(list.children[index]);
+    if (dayKey) {
+      return dayKey;
+    }
+  }
+
+  return null;
+}
+
+/**
  * @param {object} message
  * @returns {HTMLDivElement | null}
  */
@@ -546,6 +612,11 @@ function createMessageRow(message) {
   }
   if (message.clientTempId) {
     row.dataset.clientTempId = message.clientTempId;
+  }
+
+  const dayKey = localDayKey(message.createdAt);
+  if (dayKey) {
+    row.dataset.dayKey = dayKey;
   }
 
   const bubble = document.createElement("div");
@@ -610,11 +681,19 @@ export function updateMessageRowSendStatus({ clientTempId, messageId, status }) 
 
 /**
  * @param {object[]} messages
- * @returns {{ fragment: DocumentFragment, renderedCount: number }}
+ * @param {{ previousDayKey?: string | null }} [options]
+ * @returns {{
+ *   fragment: DocumentFragment,
+ *   renderedCount: number,
+ *   trailingDayKey: string | null,
+ * }}
  */
-function buildMessageFragment(messages) {
+function buildMessageFragment(messages, { previousDayKey = null } = {}) {
   const fragment = document.createDocumentFragment();
   let renderedCount = 0;
+  let lastDayKey = previousDayKey;
+  /** @type {string | null} */
+  let trailingDayKey = null;
 
   // Anytype already returns each window oldest → newest. Do not reverse.
   for (const message of messages) {
@@ -623,11 +702,23 @@ function buildMessageFragment(messages) {
       continue;
     }
 
+    const dayKey = dayKeyFromNode(row);
+    if (dayKey && dayKey !== lastDayKey) {
+      const separator = createMessageDateSeparator(dayKey, message.createdAt);
+      if (separator) {
+        fragment.appendChild(separator);
+      }
+      lastDayKey = dayKey;
+    }
+    if (dayKey) {
+      trailingDayKey = dayKey;
+    }
+
     fragment.appendChild(row);
     renderedCount += 1;
   }
 
-  return { fragment, renderedCount };
+  return { fragment, renderedCount, trailingDayKey };
 }
 
 function setMessagesPreparing(container, preparing) {
@@ -685,13 +776,23 @@ export function prependOlderChatMessages(messages) {
     return 0;
   }
 
-  const { fragment, renderedCount } = buildMessageFragment(messages);
+  const existingFirstDayKey = getFirstDayKey(list);
+  const { fragment, renderedCount, trailingDayKey } =
+    buildMessageFragment(messages);
   if (renderedCount === 0) {
     return 0;
   }
 
   const previousScrollHeight = container.scrollHeight;
   const previousScrollTop = container.scrollTop;
+
+  if (
+    trailingDayKey
+    && trailingDayKey === existingFirstDayKey
+    && list.firstElementChild?.classList.contains("message-date-separator")
+  ) {
+    list.firstElementChild.remove();
+  }
 
   list.insertBefore(fragment, list.firstChild);
   container.scrollTop =
@@ -712,7 +813,9 @@ export function appendNewerChatMessages(messages) {
     return 0;
   }
 
-  const { fragment, renderedCount } = buildMessageFragment(messages);
+  const { fragment, renderedCount } = buildMessageFragment(messages, {
+    previousDayKey: getLastDayKey(list),
+  });
   if (renderedCount === 0) {
     return 0;
   }

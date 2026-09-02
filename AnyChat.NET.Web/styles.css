@@ -365,6 +365,32 @@ textarea,
   }
 }
 
+.message-date-separator {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 2;
+  align-self: center;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0.15rem 0;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background-color: var(--color-light-bg);
+  color: var(--color-text-muted);
+  font-family: var(--font-inter);
+  font-size: 0.75rem;
+  line-height: 1.2;
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.selectable .message-date-separator {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .message-row {
   display: flex;
   width: 100%;
