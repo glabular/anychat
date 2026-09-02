@@ -778,8 +778,10 @@ export function initChatComposer(
     sendButton.disabled = true;
 
     const clientTempId = crypto.randomUUID?.() ?? `temp-${Date.now()}`;
+    const createdAt = Math.floor(Date.now() / 1000);
     const optimisticMessage = {
       clientTempId,
+      createdAt,
       isMine: true,
       clientSendStatus: "sending",
       content: { text },
@@ -802,6 +804,7 @@ export function initChatComposer(
         text,
         isMine: true,
         sendStatus: "sending",
+        createdAt,
       });
     }
 
@@ -836,6 +839,7 @@ export function initChatComposer(
             text,
             isMine: true,
             sendStatus: "sent",
+            createdAt,
           });
         }
 
@@ -866,6 +870,7 @@ export function initChatComposer(
             text,
             isMine: true,
             sendStatus: "failed",
+            createdAt,
           });
         }
         return;
