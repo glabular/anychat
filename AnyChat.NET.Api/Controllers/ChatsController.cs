@@ -1,6 +1,7 @@
 using AnyChat.NET.Api.Models;
 using AnyChat.NET.Api.Services;
 using Anytype.NET;
+using Anytype.NET.Interfaces;
 using Anytype.NET.Models;
 using Anytype.NET.Models.Requests;
 using Microsoft.AspNetCore.Mvc;
@@ -22,7 +23,10 @@ public class ChatsController(
     public async Task<IActionResult> List(string spaceId)
     {
         var response = await client.Chats.ListAsync(spaceId);
-        return Ok(response.Chats);
+        var chats = response.Chats ?? [];
+        var items = chats.Select(MapChatListItem).ToList();
+
+        return Ok(items);
     }
 
     [HttpGet("{chatId}/messages")]
@@ -128,6 +132,27 @@ public class ChatsController(
         }
 
         return false;
+    }
+
+    private static ChatListItemDto MapChatListItem(Chat chat)
+    {
+        return new ChatListItemDto
+        {
+            Id = chat.Id,
+            Name = chat.Name,
+            Object = chat.Object,
+            IconEmoji = ResolveIconEmoji(chat.Icon),
+        };
+    }
+
+    private static string? ResolveIconEmoji(IIcon? icon)
+    {
+        if (icon is EmojiIcon emojiIcon && !string.IsNullOrWhiteSpace(emojiIcon.Emoji))
+        {
+            return emojiIcon.Emoji;
+        }
+
+        return null;
     }
 
     private static ChatMessageDto MapMessage(ChatMessage message, string? participantId)

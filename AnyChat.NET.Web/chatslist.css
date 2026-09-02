@@ -203,8 +203,13 @@
     border-radius: 50%;
     overflow: hidden;
     flex-shrink: 0;
-    background-color: var(--color-accent);
+    background-color: var(--color-light-bg);
     align-self: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    line-height: 1;
 }
 
 .text-block {

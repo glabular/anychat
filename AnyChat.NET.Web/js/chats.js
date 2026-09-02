@@ -47,6 +47,22 @@ let showSpinnerTimer = null;
 /** @typedef {{ senderLabel: string | null, text: string, isMine?: boolean, sendStatus?: import("./message-send-status.js").SendStatus }} ChatPreviewParts */
 
 const ONE_TO_ONE_SPACE_OBJECT = "anytype.onetoone";
+const DEFAULT_CHAT_AVATAR_EMOJI = "💬";
+
+function resolveChatAvatarEmoji(chat) {
+  const emoji = chat?.iconEmoji?.trim();
+  return emoji || DEFAULT_CHAT_AVATAR_EMOJI;
+}
+
+function createChatAvatar(chat) {
+  const emoji = resolveChatAvatarEmoji(chat);
+  const avatarDiv = document.createElement("div");
+  avatarDiv.className = "avatar";
+  avatarDiv.textContent = emoji;
+  avatarDiv.setAttribute("role", "img");
+  avatarDiv.setAttribute("aria-label", `Chat icon: ${emoji}`);
+  return avatarDiv;
+}
 
 /** Latest message preview per chat, keyed by spaceId + chatId. */
 const chatMessagePreviews = new Map();
@@ -725,9 +741,7 @@ function createChatListItem(chat) {
     void openChatMessages(chatId);
   });
 
-  const avatarDiv = document.createElement("div");
-  avatarDiv.className = "avatar";
-  chatButton.appendChild(avatarDiv);
+  chatButton.appendChild(createChatAvatar(chat));
 
   const divTextBlock = document.createElement("div");
   divTextBlock.className = "text-block";
