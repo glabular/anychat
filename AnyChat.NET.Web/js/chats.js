@@ -1,5 +1,5 @@
 import { fetchChats, postChatMessage, spacesUrl } from "./api.js";
-import { formatDateDdMmYyyy } from "./date-format.js";
+import { formatChatListTimestamp } from "./date-format.js";
 import { createSendStatusElement, resolveOutgoingSendStatus } from "./message-send-status.js";
 import {
   beginOpenChatMessages,
@@ -1112,7 +1112,7 @@ function renderChatTimestamp(timestampEl, createdAt) {
     return;
   }
 
-  timestampEl.textContent = formatDateDdMmYyyy(createdAt) ?? "";
+  timestampEl.textContent = formatChatListTimestamp(createdAt) ?? "";
 }
 
 /**
