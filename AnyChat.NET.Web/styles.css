@@ -65,6 +65,14 @@ textarea,
   -webkit-user-select: text;
 }
 
+.selectable .message-bubble-status,
+.selectable .message-send-status,
+.selectable .message-bubble-status *,
+.selectable .message-send-status * {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .layout {
   display: flex;
   height: 100%;
