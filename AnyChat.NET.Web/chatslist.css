@@ -135,9 +135,12 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
 }
 
 .chat-name {
+    flex: 1;
     font-weight: bold;
     color: var(--color-text);
     margin: 0;
@@ -147,10 +150,21 @@
     white-space: nowrap;
 }
 
+.chat-header-meta {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 0.35rem;
+    line-height: 1;
+}
+
 .chat-header-status {
     flex-shrink: 0;
-    margin-left: 0.5rem;
     line-height: 1;
+}
+
+.chat-header-status:empty {
+    display: none;
 }
 
 .chat-header-status .message-send-status {
@@ -236,7 +250,13 @@
 }
 
 .chat-timestamp {
+    flex-shrink: 0;
     color: var(--color-text-muted);
-    margin-left: 10px;
     font-size: 0.75rem;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.chat-timestamp:empty {
+    display: none;
 }

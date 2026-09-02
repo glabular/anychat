@@ -708,7 +708,12 @@ export async function loadChatsForSelectedSpace() {
 
 /**
  * Builds one chat list row. Preview starts empty; Step 4 fills it from messages.
- * @returns {{ li: HTMLLIElement, previewEl: HTMLParagraphElement, chatId: string }}
+ * @returns {{
+ *   li: HTMLLIElement,
+ *   previewEl: HTMLParagraphElement,
+ *   timestampEl: HTMLSpanElement,
+ *   chatId: string,
+ * }}
  */
 function createChatListItem(chat) {
   const li = document.createElement("li");
@@ -754,9 +759,18 @@ function createChatListItem(chat) {
   chatNameP.textContent = chatName;
   chatHeaderDiv.appendChild(chatNameP);
 
+  const headerMetaEl = document.createElement("div");
+  headerMetaEl.className = "chat-header-meta";
+
   const headerStatusEl = document.createElement("div");
   headerStatusEl.className = "chat-header-status";
-  chatHeaderDiv.appendChild(headerStatusEl);
+  headerMetaEl.appendChild(headerStatusEl);
+
+  const timestampEl = document.createElement("span");
+  timestampEl.className = "chat-timestamp";
+  headerMetaEl.appendChild(timestampEl);
+
+  chatHeaderDiv.appendChild(headerMetaEl);
 
   divTextBlock.appendChild(chatHeaderDiv);
 
@@ -768,7 +782,7 @@ function createChatListItem(chat) {
   chatButton.appendChild(divTextBlock);
   li.appendChild(chatButton);
 
-  return { li, previewEl, chatId };
+  return { li, previewEl, timestampEl, chatId };
 }
 
 async function reloadMessagesAfterSend(spaceId, chatId) {
