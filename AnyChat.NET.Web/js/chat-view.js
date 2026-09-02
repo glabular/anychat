@@ -7,6 +7,11 @@ import {
   createSendStatusElement,
   resolveOutgoingSendStatus,
 } from "./message-send-status.js";
+import {
+  hideScrollToLatestButton,
+  scrollChatToLatest,
+  syncScrollToLatestButton,
+} from "./chat-messages-scroll.js";
 
 /** Bumps when opening a chat or clearing the panel so stale fetches are ignored. */
 let openChatToken = 0;
@@ -215,6 +220,7 @@ export async function finishOpenChatMessagesLoad(token) {
 
 function clearChatMessages() {
   endMessagesLoad();
+  hideScrollToLatestButton();
   const container = document.getElementById("chat-messages");
   if (container) {
     setMessagesPreparing(container, false);
@@ -351,6 +357,7 @@ export function beginOpenChatMessages() {
   cancelMessagesSpinnerTimer();
   const token = ++openChatToken;
   setMessagesBusy(true);
+  hideScrollToLatestButton();
 
   if (wasLoadingVisible) {
     setEmptyMessagesVisible(false);
@@ -374,6 +381,7 @@ export function beginOpenChatMessages() {
     getChatMessageList()?.replaceChildren();
     setEmptyMessagesVisible(false);
     setMessagesLoadingVisible(true);
+    hideScrollToLatestButton();
   }, MESSAGES_SPINNER_SHOW_DELAY_MS);
 
   return token;
@@ -764,13 +772,6 @@ function setMessagesPreparing(container, preparing) {
   container.classList.toggle("chat-messages--preparing", preparing);
 }
 
-/** Pin the scroll container to the newest message after layout. */
-function scrollMessagesToBottom(container) {
-  // Force layout so scrollHeight reflects the rows just inserted.
-  void container.offsetHeight;
-  container.scrollTop = container.scrollHeight;
-}
-
 /** Clear the list, render the latest page, and scroll to the bottom. */
 export function renderOpenChatMessages(messages) {
   const list = getChatMessageList();
@@ -788,6 +789,7 @@ export function renderOpenChatMessages(messages) {
   if (!Array.isArray(messages)) {
     setEmptyMessagesVisible(true);
     setMessagesPreparing(container, false);
+    syncScrollToLatestButton();
     return;
   }
 
@@ -795,12 +797,14 @@ export function renderOpenChatMessages(messages) {
   if (renderedCount === 0) {
     setEmptyMessagesVisible(true);
     setMessagesPreparing(container, false);
+    syncScrollToLatestButton();
     return;
   }
 
   list.appendChild(fragment);
-  scrollMessagesToBottom(container);
+  scrollChatToLatest();
   setMessagesPreparing(container, false);
+  syncScrollToLatestButton();
 }
 
 /**
@@ -836,6 +840,7 @@ export function prependOlderChatMessages(messages) {
   list.insertBefore(fragment, list.firstChild);
   container.scrollTop =
     previousScrollTop + (container.scrollHeight - previousScrollHeight);
+  syncScrollToLatestButton();
 
   return renderedCount;
 }
@@ -861,7 +866,7 @@ export function appendNewerChatMessages(messages) {
 
   setEmptyMessagesVisible(false);
   list.appendChild(fragment);
-  scrollMessagesToBottom(container);
+  scrollChatToLatest();
   return renderedCount;
 }
 
@@ -873,12 +878,14 @@ export function renderOpenChatMessagesError(text) {
   }
 
   endMessagesLoad();
+  hideScrollToLatestButton();
   if (container) {
     setMessagesPreparing(container, false);
   }
   setEmptyMessagesVisible(false);
   list.replaceChildren();
   setInitialLoadErrorVisible(true, text);
+  syncScrollToLatestButton();
 }
 
 export function initChatComposer(
