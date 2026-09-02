@@ -16,6 +16,12 @@ public sealed class ChatMessageDto
     public ChatMessageContentDto? Content { get; init; }
 
     /// <summary>
+    /// Unix timestamp in seconds when the message was created in Anytype.
+    /// Null when the upstream message has no creation time.
+    /// </summary>
+    public long? CreatedAt { get; init; }
+
+    /// <summary>
     /// True when the message is from the learned current user, false when it is
     /// from someone else, and null when ownership cannot be determined yet.
     /// </summary>

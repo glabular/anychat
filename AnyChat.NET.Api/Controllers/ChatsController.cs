@@ -173,6 +173,7 @@ public class ChatsController(
             {
                 Text = message.Content?.Text,
             },
+            CreatedAt = message.CreatedAt,
             IsMine = isMine,
         };
     }
