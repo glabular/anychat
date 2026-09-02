@@ -1,5 +1,6 @@
 import {
   formatDateDdMmYyyy,
+  formatTimeHhMm,
   localDayKey,
 } from "./date-format.js";
 import {
@@ -627,13 +628,32 @@ function createMessageRow(message) {
   textEl.textContent = message.content.text;
   bubble.appendChild(textEl);
 
+  const timeLabel = formatTimeHhMm(message.createdAt);
   const sendStatus = resolveOutgoingSendStatus(message);
-  if (sendStatus) {
-    bubble.classList.add("message-bubble--has-status");
-    const statusSlot = document.createElement("div");
-    statusSlot.className = "message-bubble-status";
-    statusSlot.appendChild(createSendStatusElement(sendStatus));
-    bubble.appendChild(statusSlot);
+
+  if (timeLabel || sendStatus) {
+    const meta = document.createElement("div");
+    meta.className = "message-bubble-meta";
+
+    if (timeLabel) {
+      const timeEl = document.createElement("time");
+      timeEl.className = "message-bubble-time";
+      timeEl.textContent = timeLabel;
+      if (typeof message.createdAt === "number") {
+        timeEl.dateTime = new Date(message.createdAt * 1000).toISOString();
+      }
+      meta.appendChild(timeEl);
+    }
+
+    if (sendStatus) {
+      bubble.classList.add("message-bubble--has-status");
+      const statusSlot = document.createElement("div");
+      statusSlot.className = "message-bubble-status";
+      statusSlot.appendChild(createSendStatusElement(sendStatus));
+      meta.appendChild(statusSlot);
+    }
+
+    bubble.appendChild(meta);
   }
 
   row.appendChild(bubble);
@@ -665,12 +685,19 @@ export function updateMessageRowSendStatus({ clientTempId, messageId, status }) 
     return;
   }
 
-  let statusSlot = bubble.querySelector(".message-bubble-status");
+  let meta = bubble.querySelector(".message-bubble-meta");
+  if (!meta) {
+    meta = document.createElement("div");
+    meta.className = "message-bubble-meta";
+    bubble.appendChild(meta);
+  }
+
+  let statusSlot = meta.querySelector(".message-bubble-status");
   if (!statusSlot) {
     bubble.classList.add("message-bubble--has-status");
     statusSlot = document.createElement("div");
     statusSlot.className = "message-bubble-status";
-    bubble.appendChild(statusSlot);
+    meta.appendChild(statusSlot);
   }
   statusSlot.replaceChildren(createSendStatusElement(status));
 
