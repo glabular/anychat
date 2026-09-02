@@ -1,7 +1,11 @@
 /** Distance from the bottom that still counts as “at latest”. */
 const CHAT_LATEST_THRESHOLD_PX = 24;
 
+const VISIBLE_CLASS = "chat-scroll-to-latest--visible";
+
 let chatMessagesScrollBound = false;
+/** @type {((event: TransitionEvent) => void) | null} */
+let pendingHideTransitionEnd = null;
 
 function getChatMessagesContainer() {
   return document.getElementById("chat-messages");
@@ -18,6 +22,80 @@ function prefersReducedMotion() {
 function onScrollToLatestClick() {
   const behavior = prefersReducedMotion() ? "auto" : "smooth";
   scrollChatToLatest({ behavior });
+}
+
+function cancelPendingHide(button) {
+  if (pendingHideTransitionEnd) {
+    button.removeEventListener("transitionend", pendingHideTransitionEnd);
+    pendingHideTransitionEnd = null;
+  }
+}
+
+function isScrollToLatestButtonShown(button) {
+  return !button.hidden && button.classList.contains(VISIBLE_CLASS);
+}
+
+/**
+ * @param {boolean} visible
+ * @param {{ immediate?: boolean }} [options]
+ */
+function setScrollToLatestButtonVisible(visible, { immediate = false } = {}) {
+  const button = getScrollToLatestButton();
+  if (!button) {
+    return;
+  }
+
+  const skipMotion = immediate || prefersReducedMotion();
+
+  if (visible) {
+    cancelPendingHide(button);
+
+    if (isScrollToLatestButtonShown(button)) {
+      return;
+    }
+
+    if (button.hidden) {
+      button.hidden = false;
+      if (!skipMotion) {
+        button.classList.remove(VISIBLE_CLASS);
+        // Force layout so the off-screen start state paints before sliding in.
+        void button.offsetWidth;
+      }
+    }
+
+    button.classList.add(VISIBLE_CLASS);
+    return;
+  }
+
+  cancelPendingHide(button);
+
+  if (button.hidden && !button.classList.contains(VISIBLE_CLASS)) {
+    return;
+  }
+
+  if (skipMotion || !button.classList.contains(VISIBLE_CLASS)) {
+    button.classList.remove(VISIBLE_CLASS);
+    button.hidden = true;
+    return;
+  }
+
+  button.classList.remove(VISIBLE_CLASS);
+
+  pendingHideTransitionEnd = (event) => {
+    if (event.target !== button) {
+      return;
+    }
+    if (event.propertyName !== "transform" && event.propertyName !== "opacity") {
+      return;
+    }
+
+    cancelPendingHide(button);
+    if (!button.classList.contains(VISIBLE_CLASS)) {
+      button.hidden = true;
+    }
+  };
+
+  button.addEventListener("transitionend", pendingHideTransitionEnd);
 }
 
 /**
@@ -89,10 +167,7 @@ function shouldShowScrollToLatestButton(container) {
 
 /** Hide immediately (chat switches / clear paths). */
 export function hideScrollToLatestButton() {
-  const button = getScrollToLatestButton();
-  if (button) {
-    button.hidden = true;
-  }
+  setScrollToLatestButtonVisible(false, { immediate: true });
 }
 
 /** Refresh button visibility from current scroll / panel state. */
@@ -104,11 +179,11 @@ export function syncScrollToLatestButton() {
 
   const container = getChatMessagesContainer();
   if (!container) {
-    button.hidden = true;
+    setScrollToLatestButtonVisible(false, { immediate: true });
     return;
   }
 
-  button.hidden = !shouldShowScrollToLatestButton(container);
+  setScrollToLatestButtonVisible(shouldShowScrollToLatestButton(container));
 }
 
 /**

@@ -175,7 +175,8 @@ textarea,
   position: absolute;
   right: calc(1.25rem + var(--scrollbar-size));
   bottom: 1rem;
-  z-index: 2;
+  /* Below composer/send-error stacking so the slide stays under that panel. */
+  z-index: 0;
   box-sizing: border-box;
   width: 40px;
   height: 40px;
@@ -192,6 +193,19 @@ textarea,
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  /* Park below the message/composer seam; composer paints over it while entering. */
+  transform: translateY(calc(100% + 1rem));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 200ms ease-out,
+    opacity 200ms ease-out;
+}
+
+.chat-scroll-to-latest.chat-scroll-to-latest--visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .chat-scroll-to-latest:hover {
@@ -209,6 +223,12 @@ textarea,
 
 .chat-scroll-to-latest[hidden] {
   display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-scroll-to-latest {
+    transition: none;
+  }
 }
 
 .chat-message-list {
@@ -559,6 +579,8 @@ textarea,
 }
 
 .chat-send-error {
+  position: relative;
+  z-index: 1;
   flex-shrink: 0;
   padding: 0.5rem 1.25rem 0;
   color: var(--color-red);
@@ -573,6 +595,8 @@ textarea,
 }
 
 .chat-composer {
+  position: relative;
+  z-index: 1;
   flex-shrink: 0;
   display: flex;
   gap: 0.75rem;
