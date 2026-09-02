@@ -883,9 +883,17 @@ setOnListDraftIndicatorChanged((spaceId, chatId) => {
 });
 
 setOnOutgoingPreviewChanged((target, parts) => {
+  const key = chatMessagePreviewKey(target.spaceId, target.chatId);
+  const cached = chatMessagePreviews.get(key);
+  const createdAt =
+    typeof parts.createdAt === "number"
+      ? parts.createdAt
+      : (cached?.createdAt ?? null);
+
   updateChatListPreview(target.spaceId, target.chatId, {
     senderLabel: null,
     text: parts.text,
+    createdAt,
     isMine: parts.isMine,
     sendStatus: parts.sendStatus,
   });
