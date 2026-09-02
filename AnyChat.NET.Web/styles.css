@@ -65,8 +65,12 @@ textarea,
   -webkit-user-select: text;
 }
 
+.selectable .message-bubble-meta,
+.selectable .message-bubble-meta-spacer,
+.selectable .message-bubble-time,
 .selectable .message-bubble-status,
 .selectable .message-send-status,
+.selectable .message-bubble-meta *,
 .selectable .message-bubble-status *,
 .selectable .message-send-status * {
   user-select: none;
@@ -406,35 +410,69 @@ textarea,
 }
 
 .message-bubble {
+  position: relative;
   width: fit-content;
   max-width: min(70%, 42rem);
   padding: 0.6rem 0.8rem;
   border-radius: 0.75rem;
   background-color: var(--color-light-bg);
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 .message-row--mine .message-bubble {
-  position: relative;
   min-height: 2.25rem;
   background-color: var(--color-accent);
   color: var(--color-text);
 }
 
-.message-row--mine .message-bubble--has-status {
-  padding-right: 1.35rem;
-}
-
-.message-row--mine .message-bubble-text {
+.message-bubble-text {
+  display: inline;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-.message-bubble-status {
+/* Reserves last-line room for absolute meta (Telegram-style). */
+.message-bubble-meta-spacer {
+  display: inline-block;
+  width: 2.75rem;
+  height: 0;
+  vertical-align: baseline;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.message-bubble--has-status .message-bubble-meta-spacer {
+  width: 4rem;
+}
+
+.message-bubble-meta {
   position: absolute;
-  right: 0.45rem;
-  bottom: 0.6rem;
+  right: 0.8rem;
+  bottom: 0.55rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  white-space: nowrap;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.message-bubble-time {
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+}
+
+.message-row--mine .message-bubble-time {
+  color: rgba(248, 248, 248, 0.78);
+}
+
+.message-bubble-status {
+  display: inline-flex;
+  align-items: center;
   line-height: 1;
   pointer-events: none;
 }

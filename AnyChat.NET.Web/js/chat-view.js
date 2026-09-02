@@ -632,6 +632,12 @@ function createMessageRow(message) {
   const sendStatus = resolveOutgoingSendStatus(message);
 
   if (timeLabel || sendStatus) {
+    // Invisible end-of-text reserve so absolute meta can sit on the last line.
+    const spacer = document.createElement("span");
+    spacer.className = "message-bubble-meta-spacer";
+    spacer.setAttribute("aria-hidden", "true");
+    bubble.appendChild(spacer);
+
     const meta = document.createElement("div");
     meta.className = "message-bubble-meta";
 
@@ -687,6 +693,12 @@ export function updateMessageRowSendStatus({ clientTempId, messageId, status }) 
 
   let meta = bubble.querySelector(".message-bubble-meta");
   if (!meta) {
+    if (!bubble.querySelector(".message-bubble-meta-spacer")) {
+      const spacer = document.createElement("span");
+      spacer.className = "message-bubble-meta-spacer";
+      spacer.setAttribute("aria-hidden", "true");
+      bubble.appendChild(spacer);
+    }
     meta = document.createElement("div");
     meta.className = "message-bubble-meta";
     bubble.appendChild(meta);
