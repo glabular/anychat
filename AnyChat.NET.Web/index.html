@@ -76,6 +76,7 @@
           <header class="chat-panel-header">
             <h1 id="chat-panel-title" class="chat-panel-title"></h1>
           </header>
+          <div class="chat-messages-area">
           <div
             id="chat-messages"
             class="chat-messages selectable idle-scrollbar"
@@ -159,6 +160,16 @@
               </p>
             </div>
             <div id="chat-message-list" class="chat-message-list"></div>
+          </div>
+            <button
+              type="button"
+              id="chat-scroll-to-latest"
+              class="chat-scroll-to-latest"
+              aria-label="Scroll to latest messages"
+              hidden
+            >
+              <span aria-hidden="true">↓</span>
+            </button>
           </div>
           <div
             id="chat-send-error"

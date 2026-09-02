@@ -150,6 +150,12 @@ textarea,
   font-weight: 600;
 }
 
+.chat-messages-area {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
 .chat-messages {
   flex: 1;
   min-height: 0;
