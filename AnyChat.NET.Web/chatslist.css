@@ -181,6 +181,14 @@
     white-space: nowrap;
 }
 
+.chat-preview-sender-group {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 1;
+    max-width: 45%;
+    min-width: 0;
+}
+
 .chat-preview-sender {
     color: var(--color-ice);
     min-width: 0;
@@ -189,7 +197,13 @@
     white-space: nowrap;
 }
 
+.chat-preview-colon {
+    flex-shrink: 0;
+    color: var(--color-ice);
+}
+
 .chat-preview-text {
+    flex: 1;
     color: var(--color-text-muted);
     min-width: 0;
     overflow: hidden;

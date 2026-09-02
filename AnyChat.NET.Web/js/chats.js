@@ -1029,7 +1029,7 @@ function formatMessagePreview(message, { isOneToOne }) {
   if (!isOneToOne && message.isMine !== true) {
     const creatorName = message.creatorName?.trim();
     if (creatorName) {
-      senderLabel = `${creatorName}: `;
+      senderLabel = creatorName;
     }
   }
 
@@ -1089,10 +1089,19 @@ function showMessageChatPreview(previewEl, parts) {
   }
 
   if (parts.senderLabel) {
+    const group = document.createElement("span");
+    group.className = "chat-preview-sender-group";
+
     const sender = document.createElement("span");
     sender.className = "chat-preview-sender";
     sender.textContent = parts.senderLabel;
-    previewEl.appendChild(sender);
+
+    const colon = document.createElement("span");
+    colon.className = "chat-preview-colon";
+    colon.textContent = ": ";
+
+    group.append(sender, colon);
+    previewEl.appendChild(group);
   }
 
   const text = document.createElement("span");
