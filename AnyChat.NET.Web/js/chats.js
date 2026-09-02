@@ -1,6 +1,7 @@
 import { fetchChats, postChatMessage, spacesUrl } from "./api.js";
 import { formatChatListTimestamp } from "./date-format.js";
 import { createSendStatusElement, resolveOutgoingSendStatus } from "./message-send-status.js";
+import { initChatMessagesScroll } from "./chat-messages-scroll.js";
 import {
   beginOpenChatMessages,
   finishOpenChatMessagesLoad,
@@ -89,7 +90,6 @@ let chatHistoryState = null;
  * @property {boolean} initialLoadError
  */
 
-let historyScrollBound = false;
 let historySpinnerShowTimer = null;
 let historySpinnerHideTimer = null;
 let historySpinnerShownAt = null;
@@ -422,16 +422,6 @@ function isNearTop(container) {
 
 function isContainerOverflowing(container) {
   return container.scrollHeight > container.clientHeight;
-}
-
-function initChatHistoryScroll() {
-  const container = getChatMessagesContainer();
-  if (!container || historyScrollBound) {
-    return;
-  }
-
-  container.addEventListener("scroll", onChatMessagesScroll, { passive: true });
-  historyScrollBound = true;
 }
 
 function onChatMessagesScroll() {
@@ -899,7 +889,7 @@ setOnOutgoingPreviewChanged((target, parts) => {
   });
 });
 
-initChatHistoryScroll();
+initChatMessagesScroll(onChatMessagesScroll);
 initChatHistoryRetry(() => {
   void loadOlderMessages({ retry: true });
 });

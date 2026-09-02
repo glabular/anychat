@@ -1,12 +1,53 @@
 /** Distance from the bottom that still counts as “at latest”. */
 const CHAT_LATEST_THRESHOLD_PX = 24;
 
+let chatMessagesScrollBound = false;
+
 function getChatMessagesContainer() {
   return document.getElementById("chat-messages");
 }
 
 function getScrollToLatestButton() {
   return document.getElementById("chat-scroll-to-latest");
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function onScrollToLatestClick() {
+  const behavior = prefersReducedMotion() ? "auto" : "smooth";
+  scrollChatToLatest({ behavior });
+}
+
+/**
+ * One-time wiring for button visibility, reduced-motion jump, and history scroll.
+ * @param {() => void} [onScroll] existing history callback (e.g. load older)
+ */
+export function initChatMessagesScroll(onScroll) {
+  if (chatMessagesScrollBound) {
+    return;
+  }
+
+  const container = getChatMessagesContainer();
+  const button = getScrollToLatestButton();
+  if (!container) {
+    return;
+  }
+
+  chatMessagesScrollBound = true;
+
+  container.addEventListener(
+    "scroll",
+    () => {
+      syncScrollToLatestButton();
+      onScroll?.();
+    },
+    { passive: true }
+  );
+
+  button?.addEventListener("click", onScrollToLatestClick);
+  window.addEventListener("resize", syncScrollToLatestButton);
 }
 
 /**
