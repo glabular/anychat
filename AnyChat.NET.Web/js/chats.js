@@ -1,4 +1,5 @@
 import { fetchChats, postChatMessage, spacesUrl } from "./api.js";
+import { formatDateDdMmYyyy } from "./date-format.js";
 import { createSendStatusElement, resolveOutgoingSendStatus } from "./message-send-status.js";
 import {
   beginOpenChatMessages,
@@ -44,7 +45,7 @@ const SPINNER_SHOW_DELAY_MS = 200;
 let loadToken = 0;
 let showSpinnerTimer = null;
 
-/** @typedef {{ senderLabel: string | null, text: string, isMine?: boolean, sendStatus?: import("./message-send-status.js").SendStatus }} ChatPreviewParts */
+/** @typedef {{ senderLabel: string | null, text: string, createdAt?: number | null, isMine?: boolean, sendStatus?: import("./message-send-status.js").SendStatus }} ChatPreviewParts */
 
 const ONE_TO_ONE_SPACE_OBJECT = "anytype.onetoone";
 const DEFAULT_CHAT_AVATAR_EMOJI = "💬";
@@ -995,11 +996,12 @@ async function loadChatPreviews(spaceId, rows, token) {
         row.chatId,
         latestMessage
           ? formatMessagePreview(latestMessage, { isOneToOne })
-          : null
+          : null,
+        row.timestampEl
       );
     } catch (error) {
       console.error(`Could not load latest message for chat ${row.chatId}:`, error);
-      renderChatPreview(row.previewEl, spaceId, row.chatId, null);
+      renderChatPreview(row.previewEl, spaceId, row.chatId, null, row.timestampEl);
     }
   }
 }
@@ -1047,12 +1049,15 @@ function formatMessagePreview(message, { isOneToOne }) {
     }
   }
 
+  const createdAt =
+    typeof message.createdAt === "number" ? message.createdAt : null;
+
   const sendStatus = resolveOutgoingSendStatus(message);
   if (sendStatus) {
-    return { senderLabel, text, isMine: true, sendStatus };
+    return { senderLabel, text, createdAt, isMine: true, sendStatus };
   }
 
-  return { senderLabel, text };
+  return { senderLabel, text, createdAt };
 }
 
 function showDraftChatPreview(previewEl, draftText) {
@@ -1091,6 +1096,29 @@ function updateChatHeaderStatus(chatId, parts) {
 }
 
 /**
+ * @param {HTMLElement | null | undefined} timestampEl
+ * @param {number | null | undefined} createdAt
+ */
+function renderChatTimestamp(timestampEl, createdAt) {
+  if (!(timestampEl instanceof HTMLElement)) {
+    return;
+  }
+
+  timestampEl.textContent = formatDateDdMmYyyy(createdAt) ?? "";
+}
+
+/**
+ * @param {string} chatId
+ * @returns {HTMLElement | null}
+ */
+function getChatTimestampEl(chatId) {
+  const timestampEl = document.querySelector(
+    `#chats-list li[data-chat-id="${CSS.escape(chatId)}"] .chat-timestamp`
+  );
+  return timestampEl instanceof HTMLElement ? timestampEl : null;
+}
+
+/**
  * @param {HTMLParagraphElement} previewEl
  * @param {ChatPreviewParts | null} parts
  */
@@ -1126,13 +1154,28 @@ function showMessageChatPreview(previewEl, parts) {
 
 /**
  * @param {HTMLParagraphElement} previewEl
+ * @param {string} spaceId
+ * @param {string} chatId
  * @param {ChatPreviewParts | null | undefined} messagePreviewParts When provided, updates the cache.
+ * @param {HTMLElement | null | undefined} [timestampEl]
  */
-function renderChatPreview(previewEl, spaceId, chatId, messagePreviewParts) {
+function renderChatPreview(
+  previewEl,
+  spaceId,
+  chatId,
+  messagePreviewParts,
+  timestampEl
+) {
   const key = chatMessagePreviewKey(spaceId, chatId);
   if (messagePreviewParts !== undefined) {
     chatMessagePreviews.set(key, messagePreviewParts);
   }
+
+  const stampEl =
+    timestampEl instanceof HTMLElement
+      ? timestampEl
+      : getChatTimestampEl(chatId);
+  const parts = chatMessagePreviews.get(key) ?? null;
 
   if (hasListDraftIndicator(spaceId, chatId)) {
     updateChatHeaderStatus(chatId, null);
@@ -1140,12 +1183,13 @@ function renderChatPreview(previewEl, spaceId, chatId, messagePreviewParts) {
       previewEl,
       getComposerDraft({ spaceId, chatId })
     );
+    renderChatTimestamp(stampEl, parts?.createdAt);
     return;
   }
 
-  const parts = chatMessagePreviews.get(key) ?? null;
   updateChatHeaderStatus(chatId, parts);
   showMessageChatPreview(previewEl, parts);
+  renderChatTimestamp(stampEl, parts?.createdAt);
 }
 
 function updateChatListPreview(spaceId, chatId, messagePreviewParts) {
@@ -1156,5 +1200,11 @@ function updateChatListPreview(spaceId, chatId, messagePreviewParts) {
     return;
   }
 
-  renderChatPreview(previewEl, spaceId, chatId, messagePreviewParts);
+  renderChatPreview(
+    previewEl,
+    spaceId,
+    chatId,
+    messagePreviewParts,
+    getChatTimestampEl(chatId)
+  );
 }
