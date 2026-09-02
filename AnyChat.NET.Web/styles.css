@@ -151,13 +151,16 @@ textarea,
 }
 
 .chat-messages-area {
+  position: relative;
   display: flex;
   flex: 1;
+  min-width: 0;
   min-height: 0;
 }
 
 .chat-messages {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -166,6 +169,46 @@ textarea,
   padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
+}
+
+.chat-scroll-to-latest {
+  position: absolute;
+  right: calc(1.25rem + var(--scrollbar-size));
+  bottom: 1rem;
+  z-index: 2;
+  box-sizing: border-box;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background-color: var(--color-light-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.chat-scroll-to-latest:hover {
+  background-color: var(--color-surface-hover);
+}
+
+.chat-scroll-to-latest:active {
+  background-color: var(--color-accent-active);
+}
+
+.chat-scroll-to-latest:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.chat-scroll-to-latest[hidden] {
+  display: none;
 }
 
 .chat-message-list {
