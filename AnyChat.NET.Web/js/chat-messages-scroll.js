@@ -20,8 +20,7 @@ function prefersReducedMotion() {
 }
 
 function onScrollToLatestClick() {
-  const behavior = prefersReducedMotion() ? "auto" : "smooth";
-  scrollChatToLatest({ behavior });
+  scrollChatToLatestFromButton();
 }
 
 function cancelPendingHide(button) {
@@ -205,5 +204,40 @@ export function scrollChatToLatest({ behavior = "auto" } = {}) {
     container.scrollTop = container.scrollHeight;
   }
 
+  syncScrollToLatestButton();
+}
+
+/**
+ * Button click: hop instantly to the last viewport when far away, then
+ * smooth-scroll only that final screen. Reduced motion stays fully instant.
+ */
+function scrollChatToLatestFromButton() {
+  const container = getChatMessagesContainer();
+  if (!container) {
+    return;
+  }
+
+  void container.offsetHeight;
+
+  if (prefersReducedMotion()) {
+    container.scrollTop = container.scrollHeight;
+    syncScrollToLatestButton();
+    return;
+  }
+
+  const maxScrollTop = Math.max(
+    0,
+    container.scrollHeight - container.clientHeight
+  );
+  const remaining = maxScrollTop - container.scrollTop;
+  const lastPage = container.clientHeight;
+
+  if (remaining > lastPage) {
+    container.scrollTop = maxScrollTop - lastPage;
+    // Apply the hop before starting the short smooth finish.
+    void container.offsetHeight;
+  }
+
+  container.scrollTo({ top: maxScrollTop, behavior: "smooth" });
   syncScrollToLatestButton();
 }
