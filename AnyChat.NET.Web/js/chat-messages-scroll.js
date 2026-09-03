@@ -2,10 +2,14 @@
 const CHAT_LATEST_THRESHOLD_PX = 24;
 
 const VISIBLE_CLASS = "chat-scroll-to-latest--visible";
+/** Must cover the CSS hide transition (transform + opacity). */
+const HIDE_TRANSITION_MS = 220;
 
 let chatMessagesScrollBound = false;
 /** @type {((event: TransitionEvent) => void) | null} */
 let pendingHideTransitionEnd = null;
+/** @type {ReturnType<typeof setTimeout> | null} */
+let pendingHideTimeoutId = null;
 
 function getChatMessagesContainer() {
   return document.getElementById("chat-messages");
@@ -28,10 +32,29 @@ function cancelPendingHide(button) {
     button.removeEventListener("transitionend", pendingHideTransitionEnd);
     pendingHideTransitionEnd = null;
   }
+  if (pendingHideTimeoutId !== null) {
+    clearTimeout(pendingHideTimeoutId);
+    pendingHideTimeoutId = null;
+  }
+}
+
+function finishHideScrollToLatestButton(button) {
+  cancelPendingHide(button);
+  if (!button.classList.contains(VISIBLE_CLASS)) {
+    button.hidden = true;
+  }
 }
 
 function isScrollToLatestButtonShown(button) {
   return !button.hidden && button.classList.contains(VISIBLE_CLASS);
+}
+
+function isScrollToLatestButtonExiting(button) {
+  return (
+    !button.hidden
+    && !button.classList.contains(VISIBLE_CLASS)
+    && pendingHideTransitionEnd !== null
+  );
 }
 
 /**
@@ -66,13 +89,17 @@ function setScrollToLatestButtonVisible(visible, { immediate = false } = {}) {
     return;
   }
 
-  cancelPendingHide(button);
+  if (button.hidden) {
+    return;
+  }
 
-  if (button.hidden && !button.classList.contains(VISIBLE_CLASS)) {
+  // Scroll sync fires every frame; do not abort an in-progress exit.
+  if (isScrollToLatestButtonExiting(button)) {
     return;
   }
 
   if (skipMotion || !button.classList.contains(VISIBLE_CLASS)) {
+    cancelPendingHide(button);
     button.classList.remove(VISIBLE_CLASS);
     button.hidden = true;
     return;
@@ -87,14 +114,13 @@ function setScrollToLatestButtonVisible(visible, { immediate = false } = {}) {
     if (event.propertyName !== "transform" && event.propertyName !== "opacity") {
       return;
     }
-
-    cancelPendingHide(button);
-    if (!button.classList.contains(VISIBLE_CLASS)) {
-      button.hidden = true;
-    }
+    finishHideScrollToLatestButton(button);
   };
 
   button.addEventListener("transitionend", pendingHideTransitionEnd);
+  pendingHideTimeoutId = setTimeout(() => {
+    finishHideScrollToLatestButton(button);
+  }, HIDE_TRANSITION_MS);
 }
 
 /**
