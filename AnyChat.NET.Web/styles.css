@@ -22,6 +22,9 @@
   --scrollbar-track: rgba(248, 248, 248, 0.08);
   --scrollbar-fade-in-ms: 180ms;
   --scrollbar-fade-out-ms: 280ms;
+
+  --floating-date-fade-in-ms: 180ms;
+  --floating-date-fade-out-ms: 280ms;
 }
 
 /*
@@ -439,8 +442,9 @@ textarea,
 }
 
 .message-date-separator {
+  --message-date-sticky-top: 0.5rem;
   position: sticky;
-  top: 0.5rem;
+  top: var(--message-date-sticky-top);
   z-index: 2;
   align-self: center;
   width: fit-content;
@@ -457,6 +461,29 @@ textarea,
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
+}
+
+.message-date-separator--stuck {
+  transition: opacity var(--floating-date-fade-out-ms) ease;
+}
+
+#chat-messages:not(.is-floating-date-visible) .message-date-separator--stuck {
+  opacity: 0;
+}
+
+#chat-messages.is-floating-date-visible .message-date-separator--stuck {
+  opacity: 1;
+  transition: opacity var(--floating-date-fade-in-ms) ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-date-separator--stuck {
+    transition: none;
+  }
+
+  #chat-messages.is-floating-date-visible .message-date-separator--stuck {
+    transition: none;
+  }
 }
 
 .selectable .message-date-separator {
