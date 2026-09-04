@@ -72,6 +72,8 @@ export function fillAuthorAvatarVisual(container, { displayName, member, gateway
       img.src = url;
       img.alt = "";
       img.decoding = "async";
+      img.draggable = false;
+      img.setAttribute("draggable", "false");
       img.addEventListener("error", () => {
         container.replaceChildren();
         container.classList.remove("message-author-avatar--image");
