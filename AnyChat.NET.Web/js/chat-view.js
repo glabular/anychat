@@ -9,6 +9,7 @@ import {
 } from "./message-send-status.js";
 import {
   hideScrollToLatestButton,
+  isChatMessagesAtLatest,
   scrollChatToLatest,
   syncScrollToLatestButton,
 } from "./chat-messages-scroll.js";
@@ -178,6 +179,9 @@ function syncComposerUi() {
   sendButton.tabIndex = canSend ? 0 : -1;
   sendButton.setAttribute("aria-hidden", canSend ? "false" : "true");
 
+  const messages = document.getElementById("chat-messages");
+  const pinLatest = isChatMessagesAtLatest(messages);
+
   // Collapse first so scrollHeight reflects content, then grow up to CSS max-height.
   // Keep overflow hidden until the cap so an empty/short field never shows a scrollbar.
   input.style.height = "auto";
@@ -190,6 +194,11 @@ function syncComposerUi() {
   // When capped, keep the caret line in view while appending (typing/newlines at the end).
   if (atCap && input.selectionStart === input.value.length) {
     input.scrollTop = input.scrollHeight;
+  }
+
+  // Composer growth shrinks the message pane; re-pin so latest messages stay above the pill.
+  if (pinLatest) {
+    scrollChatToLatest();
   }
 }
 
