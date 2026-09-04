@@ -236,6 +236,39 @@
         </section>
       </main>
     </div>
+    <div
+      id="member-profile-panel"
+      class="member-profile-panel"
+      hidden
+    >
+      <div
+        id="member-profile-card"
+        class="member-profile-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="member-profile-name"
+        tabindex="-1"
+      >
+        <div
+          id="member-profile-avatar"
+          class="member-profile-avatar"
+          aria-hidden="true"
+        ></div>
+        <h2 id="member-profile-name" class="member-profile-name"></h2>
+        <p class="member-profile-identity-label">Anytype identity</p>
+        <p id="member-profile-identity" class="member-profile-identity"></p>
+        <button
+          type="button"
+          id="member-profile-dm"
+          class="member-profile-dm"
+          disabled
+          aria-disabled="true"
+          title="Direct messaging is not available yet"
+        >
+          Send DM
+        </button>
+      </div>
+    </div>
     <script type="module" src="js/main.js"></script>
   </body>
 </html>

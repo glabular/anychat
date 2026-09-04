@@ -14,10 +14,14 @@ import {
   syncScrollToLatestButton,
 } from "./chat-messages-scroll.js";
 import {
-  buildMemberFileAvatarUrl,
   getSpaceMember,
-  initialsFromDisplayName,
 } from "./space-members.js";
+import {
+  closeMemberProfilePanel,
+  fillAuthorAvatarVisual,
+  isMemberProfilePanelOpen,
+  openMemberProfilePanel,
+} from "./member-profile-panel.js";
 
 /** Bumps when opening a chat or clearing the panel so stale fetches are ignored. */
 let openChatToken = 0;
@@ -340,6 +344,7 @@ export function hideChatPanel(options = {}) {
   openChatToken += 1;
   openChat = null;
   clearMessageProfilesContext();
+  closeMemberProfilePanel({ restoreFocus: false });
   clearChatMessages();
   resetChatHistoryStatus();
   setSendErrorVisible(false);
@@ -380,10 +385,15 @@ export function closeOpenChat() {
   return true;
 }
 
-/** Escape and mouse Back (button 3) close the open chat. */
+/** Escape closes the member profile panel first, then the open chat. */
 export function initChatViewCloseBindings() {
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") {
+      return;
+    }
+
+    if (closeMemberProfilePanel({ restoreFocus: true })) {
+      event.preventDefault();
       return;
     }
 
@@ -395,6 +405,12 @@ export function initChatViewCloseBindings() {
   // Mouse X1 ("Back") is button 3. Prevent the browser from navigating away.
   document.addEventListener("mousedown", (event) => {
     if (event.button !== 3) {
+      return;
+    }
+
+    if (isMemberProfilePanelOpen()) {
+      event.preventDefault();
+      closeMemberProfilePanel({ restoreFocus: true });
       return;
     }
 
@@ -412,6 +428,7 @@ export function initChatViewCloseBindings() {
  * Ignore fetch results when the token no longer matches.
  */
 export function beginOpenChatMessages() {
+  closeMemberProfilePanel({ restoreFocus: false });
   const loadingEl = document.getElementById("chat-messages-loading");
   const wasLoadingVisible = Boolean(loadingEl && !loadingEl.hidden);
   const emptyEl = document.getElementById("chat-messages-empty");
@@ -772,57 +789,28 @@ function createAuthorAvatarButton(author) {
   button.type = "button";
   button.className = "message-author-avatar";
   button.setAttribute("aria-label", `Profile: ${author.displayName}`);
+  button.setAttribute("aria-haspopup", "dialog");
   if (author.participantId) {
     button.dataset.participantId = author.participantId;
   }
 
-  const avatar = author.member?.avatar;
-  const kind = typeof avatar?.kind === "string" ? avatar.kind : "";
+  fillAuthorAvatarVisual(button, {
+    displayName: author.displayName,
+    member: author.member,
+    gatewayUrl: messageProfiles?.gatewayUrl ?? "",
+  });
 
-  if (kind === "emoji" && typeof avatar.emoji === "string" && avatar.emoji.trim()) {
-    button.classList.add("message-author-avatar--emoji");
-    button.textContent = avatar.emoji.trim();
-    return button;
-  }
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openMemberProfilePanel({
+      anchor: button,
+      displayName: author.displayName,
+      member: author.member,
+      participantId: author.participantId,
+      gatewayUrl: messageProfiles?.gatewayUrl ?? "",
+    });
+  });
 
-  if (kind === "file" && typeof avatar.fileId === "string") {
-    const url = buildMemberFileAvatarUrl(
-      messageProfiles?.gatewayUrl,
-      avatar.fileId
-    );
-    if (url) {
-      const img = document.createElement("img");
-      img.className = "message-author-avatar-image";
-      img.src = url;
-      img.alt = "";
-      img.decoding = "async";
-      img.addEventListener("error", () => {
-        button.replaceChildren();
-        button.classList.remove("message-author-avatar--image");
-        button.classList.add("message-author-avatar--initials");
-        button.textContent = initialsFromDisplayName(author.displayName);
-      });
-      button.classList.add("message-author-avatar--image");
-      button.appendChild(img);
-      return button;
-    }
-  }
-
-  if (kind === "named" && typeof avatar.name === "string" && avatar.name.trim()) {
-    button.classList.add("message-author-avatar--named");
-    button.textContent = initialsFromDisplayName(
-      avatar.name.trim() || author.displayName
-    );
-    const color =
-      typeof avatar.color === "string" ? avatar.color.trim() : "";
-    if (color) {
-      button.style.backgroundColor = color;
-    }
-    return button;
-  }
-
-  button.classList.add("message-author-avatar--initials");
-  button.textContent = initialsFromDisplayName(author.displayName);
   return button;
 }
 
