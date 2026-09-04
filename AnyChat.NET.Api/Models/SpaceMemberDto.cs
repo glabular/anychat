@@ -13,7 +13,12 @@ public sealed class SpaceMemberDto
     /// <summary>Display name resolved from the member record.</summary>
     public string? Name { get; init; }
 
-    /// <summary>Anytype network identity.</summary>
+    /// <summary>
+    /// Optional human-readable Anytype name.
+    /// </summary>
+    public string? GlobalName { get; init; }
+
+    /// <summary>Anytype network identity (long account key).</summary>
     public string? Identity { get; init; }
 
     /// <summary>

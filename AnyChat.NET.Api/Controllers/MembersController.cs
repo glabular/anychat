@@ -46,6 +46,9 @@ public class MembersController(AnytypeClient client) : ControllerBase
         {
             Id = member.Id!.Trim(),
             Name = ResolveDisplayName(member),
+            GlobalName = string.IsNullOrWhiteSpace(member.GlobalName)
+                ? null
+                : member.GlobalName.Trim(),
             Identity = string.IsNullOrWhiteSpace(member.Identity)
                 ? null
                 : member.Identity.Trim(),

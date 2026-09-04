@@ -210,9 +210,9 @@ export function openMemberProfilePanel({
   closeMemberProfilePanel({ restoreFocus: false });
 
   const identity =
-    typeof member?.identity === "string" && member.identity.trim()
-      ? member.identity.trim()
-      : "Not available";
+    (typeof member?.globalName === "string" && member.globalName.trim())
+    || (typeof member?.identity === "string" && member.identity.trim())
+    || "Not available";
 
   nameEl.textContent = displayName;
   identityEl.textContent = identity;
