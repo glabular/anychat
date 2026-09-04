@@ -8,8 +8,9 @@ const WIDTH_STORAGE_KEY = "anychat.chatsSidebarWidth";
 
 /**
  * Drag the chats/main boundary to resize the chats list.
- * Width is clamped to [soft min, min(480px, 45% of layout)] and
- * the user's last choice is restored from localStorage on launch.
+ * Width is clamped to [soft min, min(480px, 45% of layout)], soft min is
+ * never undercut by window resize, and the last choice is restored from
+ * localStorage on launch.
  */
 export function initChatsSidebarResize() {
   const layout = document.querySelector(".layout");
@@ -99,10 +100,14 @@ function maxWidthPx(layout) {
   return Math.min(MAX_PX, layout.clientWidth * MAX_LAYOUT_FRACTION);
 }
 
+/**
+ * Soft min is a hard floor: window resize must not crush the list below it.
+ * Effective max is never below soft min, so a narrow window keeps the list
+ * at soft min and lets the message pane shrink/clip instead.
+ */
 function clampToLayout(value, layout) {
-  const maxPx = maxWidthPx(layout);
-  const minPx = Math.min(SOFT_MIN_PX, maxPx);
-  return Math.min(maxPx, Math.max(minPx, value));
+  const maxPx = Math.max(maxWidthPx(layout), SOFT_MIN_PX);
+  return Math.min(maxPx, Math.max(SOFT_MIN_PX, value));
 }
 
 function readWidthPx(sidebar) {
@@ -134,9 +139,9 @@ function persistWidthPx(widthPx) {
 
 function applyWidth(layout, splitter, widthPx, maxPx) {
   const rounded = Math.round(widthPx);
-  const minPx = Math.round(Math.min(SOFT_MIN_PX, maxPx));
+  const effectiveMax = Math.round(Math.max(maxPx, SOFT_MIN_PX));
   layout.style.setProperty("--chats-sidebar-width", `${rounded}px`);
-  splitter.setAttribute("aria-valuemin", String(minPx));
-  splitter.setAttribute("aria-valuemax", String(Math.round(maxPx)));
+  splitter.setAttribute("aria-valuemin", String(SOFT_MIN_PX));
+  splitter.setAttribute("aria-valuemax", String(effectiveMax));
   splitter.setAttribute("aria-valuenow", String(rounded));
 }

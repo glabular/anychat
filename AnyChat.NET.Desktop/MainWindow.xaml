@@ -9,6 +9,8 @@
         Icon="pack://application:,,,/Assets/app.ico"
         Height="600"
         Width="900"
+        MinHeight="400"
+        MinWidth="600"
         WindowStartupLocation="CenterScreen"
         Background="#171717">
     <Grid Background="#171717">
