@@ -136,6 +136,8 @@ function getSpaceButton(space, shortcutNumber) {
   input.value = space.id;
   input.dataset.spaceName = displayName;
   input.dataset.spaceObject = space.object ?? "";
+  input.dataset.gatewayUrl =
+    typeof space.gatewayUrl === "string" ? space.gatewayUrl : "";
 
   const spaceLetterSpan = document.createElement("span");
   spaceLetterSpan.textContent = letter;

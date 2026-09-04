@@ -13,6 +13,11 @@ import {
   scrollChatToLatest,
   syncScrollToLatestButton,
 } from "./chat-messages-scroll.js";
+import {
+  buildMemberFileAvatarUrl,
+  getSpaceMember,
+  initialsFromDisplayName,
+} from "./space-members.js";
 
 /** Bumps when opening a chat or clearing the panel so stale fetches are ignored. */
 let openChatToken = 0;
@@ -22,6 +27,17 @@ let reloadOpenChatMessages = null;
 let onChatPanelHidden = null;
 let onListDraftIndicatorChanged = null;
 let onOutgoingPreviewChanged = null;
+
+/**
+ * When set, message rows render author avatars and names (regular spaces only).
+ * @type {{
+ *   spaceId: string,
+ *   gatewayUrl: string,
+ *   enabled: boolean,
+ *   selfParticipantId: string | null,
+ * } | null}
+ */
+let messageProfiles = null;
 
 /** Unsent composer text keyed by spaceId + chatId for the current session. */
 const composerDrafts = new Map();
@@ -323,6 +339,7 @@ export function hideChatPanel(options = {}) {
 
   openChatToken += 1;
   openChat = null;
+  clearMessageProfilesContext();
   clearChatMessages();
   resetChatHistoryStatus();
   setSendErrorVisible(false);
@@ -441,6 +458,57 @@ export function setOpenChat(spaceId, chatId) {
   openChat = { spaceId, chatId };
   restoreComposerDraftToInput(openChat);
   setSendErrorVisible(false);
+}
+
+/**
+ * Enable or clear author-profile rendering for the open chat.
+ * Pass null / disabled outside anytype.space so profile markup is absent.
+ * @param {{
+ *   spaceId: string,
+ *   gatewayUrl?: string,
+ *   enabled: boolean,
+ * } | null} context
+ */
+export function setMessageProfilesContext(context) {
+  if (!context || !context.enabled || !context.spaceId) {
+    messageProfiles = null;
+    return;
+  }
+
+  messageProfiles = {
+    spaceId: context.spaceId,
+    gatewayUrl:
+      typeof context.gatewayUrl === "string" ? context.gatewayUrl : "",
+    enabled: true,
+    selfParticipantId: messageProfiles?.spaceId === context.spaceId
+      ? messageProfiles.selfParticipantId
+      : null,
+  };
+}
+
+export function clearMessageProfilesContext() {
+  messageProfiles = null;
+}
+
+/**
+ * Remember the current user's participant id from isMine messages.
+ * @param {object[] | null | undefined} messages
+ */
+function rememberSelfParticipantFromMessages(messages) {
+  if (!messageProfiles?.enabled || !Array.isArray(messages)) {
+    return;
+  }
+
+  for (const message of messages) {
+    if (
+      message?.isMine === true
+      && typeof message.creator === "string"
+      && message.creator.trim()
+    ) {
+      messageProfiles.selfParticipantId = message.creator.trim();
+      return;
+    }
+  }
 }
 
 export function setOpenChatMessagesReload(callback) {
@@ -655,6 +723,111 @@ function getLastDayKey(list) {
 
 /**
  * @param {object} message
+ * @returns {{
+ *   participantId: string | null,
+ *   displayName: string,
+ *   member: object | null,
+ * } | null}
+ */
+function resolveMessageAuthor(message) {
+  if (!messageProfiles?.enabled) {
+    return null;
+  }
+
+  // Own bubbles stay right-aligned without avatar/name.
+  if (message.isMine === true) {
+    if (typeof message.creator === "string" && message.creator.trim()) {
+      messageProfiles.selfParticipantId = message.creator.trim();
+    }
+    return null;
+  }
+
+  const participantId =
+    typeof message.creator === "string" && message.creator.trim()
+      ? message.creator.trim()
+      : null;
+
+  const member = participantId
+    ? getSpaceMember(messageProfiles.spaceId, participantId)
+    : null;
+
+  const displayName =
+    member?.name?.trim()
+    || (typeof message.creatorName === "string" ? message.creatorName.trim() : "")
+    || "Unknown";
+
+  return { participantId, displayName, member };
+}
+
+/**
+ * @param {{
+ *   displayName: string,
+ *   member: object | null,
+ *   participantId: string | null,
+ * }} author
+ * @returns {HTMLButtonElement}
+ */
+function createAuthorAvatarButton(author) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "message-author-avatar";
+  button.setAttribute("aria-label", `Profile: ${author.displayName}`);
+  if (author.participantId) {
+    button.dataset.participantId = author.participantId;
+  }
+
+  const avatar = author.member?.avatar;
+  const kind = typeof avatar?.kind === "string" ? avatar.kind : "";
+
+  if (kind === "emoji" && typeof avatar.emoji === "string" && avatar.emoji.trim()) {
+    button.classList.add("message-author-avatar--emoji");
+    button.textContent = avatar.emoji.trim();
+    return button;
+  }
+
+  if (kind === "file" && typeof avatar.fileId === "string") {
+    const url = buildMemberFileAvatarUrl(
+      messageProfiles?.gatewayUrl,
+      avatar.fileId
+    );
+    if (url) {
+      const img = document.createElement("img");
+      img.className = "message-author-avatar-image";
+      img.src = url;
+      img.alt = "";
+      img.decoding = "async";
+      img.addEventListener("error", () => {
+        button.replaceChildren();
+        button.classList.remove("message-author-avatar--image");
+        button.classList.add("message-author-avatar--initials");
+        button.textContent = initialsFromDisplayName(author.displayName);
+      });
+      button.classList.add("message-author-avatar--image");
+      button.appendChild(img);
+      return button;
+    }
+  }
+
+  if (kind === "named" && typeof avatar.name === "string" && avatar.name.trim()) {
+    button.classList.add("message-author-avatar--named");
+    button.textContent = initialsFromDisplayName(
+      avatar.name.trim() || author.displayName
+    );
+    const color =
+      typeof avatar.color === "string" ? avatar.color.trim() : "";
+    if (color) {
+      button.style.backgroundColor = color;
+    }
+    return button;
+  }
+
+  button.classList.add("message-author-avatar--initials");
+  button.textContent = initialsFromDisplayName(author.displayName);
+  return button;
+}
+
+/**
+ * @param {object} message
  * @returns {HTMLDivElement | null}
  */
 function createMessageRow(message) {
@@ -678,6 +851,17 @@ function createMessageRow(message) {
 
   const bubble = document.createElement("div");
   bubble.className = "message-bubble";
+
+  const author = resolveMessageAuthor(message);
+  if (author) {
+    row.classList.add("message-row--with-profile");
+    row.appendChild(createAuthorAvatarButton(author));
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "message-author-name";
+    nameEl.textContent = author.displayName;
+    bubble.appendChild(nameEl);
+  }
 
   const textEl = document.createElement("div");
   textEl.className = "message-bubble-text";
@@ -718,7 +902,14 @@ function createMessageRow(message) {
     bubble.appendChild(meta);
   }
 
-  row.appendChild(bubble);
+  if (author) {
+    const body = document.createElement("div");
+    body.className = "message-body";
+    body.appendChild(bubble);
+    row.appendChild(body);
+  } else {
+    row.appendChild(bubble);
+  }
 
   return row;
 }
@@ -789,6 +980,8 @@ function buildMessageFragment(messages, { previousDayKey = null } = {}) {
   let lastDayKey = previousDayKey;
   /** @type {string | null} */
   let trailingDayKey = null;
+
+  rememberSelfParticipantFromMessages(messages);
 
   // Anytype already returns each window oldest → newest. Do not reverse.
   for (const message of messages) {

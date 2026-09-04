@@ -51,8 +51,18 @@ export async function fetchChats(spaceId) {
   return await response.json();
 }
 
-export async function fetchSpaceMembers(spaceId) {
-  const response = await fetch(`${spacesUrl()}/${spaceId}/members`);
+/**
+ * @param {string} spaceId
+ * @param {string} memberId participant id or identity
+ */
+export async function fetchSpaceMember(spaceId, memberId) {
+  const response = await fetch(
+    `${spacesUrl()}/${spaceId}/members/${encodeURIComponent(memberId)}`
+  );
+
+  if (response.status === 404) {
+    return null;
+  }
 
   if (!response.ok) {
     throw new Error(`Response status: ${response.status}`);

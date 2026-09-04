@@ -14,8 +14,9 @@ public sealed class MemberAvatarDto
     public string? Emoji { get; init; }
 
     /// <summary>
-    /// Anytype file id when <see cref="Kind"/> is <c>file</c>.
-    /// The client builds a URL with the space gateway.
+    /// Anytype file hash / cid. May arrive from Anytype as a bare cid or as an
+    /// authenticated files URL; the API normalizes to the cid. The client builds
+    /// <c>{gatewayUrl}/image/{fileId}</c>.
     /// </summary>
     public string? FileId { get; init; }
 

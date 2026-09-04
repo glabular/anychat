@@ -8,6 +8,7 @@ import {
 } from "./chats-scroll-to-top.js";
 import {
   beginOpenChatMessages,
+  clearMessageProfilesContext,
   finishOpenChatMessagesLoad,
   hideChatPanel,
   initChatComposer,
@@ -21,6 +22,7 @@ import {
   clearInitialLoadError,
   resetChatHistoryStatus,
   setChatHistoryStatus,
+  setMessageProfilesContext,
   setOnChatPanelHidden,
   setOnListDraftIndicatorChanged,
   setOnOutgoingPreviewChanged,
@@ -30,6 +32,10 @@ import {
   hasListDraftIndicator,
   getComposerDraft,
 } from "./chat-view.js";
+import {
+  ensureMembersForParticipantIds,
+  isRegularSpaceObject,
+} from "./space-members.js";
 
 /** Messages fetched per open-chat request and per older-history page. */
 const MESSAGE_PAGE_SIZE = 50;
@@ -490,6 +496,23 @@ async function loadOlderMessages({ retry = false } = {}) {
       return;
     }
 
+    const selectedSpaceInput = document.querySelector(
+      'input[name="space"]:checked'
+    );
+    if (
+      selectedSpaceInput
+      && isRegularSpaceObject(selectedSpaceInput.dataset.spaceObject ?? "")
+      && Array.isArray(olderMessages)
+    ) {
+      await ensureMembersForParticipantIds(
+        spaceId,
+        olderMessages.map((message) => message?.creator)
+      );
+      if (!isOpenChatMessagesCurrent(token) || chatHistoryState !== state) {
+        return;
+      }
+    }
+
     const previousOldestOrderId = oldestOrderId;
     applyOlderPage(state, olderMessages);
 
@@ -826,6 +849,20 @@ async function openChatMessages(chatId) {
   }
 
   const spaceId = selectedSpaceInput.value;
+  const spaceObject = selectedSpaceInput.dataset.spaceObject ?? "";
+  const gatewayUrl = selectedSpaceInput.dataset.gatewayUrl ?? "";
+  const profilesEnabled = isRegularSpaceObject(spaceObject);
+
+  if (profilesEnabled) {
+    setMessageProfilesContext({
+      spaceId,
+      gatewayUrl,
+      enabled: true,
+    });
+  } else {
+    clearMessageProfilesContext();
+  }
+
   const token = beginOpenChatMessages();
   beginChatHistoryState(spaceId, chatId, token);
 
@@ -838,6 +875,17 @@ async function openChatMessages(chatId) {
     if (!isOpenChatMessagesCurrent(token)) {
       return;
     }
+
+    if (profilesEnabled && Array.isArray(messages)) {
+      await ensureMembersForParticipantIds(
+        spaceId,
+        messages.map((message) => message?.creator)
+      );
+      if (!isOpenChatMessagesCurrent(token)) {
+        return;
+      }
+    }
+
     if (!await finishOpenChatMessagesLoad(token)) {
       return;
     }

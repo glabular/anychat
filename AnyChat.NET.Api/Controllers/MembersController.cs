@@ -10,17 +10,23 @@ namespace AnyChat.NET.Api.Controllers;
 [Route("api/spaces/{spaceId}/members")]
 public class MembersController(AnytypeClient client) : ControllerBase
 {
-    [HttpGet]
-    public async Task<IActionResult> List(string spaceId)
+    [HttpGet("{memberId}")]
+    public async Task<IActionResult> Get(string spaceId, string memberId)
     {
-        var response = await client.Members.ListAsync(spaceId);
-        var members = response.Members ?? [];
-        var items = members
-            .Where(IsListableMember)
-            .Select(MapMember)
-            .ToList();
+        try
+        {
+            var member = await client.Members.GetByIdAsync(spaceId, memberId);
+            if (member is null || !IsListableMember(member))
+            {
+                return NotFound();
+            }
 
-        return Ok(items);
+            return Ok(MapMember(member));
+        }
+        catch (Exception)
+        {
+            return NotFound();
+        }
     }
 
     private static bool IsListableMember(Member? member)
@@ -77,7 +83,7 @@ public class MembersController(AnytypeClient client) : ControllerBase
                 return new MemberAvatarDto
                 {
                     Kind = "file",
-                    FileId = fileIcon.File.Trim(),
+                    FileId = NormalizeFileId(fileIcon.File),
                 };
 
             case NamedIcon namedIcon when !string.IsNullOrWhiteSpace(namedIcon.Name):
@@ -93,5 +99,33 @@ public class MembersController(AnytypeClient client) : ControllerBase
             default:
                 return null;
         }
+    }
+
+    /// <summary>
+    /// Anytype often returns file icons as absolute <c>/v1/spaces/.../files/{cid}</c> URLs
+    /// that require API auth. The local gateway serves the same bytes at
+    /// <c>{gatewayUrl}/image/{cid}</c> without a bearer token — return only the cid.
+    /// </summary>
+    private static string NormalizeFileId(string file)
+    {
+        var trimmed = file.Trim();
+        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
+        {
+            return trimmed;
+        }
+
+        var segments = uri.AbsolutePath.Split(
+            '/',
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        for (var i = 0; i < segments.Length - 1; i++)
+        {
+            if (string.Equals(segments[i], "files", StringComparison.OrdinalIgnoreCase))
+            {
+                return segments[i + 1];
+            }
+        }
+
+        return segments.Length > 0 ? segments[^1] : trimmed;
     }
 }
