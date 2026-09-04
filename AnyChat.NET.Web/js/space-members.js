@@ -137,7 +137,13 @@ export async function ensureMembersForParticipantIds(spaceId, participantIds) {
     return;
   }
 
-  await Promise.all(missing.map((memberId) => loadMemberById(spaceId, memberId)));
+  try {
+    await Promise.all(missing.map((memberId) => loadMemberById(spaceId, memberId)));
+  } catch (error) {
+    // Individual fetches already swallow errors; keep a top-level guard so
+    // callers can always continue rendering messages.
+    console.error(`Could not resolve members for space ${spaceId}:`, error);
+  }
 }
 
 /**

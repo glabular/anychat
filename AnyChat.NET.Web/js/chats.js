@@ -33,6 +33,7 @@ import {
   getComposerDraft,
 } from "./chat-view.js";
 import {
+  clearSpaceMembersCache,
   ensureMembersForParticipantIds,
   isRegularSpaceObject,
 } from "./space-members.js";
@@ -504,10 +505,17 @@ async function loadOlderMessages({ retry = false } = {}) {
       && isRegularSpaceObject(selectedSpaceInput.dataset.spaceObject ?? "")
       && Array.isArray(olderMessages)
     ) {
-      await ensureMembersForParticipantIds(
-        spaceId,
-        olderMessages.map((message) => message?.creator)
-      );
+      try {
+        await ensureMembersForParticipantIds(
+          spaceId,
+          olderMessages.map((message) => message?.creator)
+        );
+      } catch (error) {
+        console.error(
+          `Could not resolve author profiles for older messages in chat ${chatId}:`,
+          error
+        );
+      }
       if (!isOpenChatMessagesCurrent(token) || chatHistoryState !== state) {
         return;
       }
@@ -681,6 +689,9 @@ export async function loadChatsForSelectedSpace() {
 
   const spaceId = selectedSpaceInput.value;
   const token = ++loadToken;
+  // Member profiles are cached per space; drop all so a prior space cannot
+  // leak authors/avatars into the newly selected space.
+  clearSpaceMembersCache();
   resetChatHistoryState();
   hideChatPanel();
   beginChatsLoad();
@@ -877,10 +888,18 @@ async function openChatMessages(chatId) {
     }
 
     if (profilesEnabled && Array.isArray(messages)) {
-      await ensureMembersForParticipantIds(
-        spaceId,
-        messages.map((message) => message?.creator)
-      );
+      try {
+        await ensureMembersForParticipantIds(
+          spaceId,
+          messages.map((message) => message?.creator)
+        );
+      } catch (error) {
+        // Profiles are best-effort; messages must still render with name/initials.
+        console.error(
+          `Could not resolve author profiles for chat ${chatId}:`,
+          error
+        );
+      }
       if (!isOpenChatMessagesCurrent(token)) {
         return;
       }
