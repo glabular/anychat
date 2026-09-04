@@ -3,6 +3,10 @@ import {
   initialsFromDisplayName,
 } from "./space-members.js";
 
+const IDENTITY_UNAVAILABLE = "Not available";
+const COPY_TIP_VISIBLE_MS = 1200;
+const COPY_TIP_FADE_MS = 280;
+
 /** @type {HTMLElement | null} */
 let openerButton = null;
 
@@ -11,6 +15,12 @@ let removeOutsideClose = null;
 
 /** @type {(() => void) | null} */
 let removeScrollClose = null;
+
+/** @type {ReturnType<typeof setTimeout> | null} */
+let copyTipHideTimer = null;
+
+/** @type {ReturnType<typeof setTimeout> | null} */
+let copyTipFadeTimer = null;
 
 /**
  * @returns {HTMLElement | null}
@@ -34,6 +44,100 @@ function getPanelCard() {
 export function isMemberProfilePanelOpen() {
   const root = getPanelRoot();
   return Boolean(root && !root.hidden);
+}
+
+function clearCopyTipTimers() {
+  if (copyTipHideTimer !== null) {
+    clearTimeout(copyTipHideTimer);
+    copyTipHideTimer = null;
+  }
+  if (copyTipFadeTimer !== null) {
+    clearTimeout(copyTipFadeTimer);
+    copyTipFadeTimer = null;
+  }
+}
+
+function hideCopyTipImmediate() {
+  clearCopyTipTimers();
+  const tip = document.getElementById("member-profile-copy-tip");
+  if (!(tip instanceof HTMLElement)) {
+    return;
+  }
+  tip.classList.remove("member-profile-copy-tip--visible");
+  tip.hidden = true;
+}
+
+function showCopyTip() {
+  const tip = document.getElementById("member-profile-copy-tip");
+  if (!(tip instanceof HTMLElement)) {
+    return;
+  }
+
+  clearCopyTipTimers();
+  tip.hidden = false;
+  tip.classList.remove("member-profile-copy-tip--visible");
+  // Restart the fade-in after display becomes visible.
+  void tip.offsetWidth;
+  tip.classList.add("member-profile-copy-tip--visible");
+
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
+    .matches;
+  const fadeMs = reducedMotion ? 0 : COPY_TIP_FADE_MS;
+
+  copyTipHideTimer = setTimeout(() => {
+    tip.classList.remove("member-profile-copy-tip--visible");
+    copyTipFadeTimer = setTimeout(() => {
+      tip.hidden = true;
+      copyTipFadeTimer = null;
+    }, fadeMs);
+    copyTipHideTimer = null;
+  }, COPY_TIP_VISIBLE_MS);
+}
+
+/**
+ * @param {string} text
+ */
+async function copyIdentityText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    showCopyTip();
+    return;
+  } catch {
+    // Fall through to execCommand for older WebView2 cases.
+  }
+
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    if (ok) {
+      showCopyTip();
+    }
+  } catch {
+    // Ignore copy failures; panel stays usable.
+  }
+}
+
+function initIdentityCopy() {
+  const identityEl = document.getElementById("member-profile-identity");
+  if (!(identityEl instanceof HTMLElement) || identityEl.dataset.copyBound === "1") {
+    return;
+  }
+
+  identityEl.dataset.copyBound = "1";
+  identityEl.addEventListener("click", () => {
+    const text = identityEl.textContent?.trim() ?? "";
+    if (!text || text === IDENTITY_UNAVAILABLE) {
+      return;
+    }
+    void copyIdentityText(text);
+  });
 }
 
 /**
@@ -155,11 +259,13 @@ export function closeMemberProfilePanel({ restoreFocus = true } = {}) {
   if (!root || root.hidden) {
     openerButton = null;
     detachTransientListeners();
+    hideCopyTipImmediate();
     return false;
   }
 
   root.hidden = true;
   detachTransientListeners();
+  hideCopyTipImmediate();
 
   const opener = openerButton;
   openerButton = null;
@@ -187,6 +293,8 @@ export function openMemberProfilePanel({
   participantId,
   gatewayUrl,
 }) {
+  initIdentityCopy();
+
   const root = getPanelRoot();
   const card = getPanelCard();
   const avatarEl = document.getElementById("member-profile-avatar");
@@ -214,10 +322,13 @@ export function openMemberProfilePanel({
   const identity =
     (typeof member?.globalName === "string" && member.globalName.trim())
     || (typeof member?.identity === "string" && member.identity.trim())
-    || "Not available";
+    || IDENTITY_UNAVAILABLE;
 
   nameEl.textContent = displayName;
   identityEl.textContent = identity;
+  const copyable = identity !== IDENTITY_UNAVAILABLE;
+  identityEl.classList.toggle("member-profile-identity--unavailable", !copyable);
+
   fillAuthorAvatarVisual(avatarEl, {
     displayName,
     member,

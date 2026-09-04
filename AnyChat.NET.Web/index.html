@@ -256,7 +256,18 @@
         ></div>
         <h2 id="member-profile-name" class="member-profile-name"></h2>
         <p class="member-profile-identity-label">Anytype identity</p>
-        <p id="member-profile-identity" class="member-profile-identity"></p>
+        <div class="member-profile-identity-wrap">
+          <p
+            id="member-profile-identity"
+            class="member-profile-identity"
+          ></p>
+          <span
+            id="member-profile-copy-tip"
+            class="member-profile-copy-tip"
+            hidden
+            aria-live="polite"
+          >Copied</span>
+        </div>
         <button
           type="button"
           id="member-profile-dm"
