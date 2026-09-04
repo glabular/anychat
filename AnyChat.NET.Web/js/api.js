@@ -51,6 +51,16 @@ export async function fetchChats(spaceId) {
   return await response.json();
 }
 
+export async function fetchSpaceMembers(spaceId) {
+  const response = await fetch(`${spacesUrl()}/${spaceId}/members`);
+
+  if (!response.ok) {
+    throw new Error(`Response status: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
 export async function postChatMessage(spaceId, chatId, text) {
   const response = await fetch(
     `${spacesUrl()}/${spaceId}/chats/${chatId}/messages`,
