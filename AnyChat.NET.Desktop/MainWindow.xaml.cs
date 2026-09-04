@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Reflection;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
@@ -33,6 +34,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        Title = $"anychat [v{GetProductVersion()}]";
 
         // Also set on the control before EnsureCoreWebView2Async (belt + suspenders
         // with the process env var in App).
@@ -285,6 +288,25 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 #endif
+
+    /// <summary>
+    /// Product version from Directory.Build.props (InformationalVersion).
+    /// </summary>
+    private static string GetProductVersion()
+    {
+        var version = Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+
+        if (string.IsNullOrWhiteSpace(version))
+        {
+            return Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0";
+        }
+
+        var plus = version.IndexOf('+', StringComparison.Ordinal);
+
+        return plus >= 0 ? version[..plus] : version;
+    }
 
     private sealed record WindowPlacement(
         double Left,
