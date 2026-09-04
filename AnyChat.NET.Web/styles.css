@@ -689,13 +689,29 @@ body.is-chats-sidebar-resizing * {
 }
 
 .chat-send-button {
-  padding: 0.65rem 1rem;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-end;
+  box-sizing: border-box;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
   border: 0;
   border-radius: 0.5rem;
   background-color: var(--color-accent);
   color: var(--color-text);
   font: inherit;
   cursor: pointer;
+}
+
+.chat-send-button[hidden] {
+  display: none;
+}
+
+.chat-send-button-icon {
+  display: block;
 }
 
 .chat-send-button:disabled {

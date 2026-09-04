@@ -156,6 +156,25 @@ export function hasListDraftIndicator(spaceId, chatId) {
   return listDraftIndicators.has(composerDraftKey(spaceId, chatId));
 }
 
+function getChatSendButton() {
+  const sendButton = document.getElementById("chat-send-button");
+  return sendButton instanceof HTMLButtonElement ? sendButton : null;
+}
+
+/**
+ * Show the send control only when the composer has sendable (non-whitespace) text.
+ * Call after any programmatic change to the input value.
+ */
+function syncComposerSendButton() {
+  const input = getChatMessageInput();
+  const sendButton = getChatSendButton();
+  if (!input || !sendButton) {
+    return;
+  }
+
+  sendButton.hidden = !hasDraftContent(input.value);
+}
+
 function restoreComposerDraftToInput(target) {
   const input = getChatMessageInput();
   if (!input) {
@@ -166,6 +185,7 @@ function restoreComposerDraftToInput(target) {
   input.value = draft;
   const end = draft.length;
   input.setSelectionRange(end, end);
+  syncComposerSendButton();
   input.focus();
 }
 
@@ -272,6 +292,7 @@ export function hideChatPanel(options = {}) {
   if (input) {
     input.value = "";
   }
+  syncComposerSendButton();
 
   openChatToken += 1;
   openChat = null;
@@ -903,6 +924,12 @@ export function initChatComposer(
     return;
   }
 
+  syncComposerSendButton();
+
+  input.addEventListener("input", () => {
+    syncComposerSendButton();
+  });
+
   input.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" || event.shiftKey || event.isComposing) {
       return;
@@ -947,6 +974,7 @@ export function initChatComposer(
       && openChat?.chatId === target.chatId
     ) {
       input.value = "";
+      syncComposerSendButton();
     }
     if (optimisticPushed) {
       notifyOutgoingPreviewChanged(target, {
@@ -1028,6 +1056,7 @@ export function initChatComposer(
       sendPending = false;
       input.disabled = false;
       sendButton.disabled = false;
+      syncComposerSendButton();
       if (
         openChat?.spaceId === target.spaceId
         && openChat?.chatId === target.chatId
