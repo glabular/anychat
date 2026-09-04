@@ -3,6 +3,10 @@ import { formatChatListTimestamp } from "./date-format.js";
 import { createSendStatusElement, resolveOutgoingSendStatus } from "./message-send-status.js";
 import { initChatMessagesScroll } from "./chat-messages-scroll.js";
 import {
+  hideChatsScrollToTopButton,
+  syncChatsScrollToTopButton,
+} from "./chats-scroll-to-top.js";
+import {
   beginOpenChatMessages,
   finishOpenChatMessagesLoad,
   hideChatPanel,
@@ -603,6 +607,7 @@ function clearChatsContent() {
     chatsEmpty.hidden = true;
   }
   chatsList?.replaceChildren();
+  hideChatsScrollToTopButton();
 }
 
 function beginChatsLoad() {
@@ -936,6 +941,7 @@ export function populateChatsList(chats) {
       restoreChatsEmptyContent(chatsEmpty);
       chatsEmpty.hidden = false;
     }
+    hideChatsScrollToTopButton();
     return [];
   }
 
@@ -950,6 +956,8 @@ export function populateChatsList(chats) {
     return row;
   });
 
+  chatsList.scrollTop = 0;
+  syncChatsScrollToTopButton();
   return rows;
 }
 

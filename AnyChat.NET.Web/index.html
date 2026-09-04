@@ -68,7 +68,18 @@
           No chats in this space yet
           <span class="chats-empty-detail">this space</span>
         </p>
-        <ul id="chats-list" class="idle-scrollbar"></ul>
+        <div class="chats-list-area">
+          <ul id="chats-list" class="idle-scrollbar"></ul>
+          <button
+            type="button"
+            id="chats-scroll-to-top"
+            class="chats-scroll-to-top"
+            aria-label="Scroll to top of chats"
+            hidden
+          >
+            <span aria-hidden="true">↑</span>
+          </button>
+        </div>
       </aside>
       <div
         class="chats-sidebar-splitter"
