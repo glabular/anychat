@@ -633,8 +633,8 @@ body.is-chats-sidebar-resizing * {
 
 .member-profile-avatar {
   box-sizing: border-box;
-  width: 4.5rem;
-  height: 4.5rem;
+  width: 6rem;
+  height: 6rem;
   margin: 0.15rem 0 0.35rem;
   border-radius: 50%;
   overflow: hidden;
@@ -650,7 +650,7 @@ body.is-chats-sidebar-resizing * {
 }
 
 .member-profile-avatar.message-author-avatar--emoji {
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 400;
 }
 
