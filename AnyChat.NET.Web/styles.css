@@ -670,13 +670,33 @@ body.is-chats-sidebar-resizing * {
   flex: 1;
   min-width: 0;
   resize: none;
+  /* Single-line min; grows via JS until this cap, then scrolls. */
+  max-height: calc(1.4em * 10 + 1.3rem);
+  overflow-x: hidden;
+  overflow-y: hidden;
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--color-border);
   border-radius: 0.5rem;
   background-color: var(--color-bg);
   color: var(--color-text);
   font: inherit;
+  line-height: 1.4;
   outline: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.chat-message-input::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+}
+
+.chat-message-input::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+.chat-message-input::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
 }
 
 .chat-message-input:focus,

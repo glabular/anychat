@@ -162,10 +162,10 @@ function getChatSendButton() {
 }
 
 /**
- * Show the send control only when the composer has sendable (non-whitespace) text.
- * Call after any programmatic change to the input value.
+ * Sync send-button visibility and textarea height to the current draft.
+ * Call after any user or programmatic change to the input value.
  */
-function syncComposerSendButton() {
+function syncComposerUi() {
   const input = getChatMessageInput();
   const sendButton = getChatSendButton();
   if (!input || !sendButton) {
@@ -173,6 +173,20 @@ function syncComposerSendButton() {
   }
 
   sendButton.hidden = !hasDraftContent(input.value);
+
+  // Collapse first so scrollHeight reflects content, then grow up to CSS max-height.
+  // Keep overflow hidden until the cap so an empty/short field never shows a scrollbar.
+  input.style.height = "auto";
+  const contentHeight = input.scrollHeight;
+  const maxHeight = Number.parseFloat(getComputedStyle(input).maxHeight);
+  const atCap = Number.isFinite(maxHeight) && contentHeight > maxHeight;
+  input.style.height = `${contentHeight}px`;
+  input.style.overflowY = atCap ? "auto" : "hidden";
+
+  // When capped, keep the caret line in view while appending (typing/newlines at the end).
+  if (atCap && input.selectionStart === input.value.length) {
+    input.scrollTop = input.scrollHeight;
+  }
 }
 
 function restoreComposerDraftToInput(target) {
@@ -185,7 +199,7 @@ function restoreComposerDraftToInput(target) {
   input.value = draft;
   const end = draft.length;
   input.setSelectionRange(end, end);
-  syncComposerSendButton();
+  syncComposerUi();
   input.focus();
 }
 
@@ -292,7 +306,7 @@ export function hideChatPanel(options = {}) {
   if (input) {
     input.value = "";
   }
-  syncComposerSendButton();
+  syncComposerUi();
 
   openChatToken += 1;
   openChat = null;
@@ -924,10 +938,10 @@ export function initChatComposer(
     return;
   }
 
-  syncComposerSendButton();
+  syncComposerUi();
 
   input.addEventListener("input", () => {
-    syncComposerSendButton();
+    syncComposerUi();
   });
 
   input.addEventListener("keydown", (event) => {
@@ -974,7 +988,7 @@ export function initChatComposer(
       && openChat?.chatId === target.chatId
     ) {
       input.value = "";
-      syncComposerSendButton();
+      syncComposerUi();
     }
     if (optimisticPushed) {
       notifyOutgoingPreviewChanged(target, {
@@ -1056,7 +1070,7 @@ export function initChatComposer(
       sendPending = false;
       input.disabled = false;
       sendButton.disabled = false;
-      syncComposerSendButton();
+      syncComposerUi();
       if (
         openChat?.spaceId === target.spaceId
         && openChat?.chatId === target.chatId
