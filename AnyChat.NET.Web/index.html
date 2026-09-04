@@ -200,34 +200,38 @@
             Could not send message. Try again.
           </div>
           <form id="chat-composer" class="chat-composer">
-            <textarea
-              id="chat-message-input"
-              class="chat-message-input"
-              rows="1"
-              placeholder="Enter your message"
-              aria-label="Message"
-            ></textarea>
-            <button
-              id="chat-send-button"
-              class="chat-send-button"
-              type="submit"
-              aria-label="Send"
-              hidden
-            >
-              <svg
-                class="chat-send-button-icon"
-                viewBox="0 0 24 24"
-                width="20"
-                height="20"
+            <div class="chat-composer-pill">
+              <textarea
+                id="chat-message-input"
+                class="chat-message-input"
+                rows="1"
+                placeholder="Enter your message"
+                aria-label="Message"
+              ></textarea>
+              <button
+                id="chat-send-button"
+                class="chat-send-button"
+                type="submit"
+                aria-label="Send"
                 aria-hidden="true"
-                focusable="false"
+                tabindex="-1"
+                disabled
               >
-                <path
-                  fill="currentColor"
-                  d="M3.4 20.6 21 12 3.4 3.4l-.1 6.8L15 12 3.3 13.8l.1 6.8z"
-                />
-              </svg>
-            </button>
+                <svg
+                  class="chat-send-button-icon"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M3.4 20.6 21 12 3.4 3.4l-.1 6.8L15 12 3.3 13.8l.1 6.8z"
+                  />
+                </svg>
+              </button>
+            </div>
           </form>
         </section>
       </main>

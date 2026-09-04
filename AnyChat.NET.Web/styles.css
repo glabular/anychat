@@ -660,30 +660,44 @@ body.is-chats-sidebar-resizing * {
   z-index: 1;
   flex-shrink: 0;
   display: flex;
-  gap: 0.75rem;
-  padding: 0.75rem 1.25rem;
-  border-top: 1px solid var(--color-border);
+  padding: 0.75rem 1.25rem 1rem;
+  /* Opaque so scroll-to-latest can slide under this seam. */
+  background-color: var(--color-bg);
+}
+
+.chat-composer-pill {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.45rem 0.55rem 0.45rem 0.85rem;
+  border-radius: 1.5rem;
   background-color: var(--color-light-bg);
 }
 
 .chat-message-input {
   flex: 1;
   min-width: 0;
+  /* Match send control height so one-line text stays vertically centered. */
+  min-height: 2.25rem;
   resize: none;
   /* Single-line min; grows via JS until this cap, then scrolls. */
-  max-height: calc(1.4em * 10 + 1.3rem);
+  max-height: calc(1.4em * 10 + 0.85rem);
   overflow-x: hidden;
   overflow-y: hidden;
-  padding: 0.65rem 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  background-color: var(--color-bg);
+  margin: 0;
+  padding: 0.425rem 0.25rem;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
   color: var(--color-text);
   font: inherit;
   line-height: 1.4;
   outline: none;
   scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 .chat-message-input::-webkit-scrollbar {
@@ -691,7 +705,7 @@ body.is-chats-sidebar-resizing * {
 }
 
 .chat-message-input::-webkit-scrollbar-track {
-  background: var(--scrollbar-track);
+  background: transparent;
 }
 
 .chat-message-input::-webkit-scrollbar-thumb {
@@ -715,26 +729,53 @@ body.is-chats-sidebar-resizing * {
   justify-content: center;
   align-self: flex-end;
   box-sizing: border-box;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 0.5rem;
-  background-color: var(--color-accent);
+  border-radius: 50%;
+  background-color: transparent;
   color: var(--color-text);
   font: inherit;
   cursor: pointer;
+  /* Keep layout width so the field does not jump when the icon appears. */
+  opacity: 0;
+  pointer-events: none;
 }
 
-.chat-send-button[hidden] {
-  display: none;
+.chat-send-button.chat-send-button--ready {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .chat-send-button-icon {
   display: block;
 }
 
+.chat-send-button:hover {
+  background-color: var(--color-surface-hover);
+}
+
+.chat-send-button:active {
+  background-color: var(--color-accent-active);
+}
+
+.chat-send-button:focus,
+.chat-send-button:focus-visible {
+  outline: none;
+}
+
 .chat-send-button:disabled {
   cursor: default;
+}
+
+.chat-send-button.chat-send-button--ready:disabled {
   opacity: 0.6;
+  pointer-events: none;
+}
+
+.chat-send-button:disabled:hover,
+.chat-send-button:disabled:active {
+  background-color: transparent;
 }

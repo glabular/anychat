@@ -172,7 +172,11 @@ function syncComposerUi() {
     return;
   }
 
-  sendButton.hidden = !hasDraftContent(input.value);
+  const canSend = hasDraftContent(input.value);
+  sendButton.classList.toggle("chat-send-button--ready", canSend);
+  sendButton.disabled = !canSend || sendPending;
+  sendButton.tabIndex = canSend ? 0 : -1;
+  sendButton.setAttribute("aria-hidden", canSend ? "false" : "true");
 
   // Collapse first so scrollHeight reflects content, then grow up to CSS max-height.
   // Keep overflow hidden until the cap so an empty/short field never shows a scrollbar.
