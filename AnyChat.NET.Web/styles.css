@@ -25,6 +25,10 @@
 
   --floating-date-fade-in-ms: 180ms;
   --floating-date-fade-out-ms: 280ms;
+
+  --chats-sidebar-width: 340px;
+  --chats-sidebar-soft-min: 220px;
+  --chats-sidebar-max: 480px;
 }
 
 /*
@@ -94,7 +98,7 @@ textarea,
 }
 
 .chat-sidebar {
-  width: 340px;
+  width: var(--chats-sidebar-width);
   flex-shrink: 0;
   border-right: 1px solid var(--color-border);
   overflow: hidden;
@@ -106,6 +110,28 @@ textarea,
 .chat-sidebar h2 {
   margin-block: 7px;
   text-align: center;
+}
+
+/*
+  Zero net flex width (6px minus overlapping margins) so the hit target
+  sits on the chats/main border without shifting the message pane.
+*/
+.chats-sidebar-splitter {
+  flex: 0 0 6px;
+  width: 6px;
+  margin-left: -3px;
+  margin-right: -3px;
+  align-self: stretch;
+  position: relative;
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+body.is-chats-sidebar-resizing,
+body.is-chats-sidebar-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
 }
 
 .space-label {
