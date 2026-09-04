@@ -6,6 +6,17 @@ import { initFloatingDateIdle } from "./floating-date-idle.js";
 import { initChatsSidebarResize } from "./chats-sidebar-resize.js";
 import { initChatsScrollToTop } from "./chats-scroll-to-top.js";
 
+/** Desktop shell: do not cycle focus with Tab / Shift+Tab. */
+document.addEventListener(
+  "keydown",
+  (event) => {
+    if (event.key === "Tab") {
+      event.preventDefault();
+    }
+  },
+  true
+);
+
 initSpacesScroll();
 initChatViewCloseBindings();
 initIdleScrollbars();

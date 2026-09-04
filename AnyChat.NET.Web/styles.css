@@ -256,9 +256,9 @@ body.is-chats-sidebar-resizing * {
   background-color: var(--color-accent-active);
 }
 
+.chat-scroll-to-latest:focus,
 .chat-scroll-to-latest:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  outline: none;
 }
 
 .chat-scroll-to-latest[hidden] {
@@ -592,9 +592,9 @@ body.is-chats-sidebar-resizing * {
   object-fit: cover;
 }
 
+.message-author-avatar:focus,
 .message-author-avatar:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  outline: none;
 }
 
 .member-profile-panel {
@@ -626,9 +626,9 @@ body.is-chats-sidebar-resizing * {
   text-align: center;
 }
 
+.member-profile-card:focus,
 .member-profile-card:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  outline: none;
 }
 
 .member-profile-avatar {
