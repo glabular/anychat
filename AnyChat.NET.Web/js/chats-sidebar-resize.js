@@ -1,13 +1,15 @@
 const DEFAULT_WIDTH_PX = 340;
-const SOFT_MIN_PX = 220;
+const SOFT_MIN_PX = 305;
 const MAX_PX = 480;
 const MAX_LAYOUT_FRACTION = 0.45;
 
 const RESIZING_CLASS = "is-chats-sidebar-resizing";
+const WIDTH_STORAGE_KEY = "anychat.chatsSidebarWidth";
 
 /**
  * Drag the chats/main boundary to resize the chats list.
- * Width is clamped to [soft min, min(480px, 45% of layout)].
+ * Width is clamped to [soft min, min(480px, 45% of layout)] and
+ * the user's last choice is restored from localStorage on launch.
  */
 export function initChatsSidebarResize() {
   const layout = document.querySelector(".layout");
@@ -18,10 +20,13 @@ export function initChatsSidebarResize() {
     return;
   }
 
-  let currentWidthPx = clampToLayout(
-    readWidthPx(sidebar) ?? DEFAULT_WIDTH_PX,
-    layout,
-  );
+  /** Preferred width from the last drag (or default); may exceed current max. */
+  let preferredWidthPx =
+    readPersistedWidthPx() ??
+    readWidthPx(sidebar) ??
+    DEFAULT_WIDTH_PX;
+
+  let currentWidthPx = clampToLayout(preferredWidthPx, layout);
   applyWidth(layout, splitter, currentWidthPx, maxWidthPx(layout));
 
   let drag = null;
@@ -72,11 +77,14 @@ export function initChatsSidebarResize() {
     if (splitter.hasPointerCapture(event.pointerId)) {
       splitter.releasePointerCapture(event.pointerId);
     }
+
+    preferredWidthPx = currentWidthPx;
+    persistWidthPx(preferredWidthPx);
   }
 
   function onWindowResize() {
     const maxPx = maxWidthPx(layout);
-    currentWidthPx = clampToLayout(currentWidthPx, layout);
+    currentWidthPx = clampToLayout(preferredWidthPx, layout);
     applyWidth(layout, splitter, currentWidthPx, maxPx);
   }
 
@@ -101,6 +109,27 @@ function readWidthPx(sidebar) {
   const raw = getComputedStyle(sidebar).width;
   const parsed = Number.parseFloat(raw);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function readPersistedWidthPx() {
+  try {
+    const raw = localStorage.getItem(WIDTH_STORAGE_KEY);
+    if (raw === null) {
+      return null;
+    }
+    const parsed = Number.parseFloat(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistWidthPx(widthPx) {
+  try {
+    localStorage.setItem(WIDTH_STORAGE_KEY, String(Math.round(widthPx)));
+  } catch {
+    // non-fatal; app still works without persistence
+  }
 }
 
 function applyWidth(layout, splitter, widthPx, maxPx) {
