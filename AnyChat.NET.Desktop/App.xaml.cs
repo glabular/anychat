@@ -1,12 +1,14 @@
 ﻿using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 
 namespace AnyChat.NET.Desktop;
 
 public partial class App : Application
 {
     private const int DwmwaCloak = 13;
+    private const int StableFramesBeforeUncloak = 2;
 
     static App()
     {
@@ -36,10 +38,28 @@ public partial class App : Application
         {
             mainWindow.ContentRendered -= onFirstContentRendered;
 
-            if (isCloaked)
+            if (!isCloaked)
             {
-                SetWindowCloaked(handle, false);
+                return;
             }
+
+            // ContentRendered can fire before DWM has the finished frame.
+            // Wait two CompositionTarget.Rendering ticks, then uncloak.
+            var framesRemaining = StableFramesBeforeUncloak;
+            EventHandler? onRendering = null;
+            onRendering = (_, _) =>
+            {
+                framesRemaining--;
+                if (framesRemaining > 0)
+                {
+                    return;
+                }
+
+                CompositionTarget.Rendering -= onRendering;
+                SetWindowCloaked(handle, false);
+            };
+
+            CompositionTarget.Rendering += onRendering;
         };
 
         mainWindow.ContentRendered += onFirstContentRendered;
