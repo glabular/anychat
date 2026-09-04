@@ -2,13 +2,20 @@
   position: relative;
   flex-shrink: 0;
   width: 72px;
-  height: 100vh;
+  height: 100%;
+  /* Tooltips paint into the chats column; shell clips page scroll. */
+  overflow: visible;
   border-right: 1px solid var(--color-border);
 }
 
 .spaces-sidebar {
   height: 100%;
   margin: 0;
+  /*
+    overflow-y:auto also clips on the x axis. Extra right padding + matching
+    negative margin lets space tooltips sit in the scrollport without growing
+    the rail's layout width (72px). Page scroll is blocked on html/body/.layout.
+  */
   margin-right: -12rem;
   width: 100%;
   padding: 0;
