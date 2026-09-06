@@ -89,3 +89,17 @@ export async function postChatMessage(spaceId, chatId, text) {
 
   return await response.json();
 }
+
+/**
+ * SSE URL for live messages in one chat (proxied by the API).
+ * @param {string} spaceId
+ * @param {string} chatId
+ * @param {number} [limit=50] backlog size on connect
+ * @returns {string}
+ */
+export function chatMessagesStreamUrl(spaceId, chatId, limit = 50) {
+  const params = new URLSearchParams({
+    limit: String(limit),
+  });
+  return `${spacesUrl()}/${encodeURIComponent(spaceId)}/chats/${encodeURIComponent(chatId)}/messages/stream?${params}`;
+}

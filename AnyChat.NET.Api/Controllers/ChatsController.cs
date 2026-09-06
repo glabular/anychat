@@ -22,7 +22,6 @@ public class ChatsController(
     private const int IdentityLearnMaxAttempts = 3;
     private const int StreamHeartbeatSeconds = 30;
     private static readonly TimeSpan IdentityLearnRetryDelay = TimeSpan.FromMilliseconds(200);
-    private static readonly TimeSpan StreamKeepaliveInterval = TimeSpan.FromSeconds(15);
 
     private static readonly JsonSerializerOptions StreamJsonOptions = new()
     {
@@ -88,59 +87,33 @@ public class ChatsController(
 
         try
         {
-            // Single-writer loop: interleave upstream events with SSE comment keepalives
-            // (Anytype.NET strips upstream heartbeats, so the browser never sees them).
-            await using var enumerator = client.Chats
-                .StreamMessagesAsync(
-                    spaceId,
-                    chatId,
-                    limit,
-                    StreamHeartbeatSeconds,
-                    streamToken)
-                .GetAsyncEnumerator(streamToken);
-
-            var moveNextTask = enumerator.MoveNextAsync().AsTask();
-
-            while (!streamToken.IsCancellationRequested)
+            // Plain await foreach only — do not WhenAny-race MoveNextAsync with a timer.
+            // Disposing the enumerator while MoveNextAsync is still pending (chat switch
+            // closes EventSource) surfaces as NotSupportedException in the debugger.
+            await foreach (var streamEvent in client.Chats.StreamMessagesAsync(
+                spaceId,
+                chatId,
+                limit,
+                StreamHeartbeatSeconds,
+                streamToken))
             {
-                using var delayCts = CancellationTokenSource.CreateLinkedTokenSource(streamToken);
-                var delayTask = Task.Delay(StreamKeepaliveInterval, delayCts.Token);
-                var completed = await Task.WhenAny(moveNextTask, delayTask);
-
-                if (completed == moveNextTask)
-                {
-                    await delayCts.CancelAsync();
-                    try
-                    {
-                        await delayTask;
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // Keepalive timer cancelled because an upstream event arrived.
-                    }
-
-                    if (!await moveNextTask)
-                    {
-                        break;
-                    }
-
-                    var dto = MapStreamEvent(enumerator.Current, participantId);
-                    var json = JsonSerializer.Serialize(dto, StreamJsonOptions);
-                    await Response.WriteAsync($"data: {json}\n\n", streamToken);
-                    await Response.Body.FlushAsync(streamToken);
-
-                    moveNextTask = enumerator.MoveNextAsync().AsTask();
-                    continue;
-                }
-
-                await delayTask;
-                await Response.WriteAsync(":\n\n", streamToken);
-                await Response.Body.FlushAsync(streamToken);
+                var dto = MapStreamEvent(streamEvent, participantId);
+                var json = JsonSerializer.Serialize(dto, StreamJsonOptions);
+                await Response.WriteAsync($"data: {json}\n\n", streamToken);
+                await Response.Body.FlushAsync(CancellationToken.None);
             }
         }
         catch (OperationCanceledException) when (streamToken.IsCancellationRequested)
         {
             // Client disconnected or request aborted — expected for SSE.
+        }
+        catch (IOException) when (streamToken.IsCancellationRequested)
+        {
+            // Response write failed because the client already closed the socket.
+        }
+        catch (NotSupportedException) when (streamToken.IsCancellationRequested)
+        {
+            // Some response/upstream stream teardowns surface this on abort; treat as disconnect.
         }
     }
 

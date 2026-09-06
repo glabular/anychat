@@ -1,4 +1,9 @@
-import { fetchChats, postChatMessage, spacesUrl } from "./api.js";
+import {
+  chatMessagesStreamUrl,
+  fetchChats,
+  postChatMessage,
+  spacesUrl,
+} from "./api.js";
 import { formatChatListTimestamp } from "./date-format.js";
 import { createSendStatusElement, resolveOutgoingSendStatus } from "./message-send-status.js";
 import { initChatMessagesScroll } from "./chat-messages-scroll.js";
@@ -54,6 +59,10 @@ const HISTORY_SPINNER_MIN_VISIBLE_MS = 400;
 /** Wait this long before showing the spinner (avoids flash on fast loads). */
 const SPINNER_SHOW_DELAY_MS = 200;
 
+/** Active-chat SSE reconnect backoff (close EventSource on error; no browser tight loop). */
+const STREAM_BACKOFF_MS_MIN = 1000;
+const STREAM_BACKOFF_MS_MAX = 30000;
+
 let loadToken = 0;
 let showSpinnerTimer = null;
 
@@ -101,6 +110,19 @@ let chatHistoryState = null;
  * @property {boolean} initialLoadError
  */
 
+/**
+ * @typedef {object} ChatMessageStreamSubscription
+ * @property {string} spaceId
+ * @property {string} chatId
+ * @property {number} token
+ * @property {EventSource | null} eventSource
+ * @property {ReturnType<typeof setTimeout> | null} reconnectTimer
+ * @property {number} backoffMs
+ */
+
+/** @type {ChatMessageStreamSubscription | null} */
+let messageStream = null;
+
 let historySpinnerShowTimer = null;
 let historySpinnerHideTimer = null;
 let historySpinnerShownAt = null;
@@ -117,6 +139,7 @@ function clearHistorySpinnerTimers() {
 }
 
 function resetChatHistoryState() {
+  stopChatMessageStream();
   clearHistorySpinnerTimers();
   historySpinnerShownAt = null;
   chatHistoryState = null;
@@ -130,6 +153,7 @@ function resetChatHistoryState() {
  * @returns {ChatHistoryState}
  */
 function beginChatHistoryState(spaceId, chatId, token) {
+  stopChatMessageStream();
   clearHistorySpinnerTimers();
   historySpinnerShownAt = null;
   resetChatHistoryStatus();
@@ -146,6 +170,153 @@ function beginChatHistoryState(spaceId, chatId, token) {
     initialLoadError: false,
   };
   return chatHistoryState;
+}
+
+/**
+ * Tear down the active-chat EventSource and any pending reconnect.
+ */
+function stopChatMessageStream() {
+  const sub = messageStream;
+  messageStream = null;
+  if (!sub) {
+    return;
+  }
+
+  if (sub.reconnectTimer !== null) {
+    clearTimeout(sub.reconnectTimer);
+    sub.reconnectTimer = null;
+  }
+
+  if (sub.eventSource) {
+    sub.eventSource.onmessage = null;
+    sub.eventSource.onerror = null;
+    sub.eventSource.close();
+    sub.eventSource = null;
+  }
+}
+
+/**
+ * @param {string} spaceId
+ * @param {string} chatId
+ * @param {number} token
+ */
+function startChatMessageStream(spaceId, chatId, token) {
+  stopChatMessageStream();
+  messageStream = {
+    spaceId,
+    chatId,
+    token,
+    eventSource: null,
+    reconnectTimer: null,
+    backoffMs: STREAM_BACKOFF_MS_MIN,
+  };
+  openChatMessageStreamConnection();
+}
+
+/**
+ * @param {ChatMessageStreamSubscription} sub
+ * @returns {boolean}
+ */
+function isChatMessageStreamCurrent(sub) {
+  return (
+    messageStream === sub
+    && chatHistoryState !== null
+    && chatHistoryState.spaceId === sub.spaceId
+    && chatHistoryState.chatId === sub.chatId
+    && chatHistoryState.token === sub.token
+  );
+}
+
+function openChatMessageStreamConnection() {
+  const sub = messageStream;
+  if (!sub || !isChatMessageStreamCurrent(sub)) {
+    return;
+  }
+
+  if (sub.eventSource) {
+    sub.eventSource.onmessage = null;
+    sub.eventSource.onerror = null;
+    sub.eventSource.close();
+    sub.eventSource = null;
+  }
+
+  const url = chatMessagesStreamUrl(sub.spaceId, sub.chatId, MESSAGE_PAGE_SIZE);
+  const eventSource = new EventSource(url);
+  sub.eventSource = eventSource;
+
+  eventSource.onmessage = (event) => {
+    if (!isChatMessageStreamCurrent(sub)) {
+      stopChatMessageStream();
+      return;
+    }
+    handleChatMessageStreamPayload(sub, event.data);
+  };
+
+  eventSource.onerror = () => {
+    // Close so the browser does not auto-reconnect on a tight loop; we back off.
+    eventSource.onmessage = null;
+    eventSource.onerror = null;
+    eventSource.close();
+    if (sub.eventSource === eventSource) {
+      sub.eventSource = null;
+    }
+
+    if (!isChatMessageStreamCurrent(sub)) {
+      stopChatMessageStream();
+      return;
+    }
+
+    scheduleChatMessageStreamReconnect(sub);
+  };
+}
+
+/**
+ * @param {ChatMessageStreamSubscription} sub
+ */
+function scheduleChatMessageStreamReconnect(sub) {
+  if (sub.reconnectTimer !== null) {
+    clearTimeout(sub.reconnectTimer);
+  }
+
+  const delayMs = sub.backoffMs;
+  sub.backoffMs = Math.min(sub.backoffMs * 2, STREAM_BACKOFF_MS_MAX);
+
+  sub.reconnectTimer = setTimeout(() => {
+    sub.reconnectTimer = null;
+    if (!isChatMessageStreamCurrent(sub)) {
+      stopChatMessageStream();
+      return;
+    }
+    openChatMessageStreamConnection();
+  }, delayMs);
+}
+
+/**
+ * Parse one SSE `data:` payload. UI merge for message_added comes in a later step.
+ * @param {ChatMessageStreamSubscription} sub
+ * @param {string} raw
+ */
+function handleChatMessageStreamPayload(sub, raw) {
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    console.error("Invalid chat message stream payload:", error);
+    return;
+  }
+
+  // Any valid event means the stream is healthy — reset reconnect backoff.
+  sub.backoffMs = STREAM_BACKOFF_MS_MIN;
+
+  if (!isChatMessageStreamCurrent(sub)) {
+    return;
+  }
+
+  if (parsed?.type !== "message_added") {
+    return;
+  }
+
+  // Step 3: merge into open-chat state (dedupe / orderId). Intentionally no-op UI.
 }
 
 /**
@@ -912,6 +1083,7 @@ async function openChatMessages(chatId) {
       applyInitialPage(chatHistoryState, messages);
       renderOpenChatMessages(chatHistoryState.messages);
       updateHistoryStatus(chatHistoryState);
+      startChatMessageStream(spaceId, chatId, token);
       await ensureHistoryFillsViewport();
       maybeLoadOlderMessages();
     } else {
