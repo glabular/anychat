@@ -1067,3 +1067,41 @@ body.is-chats-sidebar-resizing * {
   line-height: 1.35;
   color: var(--color-text-muted);
 }
+
+.anytype-connection-notice-retry {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.5rem;
+}
+
+.anytype-connection-notice-retry-text {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--color-text-muted);
+}
+
+.anytype-connection-notice-spinner {
+  flex-shrink: 0;
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-text-muted);
+  border-radius: 50%;
+  animation: anytype-connection-notice-spin 0.7s linear infinite;
+}
+
+@keyframes anytype-connection-notice-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anytype-connection-notice-spinner {
+    animation: none;
+    border-top-color: var(--color-border);
+    opacity: 0.7;
+  }
+}

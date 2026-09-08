@@ -66,6 +66,9 @@ const SPINNER_SHOW_DELAY_MS = 200;
 const STREAM_BACKOFF_MS_MIN = 1000;
 const STREAM_BACKOFF_MS_MAX = 30000;
 
+/** @type {ReturnType<typeof setInterval> | null} */
+let anytypeNoticeCountdownTimer = null;
+
 let loadToken = 0;
 let showSpinnerTimer = null;
 
@@ -297,11 +300,18 @@ function scheduleChatMessageStreamReconnect(sub) {
   const delayMs = sub.backoffMs;
   sub.backoffMs = Math.min(sub.backoffMs * 2, STREAM_BACKOFF_MS_MAX);
 
+  if (isAnytypeConnectionNoticeVisible()) {
+    startAnytypeReconnectCountdown(delayMs);
+  }
+
   sub.reconnectTimer = setTimeout(() => {
     sub.reconnectTimer = null;
     if (!isChatMessageStreamCurrent(sub)) {
       stopChatMessageStream();
       return;
+    }
+    if (isAnytypeConnectionNoticeVisible()) {
+      setAnytypeReconnectRetryText("Trying again…");
     }
     openChatMessageStreamConnection();
   }, delayMs);
@@ -363,10 +373,64 @@ function showAnytypeConnectionNotice() {
 }
 
 function hideAnytypeConnectionNotice() {
+  clearAnytypeReconnectCountdown();
   const notice = document.getElementById("anytype-connection-notice");
   if (notice) {
     notice.hidden = true;
   }
+  const retry = document.getElementById("anytype-connection-notice-retry");
+  if (retry) {
+    retry.hidden = true;
+  }
+}
+
+function isAnytypeConnectionNoticeVisible() {
+  const notice = document.getElementById("anytype-connection-notice");
+  return Boolean(notice && !notice.hidden);
+}
+
+function clearAnytypeReconnectCountdown() {
+  if (anytypeNoticeCountdownTimer !== null) {
+    clearInterval(anytypeNoticeCountdownTimer);
+    anytypeNoticeCountdownTimer = null;
+  }
+}
+
+/**
+ * @param {string} text
+ */
+function setAnytypeReconnectRetryText(text) {
+  const retry = document.getElementById("anytype-connection-notice-retry");
+  const textEl = document.getElementById("anytype-connection-notice-retry-text");
+  if (!retry || !textEl) {
+    return;
+  }
+  retry.hidden = false;
+  textEl.textContent = text;
+}
+
+/**
+ * @param {number} delayMs
+ */
+function startAnytypeReconnectCountdown(delayMs) {
+  clearAnytypeReconnectCountdown();
+
+  let secondsLeft = Math.max(1, Math.ceil(delayMs / 1000));
+  setAnytypeReconnectRetryText(
+    `AnyChat will try again in ${secondsLeft} second${secondsLeft === 1 ? "" : "s"}.`
+  );
+
+  anytypeNoticeCountdownTimer = setInterval(() => {
+    secondsLeft -= 1;
+    if (secondsLeft <= 0) {
+      clearAnytypeReconnectCountdown();
+      setAnytypeReconnectRetryText("Trying again…");
+      return;
+    }
+    setAnytypeReconnectRetryText(
+      `AnyChat will try again in ${secondsLeft} second${secondsLeft === 1 ? "" : "s"}.`
+    );
+  }, 1000);
 }
 
 /**
