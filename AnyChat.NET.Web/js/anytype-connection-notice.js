@@ -7,6 +7,11 @@ let recoveryTimer = null;
 /** True while the recovery probe loop owns backoff (including mid-fetch). */
 let recoveryProbeActive = false;
 
+/** True while a probe fetch is in flight. */
+let recoveryProbeInFlight = false;
+
+let noticeClickBound = false;
+
 let recoveryBackoffMs = 1000;
 const RECOVERY_BACKOFF_MS_MIN = 1000;
 const RECOVERY_BACKOFF_MS_MAX = 30000;
@@ -39,10 +44,59 @@ export function isAnytypeConnectionNoticeVisible() {
   return Boolean(notice && !notice.hidden);
 }
 
+function ensureNoticeClickBound() {
+  if (noticeClickBound) {
+    return;
+  }
+
+  const notice = getNotice();
+  if (!notice) {
+    return;
+  }
+
+  noticeClickBound = true;
+  notice.addEventListener("click", () => {
+    void onAnytypeConnectionNoticeClick();
+  });
+}
+
+function shakeNoticeIfBusy() {
+  const notice = getNotice();
+  if (!notice) {
+    return;
+  }
+
+  notice.classList.remove("anytype-connection-notice--shaking");
+  // Restart animation if already shaking.
+  void notice.offsetWidth;
+  notice.classList.add("anytype-connection-notice--shaking");
+}
+
+/**
+ * Click: retry now, or shake if a retry is already running.
+ */
+async function onAnytypeConnectionNoticeClick() {
+  if (!isAnytypeConnectionNoticeVisible()) {
+    return;
+  }
+
+  if (recoveryProbeInFlight) {
+    shakeNoticeIfBusy();
+    return;
+  }
+
+  clearAnytypeReconnectCountdown();
+  clearRecoveryTimer();
+  recoveryProbeActive = true;
+  void runRecoveryProbe({ fromUserClick: true });
+}
+
 /**
  * @param {{ onRecovered?: () => void | Promise<void> }} [options]
  */
 export function showAnytypeConnectionNotice(options = {}) {
+  ensureNoticeClickBound();
+
   if (typeof options.onRecovered === "function") {
     onRecoveredCallback = options.onRecovered;
   }
@@ -72,6 +126,7 @@ export function hideAnytypeConnectionNotice(options = {}) {
 
   const notice = getNotice();
   if (notice) {
+    notice.classList.remove("anytype-connection-notice--shaking");
     notice.hidden = true;
   }
 }
@@ -143,6 +198,7 @@ function clearRecoveryTimer() {
 function stopAnytypeRecoveryProbe() {
   clearRecoveryTimer();
   recoveryProbeActive = false;
+  recoveryProbeInFlight = false;
   recoveryBackoffMs = RECOVERY_BACKOFF_MS_MIN;
 }
 
@@ -173,12 +229,23 @@ function scheduleRecoveryProbe(delayMs) {
   }, delayMs);
 }
 
-async function runRecoveryProbe() {
+/**
+ * @param {{ fromUserClick?: boolean }} [options]
+ */
+async function runRecoveryProbe(options = {}) {
   if (!isAnytypeConnectionNoticeVisible()) {
     stopAnytypeRecoveryProbe();
     return;
   }
 
+  if (recoveryProbeInFlight) {
+    if (options.fromUserClick) {
+      shakeNoticeIfBusy();
+    }
+    return;
+  }
+
+  recoveryProbeInFlight = true;
   setAnytypeReconnectRetryText("Trying again...", { showSpinner: true });
 
   try {
@@ -199,6 +266,8 @@ async function runRecoveryProbe() {
     // (that would reset backoff).
   } catch (error) {
     console.error("Anytype recovery probe failed:", error);
+  } finally {
+    recoveryProbeInFlight = false;
   }
 
   if (!isAnytypeConnectionNoticeVisible()) {
@@ -206,7 +275,10 @@ async function runRecoveryProbe() {
     return;
   }
 
-  recoveryBackoffMs = Math.min(recoveryBackoffMs * 2, RECOVERY_BACKOFF_MS_MAX);
+  // Manual click keeps current backoff step; scheduled failures still grow.
+  if (!options.fromUserClick) {
+    recoveryBackoffMs = Math.min(recoveryBackoffMs * 2, RECOVERY_BACKOFF_MS_MAX);
+  }
   scheduleRecoveryProbe(recoveryBackoffMs);
 }
 

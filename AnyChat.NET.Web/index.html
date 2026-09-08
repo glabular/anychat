@@ -292,35 +292,37 @@
         </button>
       </div>
     </div>
-    <div
+    <button
+      type="button"
       id="anytype-connection-notice"
       class="anytype-connection-notice"
-      role="status"
       aria-live="polite"
       hidden
     >
-      <p class="anytype-connection-notice-title">Lost connection to Anytype</p>
-      <p class="anytype-connection-notice-body">
+      <span class="anytype-connection-notice-title"
+        >Lost connection to Anytype</span
+      >
+      <span class="anytype-connection-notice-body">
         Please open the official Anytype app. Connection will be restored on its
         own.
-      </p>
-      <div
+      </span>
+      <span
         id="anytype-connection-notice-retry"
         class="anytype-connection-notice-retry"
         hidden
       >
-        <p
+        <span
           id="anytype-connection-notice-retry-text"
           class="anytype-connection-notice-retry-text"
-        ></p>
+        ></span>
         <span
           class="anytype-connection-notice-spinner"
           id="anytype-connection-notice-spinner"
           aria-hidden="true"
           hidden
         ></span>
-      </div>
-    </div>
+      </span>
+    </button>
     <script type="module" src="js/main.js"></script>
   </body>
 </html>
