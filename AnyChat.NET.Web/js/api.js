@@ -1,3 +1,8 @@
+import {
+  noteAnytypeReachable,
+  noteAnytypeUnavailableFromResponse,
+} from "./anytype-connection-notice.js";
+
 const API_ORIGIN = "http://localhost:5249";
 
 export function spacesUrl() {
@@ -11,15 +16,25 @@ export function spacesUrl() {
   return onApiHost ? "/api/spaces" : `${API_ORIGIN}/api/spaces`;
 }
 
-export async function fetchSpaces() {
-  const response = await fetch(spacesUrl());
-
-  if (!response.ok) {
-    const error = new Error(`Response status: ${response.status}`);
-    error.status = response.status;
-    throw error;
+/**
+ * @param {Response} response
+ * @param {string} fallbackMessage
+ */
+async function throwIfNotOk(response, fallbackMessage) {
+  if (response.ok) {
+    noteAnytypeReachable();
+    return;
   }
 
+  await noteAnytypeUnavailableFromResponse(response);
+  const error = new Error(fallbackMessage);
+  error.status = response.status;
+  throw error;
+}
+
+export async function fetchSpaces() {
+  const response = await fetch(spacesUrl());
+  await throwIfNotOk(response, `Response status: ${response.status}`);
   return await response.json();
 }
 
@@ -30,6 +45,10 @@ export async function fetchSpaces() {
  * 3. Invalid body — response was not usable JSON
  */
 export function describeSpacesLoadError(error) {
+  if (error?.status === 503) {
+    return "Lost connection to Anytype. Open the official Anytype app and try again.";
+  }
+
   if (typeof error?.status === "number") {
     return `API returned HTTP ${error.status}. Check the server logs.`;
   }
@@ -43,11 +62,7 @@ export function describeSpacesLoadError(error) {
 
 export async function fetchChats(spaceId) {
   const response = await fetch(`${spacesUrl()}/${spaceId}/chats`);
-
-  if (!response.ok) {
-    throw new Error(`Response status: ${response.status}`);
-  }
-
+  await throwIfNotOk(response, `Response status: ${response.status}`);
   return await response.json();
 }
 
@@ -64,10 +79,7 @@ export async function fetchSpaceMember(spaceId, memberId) {
     return null;
   }
 
-  if (!response.ok) {
-    throw new Error(`Response status: ${response.status}`);
-  }
-
+  await throwIfNotOk(response, `Response status: ${response.status}`);
   return await response.json();
 }
 
@@ -81,12 +93,7 @@ export async function postChatMessage(spaceId, chatId, text) {
     }
   );
 
-  if (!response.ok) {
-    const error = new Error(`Response status: ${response.status}`);
-    error.status = response.status;
-    throw error;
-  }
-
+  await throwIfNotOk(response, `Response status: ${response.status}`);
   return await response.json();
 }
 

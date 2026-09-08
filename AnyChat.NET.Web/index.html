@@ -6,7 +6,12 @@
     <title>AnyChat</title>
     <link rel="icon" href="/icons/favicon.ico" sizes="any" />
     <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
-    <link rel="icon" href="/icons/favicon-96x96.png" type="image/png" sizes="96x96" />
+    <link
+      rel="icon"
+      href="/icons/favicon-96x96.png"
+      type="image/png"
+      sizes="96x96"
+    />
     <link rel="stylesheet" href="fonts.css" />
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="sidebar.css" />
@@ -97,90 +102,108 @@
             <h1 id="chat-panel-title" class="chat-panel-title"></h1>
           </header>
           <div class="chat-messages-area">
-          <div
-            id="chat-messages"
-            class="chat-messages selectable idle-scrollbar"
-          >
             <div
-              id="chat-messages-loading"
-              class="chat-messages-loading"
-              role="status"
-              aria-label="Loading messages"
-              hidden
-            >
-              <span class="chat-messages-loading-dot" aria-hidden="true"></span>
-              <span class="chat-messages-loading-dot" aria-hidden="true"></span>
-              <span class="chat-messages-loading-dot" aria-hidden="true"></span>
-            </div>
-            <div id="chat-messages-empty" class="chat-messages-empty" hidden>
-              <h2 class="chat-messages-empty-title">No messages yet</h2>
-              <p class="chat-messages-empty-text">
-                Start the conversation by sending the first message.
-              </p>
-            </div>
-            <div
-              id="chat-messages-history"
-              class="chat-messages-history"
-              hidden
-              aria-live="polite"
+              id="chat-messages"
+              class="chat-messages selectable idle-scrollbar"
             >
               <div
-                id="chat-messages-history-loading"
-                class="chat-messages-history-loading"
+                id="chat-messages-loading"
+                class="chat-messages-loading"
                 role="status"
-                aria-label="Loading older messages"
-                hidden
-              >
-                <span class="chat-messages-loading-dot" aria-hidden="true"></span>
-                <span class="chat-messages-loading-dot" aria-hidden="true"></span>
-                <span class="chat-messages-loading-dot" aria-hidden="true"></span>
-              </div>
-              <div
-                id="chat-messages-initial-error"
-                class="chat-messages-history-error"
-                role="alert"
+                aria-label="Loading messages"
                 hidden
               >
                 <span
-                  id="chat-messages-initial-error-text"
-                  class="chat-messages-history-error-text"
-                >
-                  Could not load messages.
-                </span>
-                <button
-                  type="button"
-                  id="chat-messages-initial-retry"
-                  class="chat-messages-history-retry"
-                >
-                  Retry
-                </button>
+                  class="chat-messages-loading-dot"
+                  aria-hidden="true"
+                ></span>
+                <span
+                  class="chat-messages-loading-dot"
+                  aria-hidden="true"
+                ></span>
+                <span
+                  class="chat-messages-loading-dot"
+                  aria-hidden="true"
+                ></span>
+              </div>
+              <div id="chat-messages-empty" class="chat-messages-empty" hidden>
+                <h2 class="chat-messages-empty-title">No messages yet</h2>
+                <p class="chat-messages-empty-text">
+                  Start the conversation by sending the first message.
+                </p>
               </div>
               <div
-                id="chat-messages-history-error"
-                class="chat-messages-history-error"
+                id="chat-messages-history"
+                class="chat-messages-history"
                 hidden
+                aria-live="polite"
               >
-                <span class="chat-messages-history-error-text">
-                  Could not load older messages.
-                </span>
-                <button
-                  type="button"
-                  id="chat-messages-history-retry"
-                  class="chat-messages-history-retry"
+                <div
+                  id="chat-messages-history-loading"
+                  class="chat-messages-history-loading"
+                  role="status"
+                  aria-label="Loading older messages"
+                  hidden
                 >
-                  Retry
-                </button>
+                  <span
+                    class="chat-messages-loading-dot"
+                    aria-hidden="true"
+                  ></span>
+                  <span
+                    class="chat-messages-loading-dot"
+                    aria-hidden="true"
+                  ></span>
+                  <span
+                    class="chat-messages-loading-dot"
+                    aria-hidden="true"
+                  ></span>
+                </div>
+                <div
+                  id="chat-messages-initial-error"
+                  class="chat-messages-history-error"
+                  role="alert"
+                  hidden
+                >
+                  <span
+                    id="chat-messages-initial-error-text"
+                    class="chat-messages-history-error-text"
+                  >
+                    Could not load messages.
+                  </span>
+                  <button
+                    type="button"
+                    id="chat-messages-initial-retry"
+                    class="chat-messages-history-retry"
+                  >
+                    Retry
+                  </button>
+                </div>
+                <div
+                  id="chat-messages-history-error"
+                  class="chat-messages-history-error"
+                  hidden
+                >
+                  <span class="chat-messages-history-error-text">
+                    Could not load older messages.
+                  </span>
+                  <button
+                    type="button"
+                    id="chat-messages-history-retry"
+                    class="chat-messages-history-retry"
+                  >
+                    Retry
+                  </button>
+                </div>
+                <p
+                  id="chat-messages-history-end"
+                  class="chat-messages-history-end"
+                  hidden
+                >
+                  Beginning of conversation
+                </p>
               </div>
-              <p
-                id="chat-messages-history-end"
-                class="chat-messages-history-end"
-                hidden
-              >
-                Beginning of conversation
-              </p>
+              <div id="chat-message-list" class="chat-message-list"></div>
             </div>
-            <div id="chat-message-list" class="chat-message-list"></div>
-          </div>
             <button
               type="button"
               id="chat-scroll-to-latest"
@@ -191,12 +214,7 @@
               <span aria-hidden="true">↓</span>
             </button>
           </div>
-          <div
-            id="chat-send-error"
-            class="chat-send-error"
-            role="alert"
-            hidden
-          >
+          <div id="chat-send-error" class="chat-send-error" role="alert" hidden>
             Could not send message. Try again.
           </div>
           <form id="chat-composer" class="chat-composer">
@@ -236,11 +254,7 @@
         </section>
       </main>
     </div>
-    <div
-      id="member-profile-panel"
-      class="member-profile-panel"
-      hidden
-    >
+    <div id="member-profile-panel" class="member-profile-panel" hidden>
       <div
         id="member-profile-card"
         class="member-profile-card"
@@ -257,16 +271,14 @@
         <h2 id="member-profile-name" class="member-profile-name"></h2>
         <p class="member-profile-identity-label">Anytype identity</p>
         <div class="member-profile-identity-wrap">
-          <p
-            id="member-profile-identity"
-            class="member-profile-identity"
-          ></p>
+          <p id="member-profile-identity" class="member-profile-identity"></p>
           <span
             id="member-profile-copy-tip"
             class="member-profile-copy-tip"
             hidden
             aria-live="polite"
-          >Copied</span>
+            >Copied</span
+          >
         </div>
         <button
           type="button"
@@ -287,25 +299,26 @@
       aria-live="polite"
       hidden
     >
-      <p class="anytype-connection-notice-title">
-        Connection to Anytype was lost
-      </p>
+      <p class="anytype-connection-notice-title">Lost connection to Anytype</p>
       <p class="anytype-connection-notice-body">
-        Open the official Anytype client.
+        Please open the official Anytype app. Connection will be restored on its
+        own.
       </p>
       <div
         id="anytype-connection-notice-retry"
         class="anytype-connection-notice-retry"
         hidden
       >
-        <span
-          class="anytype-connection-notice-spinner"
-          aria-hidden="true"
-        ></span>
         <p
           id="anytype-connection-notice-retry-text"
           class="anytype-connection-notice-retry-text"
         ></p>
+        <span
+          class="anytype-connection-notice-spinner"
+          id="anytype-connection-notice-spinner"
+          aria-hidden="true"
+          hidden
+        ></span>
       </div>
     </div>
     <script type="module" src="js/main.js"></script>

@@ -4,6 +4,15 @@ import {
   postChatMessage,
   spacesUrl,
 } from "./api.js";
+import {
+  clearAnytypeReconnectCountdown,
+  isAnytypeConnectionNoticeVisible,
+  noteAnytypeReachable,
+  noteAnytypeUnavailableFromResponse,
+  setAnytypeReconnectRetryText,
+  showAnytypeConnectionNotice,
+  startAnytypeReconnectCountdown,
+} from "./anytype-connection-notice.js";
 import { formatChatListTimestamp } from "./date-format.js";
 import { createSendStatusElement, resolveOutgoingSendStatus } from "./message-send-status.js";
 import { initChatMessagesScroll } from "./chat-messages-scroll.js";
@@ -65,9 +74,6 @@ const SPINNER_SHOW_DELAY_MS = 200;
 /** Active-chat SSE reconnect backoff (close EventSource on error; no browser tight loop). */
 const STREAM_BACKOFF_MS_MIN = 1000;
 const STREAM_BACKOFF_MS_MAX = 30000;
-
-/** @type {ReturnType<typeof setInterval> | null} */
-let anytypeNoticeCountdownTimer = null;
 
 let loadToken = 0;
 let showSpinnerTimer = null;
@@ -180,12 +186,13 @@ function beginChatHistoryState(spaceId, chatId, token) {
 
 /**
  * Tear down the active-chat EventSource and any pending reconnect.
+ * Does not hide the global Anytype notice (REST/SSE share that across navigation).
  */
 function stopChatMessageStream() {
   const sub = messageStream;
   messageStream = null;
   if (!sub) {
-    hideAnytypeConnectionNotice();
+    clearAnytypeReconnectCountdown();
     return;
   }
 
@@ -202,7 +209,12 @@ function stopChatMessageStream() {
     sub.eventSource = null;
   }
 
-  hideAnytypeConnectionNotice();
+  // Stop the SSE retry line; keep the global Anytype connection notice if shown.
+  clearAnytypeReconnectCountdown();
+  const retry = document.getElementById("anytype-connection-notice-retry");
+  if (retry) {
+    retry.hidden = true;
+  }
 }
 
 /**
@@ -259,7 +271,7 @@ function openChatMessageStreamConnection() {
     if (!isChatMessageStreamCurrent(sub)) {
       return;
     }
-    hideAnytypeConnectionNotice();
+    noteAnytypeReachable();
   };
 
   eventSource.onmessage = (event) => {
@@ -311,7 +323,7 @@ function scheduleChatMessageStreamReconnect(sub) {
       return;
     }
     if (isAnytypeConnectionNoticeVisible()) {
-      setAnytypeReconnectRetryText("Trying again…");
+      setAnytypeReconnectRetryText("Trying again...", { showSpinner: true });
     }
     openChatMessageStreamConnection();
   }, delayMs);
@@ -342,7 +354,7 @@ function handleChatMessageStreamPayload(sub, raw) {
 
   // Any other valid event means the stream is healthy — reset reconnect backoff.
   sub.backoffMs = STREAM_BACKOFF_MS_MIN;
-  hideAnytypeConnectionNotice();
+  noteAnytypeReachable();
 
   if (parsed?.type !== "message_added") {
     return;
@@ -363,74 +375,6 @@ function handleChatMessageStreamPayload(sub, raw) {
   if (result.kind === "insert") {
     maybeResolveIncomingAuthor(sub, state, message);
   }
-}
-
-function showAnytypeConnectionNotice() {
-  const notice = document.getElementById("anytype-connection-notice");
-  if (notice) {
-    notice.hidden = false;
-  }
-}
-
-function hideAnytypeConnectionNotice() {
-  clearAnytypeReconnectCountdown();
-  const notice = document.getElementById("anytype-connection-notice");
-  if (notice) {
-    notice.hidden = true;
-  }
-  const retry = document.getElementById("anytype-connection-notice-retry");
-  if (retry) {
-    retry.hidden = true;
-  }
-}
-
-function isAnytypeConnectionNoticeVisible() {
-  const notice = document.getElementById("anytype-connection-notice");
-  return Boolean(notice && !notice.hidden);
-}
-
-function clearAnytypeReconnectCountdown() {
-  if (anytypeNoticeCountdownTimer !== null) {
-    clearInterval(anytypeNoticeCountdownTimer);
-    anytypeNoticeCountdownTimer = null;
-  }
-}
-
-/**
- * @param {string} text
- */
-function setAnytypeReconnectRetryText(text) {
-  const retry = document.getElementById("anytype-connection-notice-retry");
-  const textEl = document.getElementById("anytype-connection-notice-retry-text");
-  if (!retry || !textEl) {
-    return;
-  }
-  retry.hidden = false;
-  textEl.textContent = text;
-}
-
-/**
- * @param {number} delayMs
- */
-function startAnytypeReconnectCountdown(delayMs) {
-  clearAnytypeReconnectCountdown();
-
-  let secondsLeft = Math.max(1, Math.ceil(delayMs / 1000));
-  setAnytypeReconnectRetryText(
-    `AnyChat will try again in ${secondsLeft} second${secondsLeft === 1 ? "" : "s"}.`
-  );
-
-  anytypeNoticeCountdownTimer = setInterval(() => {
-    secondsLeft -= 1;
-    if (secondsLeft <= 0) {
-      clearAnytypeReconnectCountdown();
-      setAnytypeReconnectRetryText("Trying again…");
-      return;
-    }
-    setAnytypeReconnectRetryText(
-      `AnyChat will try again in ${secondsLeft} second${secondsLeft === 1 ? "" : "s"}.`
-    );
-  }, 1000);
 }
 
 /**
@@ -1694,9 +1638,13 @@ export async function fetchChatMessages(
   );
 
   if (!response.ok) {
-    throw new Error(`Response status: ${response.status}`);
+    await noteAnytypeUnavailableFromResponse(response);
+    const error = new Error(`Response status: ${response.status}`);
+    error.status = response.status;
+    throw error;
   }
 
+  noteAnytypeReachable();
   return await response.json();
 }
 

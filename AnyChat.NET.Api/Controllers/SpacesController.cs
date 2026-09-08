@@ -1,3 +1,4 @@
+using AnyChat.NET.Api.Filters;
 using AnyChat.NET.Api.Models;
 using AnyChat.NET.Api.Services;
 using Anytype.NET;
@@ -14,28 +15,35 @@ public class SpacesController(
     [HttpGet]
     public async Task<IActionResult> List()
     {
-        var response = await client.Spaces.ListAsync();
-        var spaces = response.Spaces ?? [];
-
-        var items = new List<SpaceListItemDto>(spaces.Count);
-
-        foreach (var space in spaces)
+        try
         {
-            var displayName = await displayResolver.ResolveDisplayNameAsync(space);
+            var response = await client.Spaces.ListAsync();
+            var spaces = response.Spaces ?? [];
 
-            items.Add(new SpaceListItemDto
+            var items = new List<SpaceListItemDto>(spaces.Count);
+
+            foreach (var space in spaces)
             {
-                Id = space.Id,
-                Name = space.Name,
-                Object = space.Object,
-                Icon = space.Icon,
-                Description = space.Description,
-                GatewayUrl = space.GatewayUrl,
-                NetworkId = space.NetworkId,
-                DisplayName = displayName,
-            });
-        }
+                var displayName = await displayResolver.ResolveDisplayNameAsync(space);
 
-        return Ok(items);
+                items.Add(new SpaceListItemDto
+                {
+                    Id = space.Id,
+                    Name = space.Name,
+                    Object = space.Object,
+                    Icon = space.Icon,
+                    Description = space.Description,
+                    GatewayUrl = space.GatewayUrl,
+                    NetworkId = space.NetworkId,
+                    DisplayName = displayName,
+                });
+            }
+
+            return Ok(items);
+        }
+        catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
+        {
+            return AnytypeUnavailableExceptionFilter.CreateResult();
+        }
     }
 }

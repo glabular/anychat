@@ -1,3 +1,4 @@
+using AnyChat.NET.Api.Filters;
 using AnyChat.NET.Api.Models;
 using Anytype.NET;
 using Anytype.NET.Interfaces;
@@ -22,6 +23,10 @@ public class MembersController(AnytypeClient client) : ControllerBase
             }
 
             return Ok(MapMember(member));
+        }
+        catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
+        {
+            return AnytypeUnavailableExceptionFilter.CreateResult();
         }
         catch (Exception)
         {

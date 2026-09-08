@@ -1,4 +1,5 @@
 import { describeSpacesLoadError, fetchSpaces } from "./api.js";
+import { showAnytypeConnectionNotice } from "./anytype-connection-notice.js";
 import {
   loadChatsForSelectedSpace,
   setMainPlaceholderVisible,
@@ -199,6 +200,12 @@ export async function initializeSpaces() {
     }
 
     setMainPlaceholderVisible(false);
+
+    if (error?.status === 503) {
+      showAnytypeConnectionNotice({
+        onRecovered: () => reloadSpacesAfterAnytypeRecovery(),
+      });
+    }
   } finally {
     const loading = document.getElementById("spaces-loading");
     if (loading) {
@@ -206,4 +213,19 @@ export async function initializeSpaces() {
     }
     document.getElementById("spaces-sidebar")?.setAttribute("aria-busy", "false");
   }
+}
+
+async function reloadSpacesAfterAnytypeRecovery() {
+  const spaces = await fetchSpaces();
+  const spacesSidebar = document.getElementById("spaces-sidebar");
+  spacesSidebar?.replaceChildren();
+
+  const chatsEmpty = document.getElementById("chats-empty");
+  if (chatsEmpty) {
+    chatsEmpty.hidden = true;
+    chatsEmpty.replaceChildren();
+  }
+
+  populateSpacesSidebar(spaces);
+  setMainPlaceholderVisible(true);
 }

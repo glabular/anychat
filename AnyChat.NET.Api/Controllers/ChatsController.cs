@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AnyChat.NET.Api.Filters;
 using AnyChat.NET.Api.Models;
 using AnyChat.NET.Api.Services;
 using Anytype.NET;
@@ -32,11 +33,18 @@ public class ChatsController(
     [HttpGet]
     public async Task<IActionResult> List(string spaceId)
     {
-        var response = await client.Chats.ListAsync(spaceId);
-        var chats = response.Chats ?? [];
-        var items = chats.Select(MapChatListItem).ToList();
+        try
+        {
+            var response = await client.Chats.ListAsync(spaceId);
+            var chats = response.Chats ?? [];
+            var items = chats.Select(MapChatListItem).ToList();
 
-        return Ok(items);
+            return Ok(items);
+        }
+        catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
+        {
+            return AnytypeUnavailableExceptionFilter.CreateResult();
+        }
     }
 
     [HttpGet("{chatId}/messages")]
@@ -48,16 +56,23 @@ public class ChatsController(
     {
         limit = ClampMessageLimit(limit);
 
-        var response = await client.Chats.ListMessagesAsync(
-            spaceId,
-            chatId,
-            beforeOrderId: beforeOrderId ?? string.Empty,
-            afterOrderId: string.Empty,
-            limit: limit);
-        var participantId = await memberResolver.ResolveParticipantIdAsync(spaceId);
-        var messages = (response.Messages ?? []).Select(message => MapMessage(message, participantId));
+        try
+        {
+            var response = await client.Chats.ListMessagesAsync(
+                spaceId,
+                chatId,
+                beforeOrderId: beforeOrderId ?? string.Empty,
+                afterOrderId: string.Empty,
+                limit: limit);
+            var participantId = await memberResolver.ResolveParticipantIdAsync(spaceId);
+            var messages = (response.Messages ?? []).Select(message => MapMessage(message, participantId));
 
-        return Ok(messages);
+            return Ok(messages);
+        }
+        catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
+        {
+            return AnytypeUnavailableExceptionFilter.CreateResult();
+        }
     }
 
     /// <summary>
@@ -78,8 +93,6 @@ public class ChatsController(
         Response.Headers.Append("X-Accel-Buffering", "no");
         HttpContext.Features.Get<IHttpResponseBodyFeature>()?.DisableBuffering();
 
-        var participantId = await memberResolver.ResolveParticipantIdAsync(spaceId);
-
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken,
             HttpContext.RequestAborted);
@@ -87,6 +100,8 @@ public class ChatsController(
 
         try
         {
+            var participantId = await memberResolver.ResolveParticipantIdAsync(spaceId);
+
             // Plain await foreach only — do not WhenAny-race MoveNextAsync with a timer.
             // Disposing the enumerator while MoveNextAsync is still pending (chat switch
             // closes EventSource) surfaces as NotSupportedException in the debugger.
@@ -123,6 +138,12 @@ public class ChatsController(
         catch (HttpRequestException) when (!streamToken.IsCancellationRequested)
         {
             // Connect/read to Anytype failed (e.g. connection refused after client quit).
+            await TryWriteAnytypeUnavailableAsync();
+        }
+        catch (Exception ex) when (
+            !streamToken.IsCancellationRequested
+            && AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
+        {
             await TryWriteAnytypeUnavailableAsync();
         }
     }
@@ -162,33 +183,40 @@ public class ChatsController(
             return BadRequest(new { error = "Message text is required." });
         }
 
-        var addResponse = await client.Chats.AddMessageAsync(
-            spaceId,
-            chatId,
-            new AddChatMessageRequest { Text = text });
-
-        var messageId = addResponse.MessageId;
-        if (string.IsNullOrWhiteSpace(messageId))
+        try
         {
-            return StatusCode(
-                StatusCodes.Status502BadGateway,
-                new { error = "Anytype did not return a message id." });
-        }
+            var addResponse = await client.Chats.AddMessageAsync(
+                spaceId,
+                chatId,
+                new AddChatMessageRequest { Text = text });
 
-        var identityLearned = identityStore.IsKnown;
-
-        if (!identityLearned)
-        {
-            identityLearned = await TryLearnIdentityAsync(spaceId, chatId, messageId);
-        }
-
-        return StatusCode(
-            StatusCodes.Status201Created,
-            new SendChatMessageResponse
+            var messageId = addResponse.MessageId;
+            if (string.IsNullOrWhiteSpace(messageId))
             {
-                MessageId = messageId,
-                IdentityLearned = identityLearned,
-            });
+                return StatusCode(
+                    StatusCodes.Status502BadGateway,
+                    new { error = "Anytype did not return a message id." });
+            }
+
+            var identityLearned = identityStore.IsKnown;
+
+            if (!identityLearned)
+            {
+                identityLearned = await TryLearnIdentityAsync(spaceId, chatId, messageId);
+            }
+
+            return StatusCode(
+                StatusCodes.Status201Created,
+                new SendChatMessageResponse
+                {
+                    MessageId = messageId,
+                    IdentityLearned = identityLearned,
+                });
+        }
+        catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
+        {
+            return AnytypeUnavailableExceptionFilter.CreateResult();
+        }
     }
 
     private async Task<bool> TryLearnIdentityAsync(string spaceId, string chatId, string messageId)

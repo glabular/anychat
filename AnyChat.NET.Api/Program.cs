@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using AnyChat.NET.Api.Filters;
 using AnyChat.NET.Api.Services;
 using Anytype.NET;
 
@@ -17,7 +18,10 @@ public partial class Program
             WebRootPath = ResolveWebRoot(contentRoot)
         });
 
-        builder.Services.AddControllers();
+        builder.Services.AddControllers(options =>
+        {
+            options.Filters.Add<AnytypeUnavailableExceptionFilter>();
+        });
         builder.Services.AddOpenApi();
 
         var apiKey = builder.Configuration["Anytype:ApiKey"]
