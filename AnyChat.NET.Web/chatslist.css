@@ -103,7 +103,8 @@
     min-width: 0;
 }
 
-.chats-list-area:has(#chats-list:empty) {
+.chats-list-area:has(#chats-list:empty),
+.chats-list-area:has(#chats-list[hidden]) {
     display: none;
 }
 

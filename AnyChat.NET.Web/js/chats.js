@@ -375,6 +375,14 @@ function handleChatMessageStreamPayload(sub, raw) {
   if (result.kind === "insert") {
     maybeResolveIncomingAuthor(sub, state, message);
   }
+
+  if (result.kind === "insert" || result.kind === "confirm") {
+    updateChatListPreview(
+      state.spaceId,
+      state.chatId,
+      formatMessagePreview(message, { isOneToOne: isOneToOneSpace() })
+    );
+  }
 }
 
 /**
@@ -1178,7 +1186,10 @@ function clearChatsContent() {
   if (chatsEmpty) {
     chatsEmpty.hidden = true;
   }
-  chatsList?.replaceChildren();
+  if (chatsList) {
+    chatsList.replaceChildren();
+    chatsList.hidden = false;
+  }
   hideChatsScrollToTopButton();
 }
 
@@ -1268,13 +1279,51 @@ export async function loadChatsForSelectedSpace() {
     return;
   }
 
+  // Empty space: nothing to preview/sort — show empty state immediately.
+  if (!Array.isArray(chats) || chats.length === 0) {
+    if (!endChatsLoad(token)) {
+      return;
+    }
+    populateChatsList(chats ?? []);
+    setMainPlaceholderVisible(true);
+    return;
+  }
+
+  // Build rows off-DOM, fetch previews, sort, then paint once — no API-order
+  // flash. Keep the delayed spinner (do not force it on) so fast loads skip
+  // the dots flicker and may keep the previous list until replace.
+  if (showSpinnerTimer !== null) {
+    clearTimeout(showSpinnerTimer);
+    showSpinnerTimer = null;
+  }
+
+  const loadingEl = document.getElementById("chats-loading");
+  const spinnerAlreadyVisible = Boolean(loadingEl && !loadingEl.hidden);
+  if (!spinnerAlreadyVisible) {
+    showSpinnerTimer = setTimeout(() => {
+      showSpinnerTimer = null;
+      clearChatsContent();
+      setSpinnerVisible(true);
+    }, SPINNER_SHOW_DELAY_MS);
+  }
+
+  document.getElementById("chats-list")?.setAttribute("aria-busy", "true");
+
+  const rows = chats.map((chat) => createChatListItem(chat));
+  await loadChatPreviews(spaceId, rows, token);
+
+  if (!isStillCurrentSpace(spaceId, token)) {
+    return;
+  }
+
+  sortChatRowsByActivity(spaceId, rows);
+
   if (!endChatsLoad(token)) {
     return;
   }
 
-  const rows = populateChatsList(chats);
+  paintChatRows(rows);
   setMainPlaceholderVisible(true);
-  void loadChatPreviews(spaceId, rows, token);
 }
 
 /**
@@ -1297,6 +1346,7 @@ function createChatListItem(chat) {
   chatButton.className = "chat-item";
   const chatName = chat.name ?? "-no name-";
   const chatId = chat.id ?? "";
+  li.dataset.chatName = chatName;
   chatButton.addEventListener("click", () => {
     if (chatButton.classList.contains("chat-item--selected")) {
       return;
@@ -1543,6 +1593,7 @@ export function populateChatsList(chats) {
     return [];
   }
 
+  chatsList.hidden = false;
   chatsList.replaceChildren();
 
   if (chats.length === 0) {
@@ -1568,6 +1619,52 @@ export function populateChatsList(chats) {
   chatsList.scrollTop = 0;
   syncChatsScrollToTopButton();
   return rows;
+}
+
+/**
+ * Paint already-built (and preferably sorted) rows in one shot.
+ * @param {Array<{ li: HTMLLIElement, previewEl: HTMLParagraphElement, timestampEl: HTMLSpanElement, chatId: string }>} rows
+ */
+function paintChatRows(rows) {
+  const chatsList = document.getElementById("chats-list");
+  const chatsEmpty = document.getElementById("chats-empty");
+  if (!chatsList) {
+    console.warn("Chats list element not found.");
+    return;
+  }
+
+  if (chatsEmpty) {
+    chatsEmpty.hidden = true;
+  }
+
+  chatsList.hidden = false;
+  chatsList.replaceChildren();
+  for (const row of rows) {
+    chatsList.appendChild(row.li);
+  }
+  chatsList.scrollTop = 0;
+  syncChatsScrollToTopButton();
+}
+
+/**
+ * @param {string} spaceId
+ * @param {Array<{ li: HTMLLIElement, chatId: string }>} rows
+ */
+function sortChatRowsByActivity(spaceId, rows) {
+  rows.sort((a, b) =>
+    compareChatsByActivity(
+      {
+        spaceId,
+        chatId: a.chatId,
+        name: a.li.dataset.chatName ?? "",
+      },
+      {
+        spaceId,
+        chatId: b.chatId,
+        name: b.li.dataset.chatName ?? "",
+      }
+    )
+  );
 }
 
 function isStillCurrentSpace(spaceId, token) {
@@ -1619,6 +1716,12 @@ async function loadChatPreviews(spaceId, rows, token) {
       renderChatPreview(row.previewEl, spaceId, row.chatId, null, row.timestampEl);
     }
   }
+
+  if (!isStillCurrentSpace(spaceId, token)) {
+    return;
+  }
+
+  // Caller sorts rows and paints once (list may still be off-DOM).
 }
 
 export async function fetchChatMessages(
@@ -1649,19 +1752,17 @@ export async function fetchChatMessages(
 }
 
 /**
+ * Always returns parts when a latest message exists so `createdAt` is cached
+ * even for non-text messages (empty preview text is fine).
  * @param {object} message
  * @param {{ isOneToOne: boolean }} options
- * @returns {ChatPreviewParts | null}
+ * @returns {ChatPreviewParts}
  */
 function formatMessagePreview(message, { isOneToOne }) {
   const text = message.content?.text?.trim() ?? "";
 
-  if (!text) {
-    return null;
-  }
-
   let senderLabel = null;
-  if (!isOneToOne && message.isMine !== true) {
+  if (text && !isOneToOne && message.isMine !== true) {
     const creatorName = message.creatorName?.trim();
     if (creatorName) {
       senderLabel = creatorName;
@@ -1677,6 +1778,100 @@ function formatMessagePreview(message, { isOneToOne }) {
   }
 
   return { senderLabel, text, createdAt };
+}
+
+/**
+ * @param {string} spaceId
+ * @param {string} chatId
+ * @returns {number | null}
+ */
+function getChatActivityCreatedAt(spaceId, chatId) {
+  const parts = chatMessagePreviews.get(chatMessagePreviewKey(spaceId, chatId));
+  if (parts && typeof parts.createdAt === "number") {
+    return parts.createdAt;
+  }
+  return null;
+}
+
+/**
+ * @param {string} spaceId
+ * @param {HTMLLIElement} li
+ * @returns {{ spaceId: string, chatId: string, name: string }}
+ */
+function chatSortKeyFromLi(spaceId, li) {
+  return {
+    spaceId,
+    chatId: li.dataset.chatId ?? "",
+    name: li.dataset.chatName ?? "",
+  };
+}
+
+/**
+ * Dated chats before empty; newer `createdAt` first; then name; then id.
+ * @param {{ spaceId: string, chatId: string, name: string }} a
+ * @param {{ spaceId: string, chatId: string, name: string }} b
+ * @returns {number}
+ */
+function compareChatsByActivity(a, b) {
+  const aAt = getChatActivityCreatedAt(a.spaceId, a.chatId);
+  const bAt = getChatActivityCreatedAt(b.spaceId, b.chatId);
+  const aDated = aAt !== null;
+  const bDated = bAt !== null;
+
+  if (aDated !== bDated) {
+    return aDated ? -1 : 1;
+  }
+
+  if (aDated && bDated && aAt !== bAt) {
+    return bAt - aAt;
+  }
+
+  const nameCmp = a.name.localeCompare(b.name, undefined, {
+    sensitivity: "base",
+  });
+  if (nameCmp !== 0) {
+    return nameCmp;
+  }
+
+  return a.chatId.localeCompare(b.chatId);
+}
+
+/**
+ * Move one chat row to its activity-sorted position without resetting scroll.
+ * @param {string} spaceId
+ * @param {string} chatId
+ */
+function reorderChatListItem(spaceId, chatId) {
+  const chatsList = document.getElementById("chats-list");
+  if (!chatsList) {
+    return;
+  }
+
+  const li = chatsList.querySelector(
+    `li[data-chat-id="${CSS.escape(chatId)}"]`
+  );
+  if (!(li instanceof HTMLLIElement)) {
+    return;
+  }
+
+  const key = chatSortKeyFromLi(spaceId, li);
+  const others = Array.from(chatsList.children).filter(
+    (el) => el instanceof HTMLLIElement && el !== li
+  );
+
+  let insertBefore = null;
+  for (const other of others) {
+    if (compareChatsByActivity(key, chatSortKeyFromLi(spaceId, other)) < 0) {
+      insertBefore = other;
+      break;
+    }
+  }
+
+  if (insertBefore) {
+    chatsList.insertBefore(li, insertBefore);
+  } else {
+    chatsList.appendChild(li);
+  }
 }
 
 function showDraftChatPreview(previewEl, draftText) {
@@ -1826,4 +2021,5 @@ function updateChatListPreview(spaceId, chatId, messagePreviewParts) {
     messagePreviewParts,
     getChatTimestampEl(chatId)
   );
+  reorderChatListItem(spaceId, chatId);
 }
