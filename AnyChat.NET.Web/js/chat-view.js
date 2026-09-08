@@ -1075,16 +1075,21 @@ export function prependOlderChatMessages(messages) {
 }
 
 /**
- * Append newer messages and scroll to the bottom.
+ * Append newer messages.
  * @param {object[]} messages deduplicated batch, oldest → newest
+ * @param {{ scrollMode?: "always" | "ifAtLatest" }} [options]
  * @returns {number} rows actually inserted
  */
-export function appendNewerChatMessages(messages) {
+export function appendNewerChatMessages(messages, options = {}) {
+  const scrollMode = options.scrollMode ?? "always";
   const list = getChatMessageList();
   const container = document.getElementById("chat-messages");
   if (!list || !container || !Array.isArray(messages) || messages.length === 0) {
     return 0;
   }
+
+  const pinLatest =
+    scrollMode === "always" || isChatMessagesAtLatest(container);
 
   const { fragment, renderedCount } = buildMessageFragment(messages, {
     previousDayKey: getLastDayKey(list),
@@ -1095,8 +1100,61 @@ export function appendNewerChatMessages(messages) {
 
   setEmptyMessagesVisible(false);
   list.appendChild(fragment);
-  scrollChatToLatest();
+  if (pinLatest) {
+    scrollChatToLatest();
+  } else {
+    syncScrollToLatestButton();
+  }
   return renderedCount;
+}
+
+/**
+ * Rebuild the open message list while keeping the reader's place when they
+ * were scrolled up; pin to latest when they were already at the bottom.
+ * @param {object[]} messages
+ */
+export function rerenderOpenChatMessagesPreservingViewport(messages) {
+  const list = getChatMessageList();
+  const container = document.getElementById("chat-messages");
+  if (!list || !container) {
+    return;
+  }
+
+  const pinLatest = isChatMessagesAtLatest(container);
+  const previousScrollTop = container.scrollTop;
+  const previousScrollHeight = container.scrollHeight;
+
+  endMessagesLoad();
+  setMessagesPreparing(container, true);
+  list.replaceChildren();
+  setEmptyMessagesVisible(false);
+
+  if (!Array.isArray(messages) || messages.length === 0) {
+    setEmptyMessagesVisible(true);
+    setMessagesPreparing(container, false);
+    syncScrollToLatestButton();
+    return;
+  }
+
+  const { fragment, renderedCount } = buildMessageFragment(messages);
+  if (renderedCount === 0) {
+    setEmptyMessagesVisible(true);
+    setMessagesPreparing(container, false);
+    syncScrollToLatestButton();
+    return;
+  }
+
+  list.appendChild(fragment);
+  setMessagesPreparing(container, false);
+
+  if (pinLatest) {
+    scrollChatToLatest();
+  } else {
+    void container.offsetHeight;
+    container.scrollTop =
+      previousScrollTop + (container.scrollHeight - previousScrollHeight);
+    syncScrollToLatestButton();
+  }
 }
 
 export function renderOpenChatMessagesError(text) {

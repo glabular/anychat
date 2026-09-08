@@ -24,6 +24,8 @@ import {
   appendNewerChatMessages,
   renderOpenChatMessages,
   renderOpenChatMessagesError,
+  rerenderOpenChatMessagesPreservingViewport,
+  updateMessageRowSendStatus,
   clearInitialLoadError,
   resetChatHistoryStatus,
   setChatHistoryStatus,
@@ -40,6 +42,7 @@ import {
 import {
   clearSpaceMembersCache,
   ensureMembersForParticipantIds,
+  getSpaceMember,
   isRegularSpaceObject,
 } from "./space-members.js";
 
@@ -292,7 +295,7 @@ function scheduleChatMessageStreamReconnect(sub) {
 }
 
 /**
- * Parse one SSE `data:` payload. UI merge for message_added comes in a later step.
+ * Parse one SSE `data:` payload and merge `message_added` into the open chat.
  * @param {ChatMessageStreamSubscription} sub
  * @param {string} raw
  */
@@ -316,7 +319,297 @@ function handleChatMessageStreamPayload(sub, raw) {
     return;
   }
 
-  // Step 3: merge into open-chat state (dedupe / orderId). Intentionally no-op UI.
+  const message = parsed.message;
+  if (!message || typeof message !== "object") {
+    return;
+  }
+
+  const state = chatHistoryState;
+  if (!state || !isChatMessageStreamCurrent(sub)) {
+    return;
+  }
+
+  const result = mergeIncomingMessageIntoState(state, message);
+  applyMergeResultToDom(state, result, { scrollMode: "ifAtLatest" });
+  if (result.kind === "insert") {
+    maybeResolveIncomingAuthor(sub, state, message);
+  }
+}
+
+/**
+ * Best-effort author profile fetch for a newly streamed message (non-blocking).
+ * @param {ChatMessageStreamSubscription} sub
+ * @param {ChatHistoryState} state
+ * @param {object} message
+ */
+function maybeResolveIncomingAuthor(sub, state, message) {
+  if (message?.isMine === true) {
+    return;
+  }
+
+  const creator = message?.creator;
+  if (typeof creator !== "string" || creator.length === 0) {
+    return;
+  }
+
+  const selectedSpaceInput = document.querySelector(
+    'input[name="space"]:checked'
+  );
+  if (
+    !selectedSpaceInput
+    || selectedSpaceInput.value !== state.spaceId
+    || !isRegularSpaceObject(selectedSpaceInput.dataset.spaceObject ?? "")
+  ) {
+    return;
+  }
+
+  if (getSpaceMember(state.spaceId, creator)) {
+    return;
+  }
+
+  void ensureMembersForParticipantIds(state.spaceId, [creator])
+    .then(() => {
+      if (!isChatMessageStreamCurrent(sub) || chatHistoryState !== state) {
+        return;
+      }
+      if (!getSpaceMember(state.spaceId, creator)) {
+        return;
+      }
+      rerenderOpenChatMessagesPreservingViewport(state.messages);
+    })
+    .catch((error) => {
+      console.error(
+        `Could not resolve author profile for streamed message in chat ${state.chatId}:`,
+        error
+      );
+    });
+}
+
+/**
+ * Lexicographic Anytype orderId compare. Missing orderId sorts after known ids
+ * (optimistic tip rows stay at the end until confirmed).
+ * @param {unknown} a
+ * @param {unknown} b
+ * @returns {number}
+ */
+function compareOrderId(a, b) {
+  const aOk = typeof a === "string" && a.length > 0;
+  const bOk = typeof b === "string" && b.length > 0;
+  if (!aOk && !bOk) {
+    return 0;
+  }
+  if (!aOk) {
+    return 1;
+  }
+  if (!bOk) {
+    return -1;
+  }
+  if (a < b) {
+    return -1;
+  }
+  if (a > b) {
+    return 1;
+  }
+  return 0;
+}
+
+/**
+ * @param {object[]} messages
+ * @param {object} message
+ * @returns {number}
+ */
+function findMessageInsertIndex(messages, message) {
+  for (let index = 0; index < messages.length; index += 1) {
+    if (compareOrderId(messages[index]?.orderId, message?.orderId) > 0) {
+      return index;
+    }
+  }
+  return messages.length;
+}
+
+/**
+ * @param {ChatHistoryState} state
+ * @param {object} incoming
+ * @returns {number} index of matching optimistic row, or -1
+ */
+function findMatchingOptimisticIndex(state, incoming) {
+  const incomingText = incoming?.content?.text;
+  if (typeof incomingText !== "string") {
+    return -1;
+  }
+
+  return state.messages.findIndex(
+    (entry) =>
+      typeof entry?.clientTempId === "string"
+      && entry.clientTempId.length > 0
+      && (typeof entry.id !== "string" || entry.id.length === 0)
+      && entry.isMine === true
+      && incoming?.isMine === true
+      && entry?.content?.text === incomingText
+  );
+}
+
+/**
+ * Patch server fields onto a local message row (confirm / hydrate).
+ * @param {object} target
+ * @param {object} incoming
+ */
+function hydrateMessageFromServer(target, incoming) {
+  if (typeof incoming.id === "string" && incoming.id.length > 0) {
+    target.id = incoming.id;
+  }
+  if (typeof incoming.orderId === "string" && incoming.orderId.length > 0) {
+    target.orderId = incoming.orderId;
+  }
+  if (typeof incoming.createdAt === "number") {
+    target.createdAt = incoming.createdAt;
+  }
+  if (incoming.content && typeof incoming.content === "object") {
+    target.content = {
+      ...target.content,
+      ...incoming.content,
+    };
+  }
+  if (typeof incoming.creator === "string") {
+    target.creator = incoming.creator;
+  }
+  if (typeof incoming.creatorName === "string") {
+    target.creatorName = incoming.creatorName;
+  }
+  if (typeof incoming.isMine === "boolean") {
+    target.isMine = incoming.isMine;
+  }
+  if (
+    target.clientSendStatus === "sending"
+    || target.clientSendStatus === "sent"
+  ) {
+    target.clientSendStatus = "sent";
+  }
+}
+
+/**
+ * Merge one server message into open-chat state by id + orderId.
+ * @param {ChatHistoryState} state
+ * @param {object} incoming
+ * @returns {{
+ *   kind: "noop" | "confirm" | "insert",
+ *   message?: object,
+ *   index?: number,
+ *   reordered?: boolean,
+ * }}
+ */
+function mergeIncomingMessageIntoState(state, incoming) {
+  const id = incoming?.id;
+  if (typeof id !== "string" || id.length === 0) {
+    return { kind: "noop" };
+  }
+
+  const oldest = state.oldestOrderId;
+  const incomingOrderId = incoming?.orderId;
+  if (
+    typeof oldest === "string"
+    && oldest.length > 0
+    && typeof incomingOrderId === "string"
+    && incomingOrderId.length > 0
+    && compareOrderId(incomingOrderId, oldest) < 0
+    && !state.messageIds.has(id)
+  ) {
+    // Older than the loaded window; history pagination covers it.
+    return { kind: "noop" };
+  }
+
+  const existingIndex = state.messages.findIndex((entry) => entry?.id === id);
+  if (existingIndex >= 0) {
+    const existing = state.messages[existingIndex];
+    hydrateMessageFromServer(existing, incoming);
+    state.messageIds.add(id);
+
+    state.messages.splice(existingIndex, 1);
+    const newIndex = findMessageInsertIndex(state.messages, existing);
+    state.messages.splice(newIndex, 0, existing);
+
+    return {
+      kind: "confirm",
+      message: existing,
+      index: newIndex,
+      reordered: newIndex !== existingIndex,
+    };
+  }
+
+  const optimisticIndex = findMatchingOptimisticIndex(state, incoming);
+  if (optimisticIndex >= 0) {
+    const optimistic = state.messages[optimisticIndex];
+    hydrateMessageFromServer(optimistic, incoming);
+    state.messageIds.add(id);
+
+    state.messages.splice(optimisticIndex, 1);
+    const newIndex = findMessageInsertIndex(state.messages, optimistic);
+    state.messages.splice(newIndex, 0, optimistic);
+
+    return {
+      kind: "confirm",
+      message: optimistic,
+      index: newIndex,
+      reordered: newIndex !== optimisticIndex,
+    };
+  }
+
+  const inserted = { ...incoming };
+  const index = findMessageInsertIndex(state.messages, inserted);
+  state.messages.splice(index, 0, inserted);
+  state.messageIds.add(id);
+
+  return {
+    kind: "insert",
+    message: inserted,
+    index,
+    reordered: false,
+  };
+}
+
+/**
+ * Apply merge result to the message list DOM.
+ * @param {ChatHistoryState} state
+ * @param {{
+ *   kind: "noop" | "confirm" | "insert",
+ *   message?: object,
+ *   index?: number,
+ *   reordered?: boolean,
+ * }} result
+ * @param {{ scrollMode?: "always" | "ifAtLatest" }} [options]
+ * @returns {number} newly inserted visible row count
+ */
+function applyMergeResultToDom(state, result, options = {}) {
+  const scrollMode = options.scrollMode ?? "ifAtLatest";
+
+  if (result.kind === "noop" || !result.message) {
+    return 0;
+  }
+
+  if (result.kind === "confirm") {
+    if (result.reordered) {
+      rerenderOpenChatMessagesPreservingViewport(state.messages);
+    } else {
+      const status = resolveOutgoingSendStatus(result.message);
+      if (status) {
+        updateMessageRowSendStatus({
+          clientTempId: result.message.clientTempId,
+          messageId: result.message.id,
+          status,
+        });
+      }
+    }
+    return 0;
+  }
+
+  // insert
+  const atTip = result.index === state.messages.length - 1;
+  if (atTip) {
+    return appendNewerChatMessages([result.message], { scrollMode });
+  }
+
+  rerenderOpenChatMessagesPreservingViewport(state.messages);
+  return 1;
 }
 
 /**
@@ -372,23 +665,59 @@ function dedupeOlderMessages(state, page) {
 
 /**
  * Merge the latest API window after send without discarding older loaded pages.
+ * Inserts by orderId (not append-only) so concurrent external messages stay sorted.
  * @param {ChatHistoryState} state
  * @param {unknown} latestMessages
  * @returns {number} newly inserted row count
  */
 function applyLatestPageAfterSend(state, latestMessages) {
   const page = Array.isArray(latestMessages) ? latestMessages : [];
-  const newMessages = filterUnseenMessages(state, page);
-  if (newMessages.length === 0) {
+  if (page.length === 0) {
     return 0;
   }
 
-  state.messages = [...state.messages, ...newMessages];
-  for (const message of newMessages) {
-    state.messageIds.add(message.id);
+  let insertedCount = 0;
+  let needsRerender = false;
+  /** @type {object[]} */
+  const tipInsertBatch = [];
+
+  for (const message of page) {
+    if (typeof message?.id !== "string" || message.id.length === 0) {
+      continue;
+    }
+
+    const result = mergeIncomingMessageIntoState(state, message);
+    if (result.kind === "insert" && result.message) {
+      insertedCount += 1;
+      if (result.index === state.messages.length - 1) {
+        tipInsertBatch.push(result.message);
+      } else {
+        needsRerender = true;
+      }
+    } else if (result.kind === "confirm" && result.reordered) {
+      needsRerender = true;
+    } else if (result.kind === "confirm" && result.message) {
+      const status = resolveOutgoingSendStatus(result.message);
+      if (status) {
+        updateMessageRowSendStatus({
+          clientTempId: result.message.clientTempId,
+          messageId: result.message.id,
+          status,
+        });
+      }
+    }
   }
 
-  return appendNewerChatMessages(newMessages);
+  if (needsRerender || tipInsertBatch.length !== insertedCount) {
+    rerenderOpenChatMessagesPreservingViewport(state.messages);
+    return insertedCount;
+  }
+
+  if (tipInsertBatch.length === 0) {
+    return 0;
+  }
+
+  return appendNewerChatMessages(tipInsertBatch, { scrollMode: "always" });
 }
 
 /**
