@@ -182,6 +182,7 @@ function stopChatMessageStream() {
   const sub = messageStream;
   messageStream = null;
   if (!sub) {
+    hideAnytypeConnectionNotice();
     return;
   }
 
@@ -193,9 +194,12 @@ function stopChatMessageStream() {
   if (sub.eventSource) {
     sub.eventSource.onmessage = null;
     sub.eventSource.onerror = null;
+    sub.eventSource.onopen = null;
     sub.eventSource.close();
     sub.eventSource = null;
   }
+
+  hideAnytypeConnectionNotice();
 }
 
 /**
@@ -239,6 +243,7 @@ function openChatMessageStreamConnection() {
   if (sub.eventSource) {
     sub.eventSource.onmessage = null;
     sub.eventSource.onerror = null;
+    sub.eventSource.onopen = null;
     sub.eventSource.close();
     sub.eventSource = null;
   }
@@ -246,6 +251,13 @@ function openChatMessageStreamConnection() {
   const url = chatMessagesStreamUrl(sub.spaceId, sub.chatId, MESSAGE_PAGE_SIZE);
   const eventSource = new EventSource(url);
   sub.eventSource = eventSource;
+
+  eventSource.onopen = () => {
+    if (!isChatMessageStreamCurrent(sub)) {
+      return;
+    }
+    hideAnytypeConnectionNotice();
+  };
 
   eventSource.onmessage = (event) => {
     if (!isChatMessageStreamCurrent(sub)) {
@@ -259,6 +271,7 @@ function openChatMessageStreamConnection() {
     // Close so the browser does not auto-reconnect on a tight loop; we back off.
     eventSource.onmessage = null;
     eventSource.onerror = null;
+    eventSource.onopen = null;
     eventSource.close();
     if (sub.eventSource === eventSource) {
       sub.eventSource = null;
@@ -308,12 +321,18 @@ function handleChatMessageStreamPayload(sub, raw) {
     return;
   }
 
-  // Any valid event means the stream is healthy — reset reconnect backoff.
-  sub.backoffMs = STREAM_BACKOFF_MS_MIN;
-
   if (!isChatMessageStreamCurrent(sub)) {
     return;
   }
+
+  if (parsed?.type === "anytype_unavailable") {
+    showAnytypeConnectionNotice();
+    return;
+  }
+
+  // Any other valid event means the stream is healthy — reset reconnect backoff.
+  sub.backoffMs = STREAM_BACKOFF_MS_MIN;
+  hideAnytypeConnectionNotice();
 
   if (parsed?.type !== "message_added") {
     return;
@@ -333,6 +352,20 @@ function handleChatMessageStreamPayload(sub, raw) {
   applyMergeResultToDom(state, result, { scrollMode: "ifAtLatest" });
   if (result.kind === "insert") {
     maybeResolveIncomingAuthor(sub, state, message);
+  }
+}
+
+function showAnytypeConnectionNotice() {
+  const notice = document.getElementById("anytype-connection-notice");
+  if (notice) {
+    notice.hidden = false;
+  }
+}
+
+function hideAnytypeConnectionNotice() {
+  const notice = document.getElementById("anytype-connection-notice");
+  if (notice) {
+    notice.hidden = true;
   }
 }
 
