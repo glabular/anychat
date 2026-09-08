@@ -115,6 +115,39 @@ public class ChatsController(
         {
             // Some response/upstream stream teardowns surface this on abort; treat as disconnect.
         }
+        catch (IOException) when (!streamToken.IsCancellationRequested)
+        {
+            // Anytype local API dropped while the browser was still connected.
+            await TryWriteAnytypeUnavailableAsync();
+        }
+        catch (HttpRequestException) when (!streamToken.IsCancellationRequested)
+        {
+            // Connect/read to Anytype failed (e.g. connection refused after client quit).
+            await TryWriteAnytypeUnavailableAsync();
+        }
+    }
+
+    /// <summary>
+    /// Best-effort signal so the Web UI can show an Anytype-lost notice.
+    /// Ignores write failures if the browser already left.
+    /// </summary>
+    private async Task TryWriteAnytypeUnavailableAsync()
+    {
+        try
+        {
+            var dto = new ChatMessageStreamEventDto { Type = "anytype_unavailable" };
+            var json = JsonSerializer.Serialize(dto, StreamJsonOptions);
+            await Response.WriteAsync($"data: {json}\n\n");
+            await Response.Body.FlushAsync(CancellationToken.None);
+        }
+        catch (OperationCanceledException)
+        {
+            // Browser gone during the status write.
+        }
+        catch (IOException)
+        {
+            // Browser gone during the status write.
+        }
     }
 
     [HttpPost("{chatId}/messages")]
