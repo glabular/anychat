@@ -999,11 +999,21 @@ body.is-chats-sidebar-resizing * {
   /* Keep layout width so the field does not jump when the icon appears. */
   opacity: 0;
   pointer-events: none;
+  /* Destination when clearing --ready: fade out. */
+  transition: opacity 160ms ease-out;
 }
 
 .chat-send-button.chat-send-button--ready {
   opacity: 1;
   pointer-events: auto;
+  /* Destination when becoming ready: appear instantly. */
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-send-button {
+    transition: none;
+  }
 }
 
 .chat-send-button-icon {
