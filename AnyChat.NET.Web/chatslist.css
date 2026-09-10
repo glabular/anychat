@@ -104,15 +104,19 @@
 }
 
 /* Keep the list area when empty so the create FAB stays reachable. */
-.chats-list-area:has(#chats-list[hidden]):not(:has(#chats-create)) {
+.chats-list-area:has(#chats-list[hidden]):not(:has(#chats-create-wrap)) {
     display: none;
 }
 
-.chats-create {
+.chats-create-wrap {
     position: absolute;
     right: calc(1rem + var(--scrollbar-size));
     bottom: 0.75rem;
     z-index: 1;
+    display: inline-flex;
+}
+
+.chats-create {
     box-sizing: border-box;
     width: 40px;
     height: 40px;
@@ -129,6 +133,14 @@
     align-items: center;
     justify-content: center;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.chats-create-wrap:has(.chats-create:disabled) {
+    cursor: not-allowed;
+}
+
+.chats-create:disabled {
+    pointer-events: none;
 }
 
 .chats-create:hover:not(:disabled) {

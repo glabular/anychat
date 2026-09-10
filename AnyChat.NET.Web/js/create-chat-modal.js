@@ -1,4 +1,5 @@
 import { createChat } from "./api.js";
+import { isOneToOneSpaceObject } from "./space-members.js";
 
 /**
  * Create-chat modal: open/close via + / Esc / X; submit creates via API.
@@ -148,6 +149,14 @@ export function openCreateChatModal() {
     return;
   }
 
+  const selected = document.querySelector('input[name="space"]:checked');
+  if (
+    !selected ||
+    isOneToOneSpaceObject(selected.dataset.spaceObject ?? "")
+  ) {
+    return;
+  }
+
   if (!root.hidden) {
     nameInput.focus({ preventScroll: true });
     return;
@@ -179,6 +188,13 @@ async function handleCreateChatSubmit() {
   const selectedSpace = document.querySelector('input[name="space"]:checked');
   if (!selectedSpace) {
     showError("Select a space first.");
+    return;
+  }
+
+  if (isOneToOneSpaceObject(selectedSpace.dataset.spaceObject ?? "")) {
+    showError(
+      "Personal 1:1 spaces only have one chat thread. Create new chats in a regular space instead."
+    );
     return;
   }
 

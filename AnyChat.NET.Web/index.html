@@ -76,15 +76,20 @@
         </p>
         <div class="chats-list-area">
           <ul id="chats-list" class="idle-scrollbar"></ul>
-          <button
-            type="button"
-            id="chats-create"
-            class="chats-create"
-            aria-label="Create chat"
-            disabled
+          <span
+            id="chats-create-wrap"
+            class="chats-create-wrap"
           >
-            <span aria-hidden="true">+</span>
-          </button>
+            <button
+              type="button"
+              id="chats-create"
+              class="chats-create"
+              aria-label="Create chat"
+              disabled
+            >
+              <span aria-hidden="true">+</span>
+            </button>
+          </span>
           <button
             type="button"
             id="chats-scroll-to-top"

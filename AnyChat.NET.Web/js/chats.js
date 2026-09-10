@@ -54,6 +54,7 @@ import {
   ensureMembersForParticipantIds,
   getSpaceMember,
   isRegularSpaceObject,
+  isOneToOneSpaceObject,
 } from "./space-members.js";
 
 /** Messages fetched per open-chat request and per older-history page. */
@@ -81,7 +82,6 @@ let showSpinnerTimer = null;
 
 /** @typedef {{ senderLabel: string | null, text: string, createdAt?: number | null, isMine?: boolean, sendStatus?: import("./message-send-status.js").SendStatus }} ChatPreviewParts */
 
-const ONE_TO_ONE_SPACE_OBJECT = "anytype.onetoone";
 const DEFAULT_CHAT_AVATAR_EMOJI = "💬";
 
 function resolveChatAvatarEmoji(chat) {
@@ -1904,7 +1904,7 @@ function isStillCurrentSpace(spaceId, token) {
 
 function isOneToOneSpace() {
   const selected = document.querySelector('input[name="space"]:checked');
-  return selected?.dataset.spaceObject === ONE_TO_ONE_SPACE_OBJECT;
+  return isOneToOneSpaceObject(selected?.dataset.spaceObject ?? "");
 }
 
 async function loadChatPreviews(spaceId, rows, token) {

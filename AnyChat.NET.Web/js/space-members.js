@@ -3,6 +3,9 @@ import { fetchSpaceMember } from "./api.js";
 /** Space object value that enables message author profiles. */
 export const REGULAR_SPACE_OBJECT = "anytype.space";
 
+/** Personal / DM space — single chat thread in the official Anytype client. */
+export const ONE_TO_ONE_SPACE_OBJECT = "anytype.onetoone";
+
 /**
  * Cached members keyed by spaceId → participantId.
  * A null value means we already looked the id up and it was missing.
@@ -19,6 +22,14 @@ const inflightMemberFetches = new Map();
  */
 export function isRegularSpaceObject(spaceObject) {
   return spaceObject === REGULAR_SPACE_OBJECT;
+}
+
+/**
+ * @param {string | null | undefined} spaceObject
+ * @returns {boolean}
+ */
+export function isOneToOneSpaceObject(spaceObject) {
+  return spaceObject === ONE_TO_ONE_SPACE_OBJECT;
 }
 
 /**
