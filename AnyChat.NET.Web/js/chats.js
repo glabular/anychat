@@ -20,6 +20,7 @@ import {
   hideChatsScrollToTopButton,
   syncChatsScrollToTopButton,
 } from "./chats-scroll-to-top.js";
+import { syncChatsCreateButton } from "./chats-create-button.js";
 import {
   beginOpenChatMessages,
   clearMessageProfilesContext,
@@ -1233,6 +1234,8 @@ export async function loadChatsForSelectedSpace() {
   const selectedSpaceInput = document.querySelector(
     'input[name="space"]:checked'
   );
+
+  syncChatsCreateButton();
 
   if (!selectedSpaceInput) {
     console.warn("No space selected.");

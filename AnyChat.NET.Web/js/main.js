@@ -5,6 +5,7 @@ import { initIdleScrollbars } from "./idle-scrollbar.js";
 import { initFloatingDateIdle } from "./floating-date-idle.js";
 import { initChatsSidebarResize } from "./chats-sidebar-resize.js";
 import { initChatsScrollToTop } from "./chats-scroll-to-top.js";
+import { initChatsCreateButton } from "./chats-create-button.js";
 
 /** Desktop shell: do not cycle focus with Tab / Shift+Tab. */
 document.addEventListener(
@@ -23,4 +24,5 @@ initIdleScrollbars();
 initFloatingDateIdle();
 initChatsSidebarResize();
 initChatsScrollToTop();
+initChatsCreateButton();
 initializeSpaces();

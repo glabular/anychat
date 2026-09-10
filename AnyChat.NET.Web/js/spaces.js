@@ -4,6 +4,7 @@ import {
   loadChatsForSelectedSpace,
   setMainPlaceholderVisible,
 } from "./chats.js";
+import { syncChatsCreateButton } from "./chats-create-button.js";
 
 const SELECTED_SPACE_STORAGE_KEY = "anychat.selectedSpaceId";
 
@@ -43,6 +44,8 @@ export function populateSpacesSidebar(spaces) {
     const spaceId = resolveInitialSpaceId(spaces);
     selectSpace(spaceId);
     loadChatsForSelectedSpace();
+  } else {
+    syncChatsCreateButton();
   }
 }
 
@@ -207,6 +210,7 @@ export async function initializeSpaces() {
       });
     }
   } finally {
+    syncChatsCreateButton();
     const loading = document.getElementById("spaces-loading");
     if (loading) {
       loading.hidden = true;
