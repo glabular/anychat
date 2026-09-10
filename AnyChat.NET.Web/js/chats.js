@@ -1332,6 +1332,7 @@ export async function loadChatsForSelectedSpace() {
  *   li: HTMLLIElement,
  *   previewEl: HTMLParagraphElement,
  *   timestampEl: HTMLSpanElement,
+ *   statusEl: HTMLElement,
  *   chatId: string,
  * }}
  */
@@ -1403,7 +1404,7 @@ function createChatListItem(chat) {
   chatButton.appendChild(divTextBlock);
   li.appendChild(chatButton);
 
-  return { li, previewEl, timestampEl, chatId };
+  return { li, previewEl, timestampEl, statusEl: headerStatusEl, chatId };
 }
 
 async function reloadMessagesAfterSend(spaceId, chatId) {
@@ -1709,11 +1710,19 @@ async function loadChatPreviews(spaceId, rows, token) {
         latestMessage
           ? formatMessagePreview(latestMessage, { isOneToOne })
           : null,
-        row.timestampEl
+        row.timestampEl,
+        row.statusEl
       );
     } catch (error) {
       console.error(`Could not load latest message for chat ${row.chatId}:`, error);
-      renderChatPreview(row.previewEl, spaceId, row.chatId, null, row.timestampEl);
+      renderChatPreview(
+        row.previewEl,
+        spaceId,
+        row.chatId,
+        null,
+        row.timestampEl,
+        row.statusEl
+      );
     }
   }
 
@@ -1892,21 +1901,25 @@ function showDraftChatPreview(previewEl, draftText) {
 /**
  * @param {string} chatId
  * @param {ChatPreviewParts | null | undefined} parts
+ * @param {HTMLElement | null | undefined} [statusEl]
  */
-function updateChatHeaderStatus(chatId, parts) {
-  const statusEl = document.querySelector(
-    `#chats-list li[data-chat-id="${CSS.escape(chatId)}"] .chat-header-status`
-  );
-  if (!(statusEl instanceof HTMLElement)) {
+function updateChatHeaderStatus(chatId, parts, statusEl) {
+  const el =
+    statusEl instanceof HTMLElement
+      ? statusEl
+      : document.querySelector(
+          `#chats-list li[data-chat-id="${CSS.escape(chatId)}"] .chat-header-status`
+        );
+  if (!(el instanceof HTMLElement)) {
     return;
   }
 
   if (parts?.isMine && parts.sendStatus) {
-    statusEl.replaceChildren(createSendStatusElement(parts.sendStatus));
+    el.replaceChildren(createSendStatusElement(parts.sendStatus));
     return;
   }
 
-  statusEl.replaceChildren();
+  el.replaceChildren();
 }
 
 /**
@@ -1972,13 +1985,15 @@ function showMessageChatPreview(previewEl, parts) {
  * @param {string} chatId
  * @param {ChatPreviewParts | null | undefined} messagePreviewParts When provided, updates the cache.
  * @param {HTMLElement | null | undefined} [timestampEl]
+ * @param {HTMLElement | null | undefined} [statusEl]
  */
 function renderChatPreview(
   previewEl,
   spaceId,
   chatId,
   messagePreviewParts,
-  timestampEl
+  timestampEl,
+  statusEl
 ) {
   const key = chatMessagePreviewKey(spaceId, chatId);
   if (messagePreviewParts !== undefined) {
@@ -1989,10 +2004,14 @@ function renderChatPreview(
     timestampEl instanceof HTMLElement
       ? timestampEl
       : getChatTimestampEl(chatId);
+  const headerStatusEl =
+    statusEl instanceof HTMLElement
+      ? statusEl
+      : getChatHeaderStatusEl(chatId);
   const parts = chatMessagePreviews.get(key) ?? null;
 
   if (hasListDraftIndicator(spaceId, chatId)) {
-    updateChatHeaderStatus(chatId, null);
+    updateChatHeaderStatus(chatId, null, headerStatusEl);
     showDraftChatPreview(
       previewEl,
       getComposerDraft({ spaceId, chatId })
@@ -2001,9 +2020,20 @@ function renderChatPreview(
     return;
   }
 
-  updateChatHeaderStatus(chatId, parts);
+  updateChatHeaderStatus(chatId, parts, headerStatusEl);
   showMessageChatPreview(previewEl, parts);
   renderChatTimestamp(stampEl, parts?.createdAt);
+}
+
+/**
+ * @param {string} chatId
+ * @returns {HTMLElement | null}
+ */
+function getChatHeaderStatusEl(chatId) {
+  const statusEl = document.querySelector(
+    `#chats-list li[data-chat-id="${CSS.escape(chatId)}"] .chat-header-status`
+  );
+  return statusEl instanceof HTMLElement ? statusEl : null;
 }
 
 function updateChatListPreview(spaceId, chatId, messagePreviewParts) {
@@ -2019,7 +2049,8 @@ function updateChatListPreview(spaceId, chatId, messagePreviewParts) {
     spaceId,
     chatId,
     messagePreviewParts,
-    getChatTimestampEl(chatId)
+    getChatTimestampEl(chatId),
+    getChatHeaderStatusEl(chatId)
   );
   reorderChatListItem(spaceId, chatId);
 }
