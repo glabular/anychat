@@ -20,6 +20,10 @@ Accept: application/json
 
 ###
 
+DELETE {{AnyChat.NET.Api_HostAddress}}/api/spaces/{{spaceId}}/chats/{{chatId}}
+
+###
+
 GET {{AnyChat.NET.Api_HostAddress}}/api/spaces/{{spaceId}}/chats/{{chatId}}/messages?limit=10
 Accept: application/json
 

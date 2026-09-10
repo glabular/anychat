@@ -68,6 +68,25 @@ public class ChatsController(
             return AnytypeUnavailableExceptionFilter.CreateResult();
         }
     }
+        
+    [HttpDelete("{chatId}")]
+    public async Task<IActionResult> Delete(string spaceId, string chatId)
+    {
+        if (string.IsNullOrWhiteSpace(chatId))
+        {
+            return BadRequest(new { error = "Chat id is required." });
+        }
+
+        try
+        {
+            await client.Objects.DeleteAsync(spaceId, chatId);
+            return NoContent();
+        }
+        catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
+        {
+            return AnytypeUnavailableExceptionFilter.CreateResult();
+        }
+    }
 
     [HttpGet("{chatId}/messages")]
     public async Task<IActionResult> ListMessages(
