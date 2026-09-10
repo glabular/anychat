@@ -179,6 +179,9 @@ body.is-chats-sidebar-resizing * {
 
 .chat-panel-header {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   padding: 1rem 1.25rem;
   background-color: var(--color-light-bg);
   border-bottom: 1px solid var(--color-border);
@@ -186,8 +189,103 @@ body.is-chats-sidebar-resizing * {
 
 .chat-panel-title {
   margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 1.1rem;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-panel-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.chat-panel-menu-button {
+  box-sizing: border-box;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-panel-menu-button:hover {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.chat-panel-menu-button:focus,
+.chat-panel-menu-button:focus-visible {
+  outline: none;
+}
+
+.chat-panel-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 5;
+  box-sizing: border-box;
+  min-width: 9.5rem;
+  padding: 0.35rem 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background-color: var(--color-bg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.chat-panel-menu-dropdown[hidden] {
+  display: none;
+}
+
+.chat-panel-menu-item {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.5rem 0.85rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chat-panel-menu-item:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+}
+
+.chat-panel-menu-item:disabled,
+.chat-panel-menu-item[aria-disabled="true"] {
+  color: var(--color-text-placeholder);
+  cursor: not-allowed;
+}
+
+.chat-panel-menu-item--danger {
+  color: var(--color-red);
+}
+
+.chat-panel-menu-item--danger:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+  color: var(--color-red);
+}
+
+.chat-panel-menu-item:focus,
+.chat-panel-menu-item:focus-visible {
+  outline: none;
 }
 
 .chat-messages-area {

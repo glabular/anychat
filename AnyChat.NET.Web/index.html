@@ -110,6 +110,34 @@
         <section id="chat-panel" class="chat-panel" hidden>
           <header class="chat-panel-header">
             <h1 id="chat-panel-title" class="chat-panel-title"></h1>
+            <div class="chat-panel-menu">
+              <button
+                type="button"
+                id="chat-panel-menu-button"
+                class="chat-panel-menu-button"
+                aria-label="Chat options"
+                aria-haspopup="menu"
+                aria-expanded="false"
+                aria-controls="chat-panel-menu-dropdown"
+              >
+                <span aria-hidden="true">⋮</span>
+              </button>
+              <div
+                id="chat-panel-menu-dropdown"
+                class="chat-panel-menu-dropdown"
+                role="menu"
+                hidden
+              >
+                <button
+                  type="button"
+                  id="chat-panel-menu-delete"
+                  class="chat-panel-menu-item chat-panel-menu-item--danger"
+                  role="menuitem"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
           </header>
           <div class="chat-messages-area">
             <div

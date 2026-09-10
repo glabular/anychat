@@ -6,6 +6,7 @@ import { initFloatingDateIdle } from "./floating-date-idle.js";
 import { initChatsSidebarResize } from "./chats-sidebar-resize.js";
 import { initChatsScrollToTop } from "./chats-scroll-to-top.js";
 import { initChatsCreateButton } from "./chats-create-button.js";
+import { initChatPanelMenu } from "./chat-panel-menu.js";
 
 /** Desktop shell: do not cycle focus with Tab / Shift+Tab. */
 document.addEventListener(
@@ -25,4 +26,5 @@ initFloatingDateIdle();
 initChatsSidebarResize();
 initChatsScrollToTop();
 initChatsCreateButton();
+initChatPanelMenu();
 initializeSpaces();

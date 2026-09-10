@@ -26,6 +26,10 @@ import {
   closeCreateChatModal,
   isCreateChatModalOpen,
 } from "./create-chat-modal.js";
+import {
+  closeChatPanelMenu,
+  isChatPanelMenuOpen,
+} from "./chat-panel-menu.js";
 
 /** Bumps when opening a chat or clearing the panel so stale fetches are ignored. */
 let openChatToken = 0;
@@ -348,6 +352,7 @@ export function hideChatPanel(options = {}) {
   openChatToken += 1;
   openChat = null;
   clearMessageProfilesContext();
+  closeChatPanelMenu();
   closeMemberProfilePanel({ restoreFocus: false });
   clearChatMessages();
   resetChatHistoryStatus();
@@ -389,7 +394,7 @@ export function closeOpenChat() {
   return true;
 }
 
-/** Escape closes create-chat modal first, then member profile, then open chat. */
+/** Escape: create-chat → header menu → member profile → open chat. */
 export function initChatViewCloseBindings() {
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") {
@@ -397,6 +402,11 @@ export function initChatViewCloseBindings() {
     }
 
     if (closeCreateChatModal({ restoreFocus: true })) {
+      event.preventDefault();
+      return;
+    }
+
+    if (closeChatPanelMenu({ restoreFocus: true })) {
       event.preventDefault();
       return;
     }
@@ -420,6 +430,12 @@ export function initChatViewCloseBindings() {
     if (isCreateChatModalOpen()) {
       event.preventDefault();
       closeCreateChatModal({ restoreFocus: true });
+      return;
+    }
+
+    if (isChatPanelMenuOpen()) {
+      event.preventDefault();
+      closeChatPanelMenu({ restoreFocus: true });
       return;
     }
 
