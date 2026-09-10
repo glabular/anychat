@@ -67,6 +67,23 @@ export async function fetchChats(spaceId) {
 }
 
 /**
+ * Create a chat in a space.
+ * @param {string} spaceId
+ * @param {string} name
+ * @returns {Promise<{ id?: string, name?: string, object?: string, iconEmoji?: string }>}
+ */
+export async function createChat(spaceId, name) {
+  const response = await fetch(`${spacesUrl()}/${encodeURIComponent(spaceId)}/chats`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+
+  await throwIfNotOk(response, `Response status: ${response.status}`);
+  return await response.json();
+}
+
+/**
  * @param {string} spaceId
  * @param {string} memberId participant id or identity
  */
