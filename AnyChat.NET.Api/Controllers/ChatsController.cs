@@ -48,13 +48,12 @@ public class ChatsController(
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(string spaceId, [FromBody] CreateSpaceChatRequest request)
+    public async Task<IActionResult> Create(string spaceId, [FromBody] CreateSpaceChatRequest? request)
     {
-        var name = request.Name?.Trim();
-        if (string.IsNullOrEmpty(name))
-        {
-            return BadRequest(new { error = "Chat name is required." });
-        }
+        // Anytype rejects a fully empty name but accepts a single space as the title.
+        // UI maps blank/whitespace names to "Untitled".
+        var trimmed = request?.Name?.Trim() ?? string.Empty;
+        var name = trimmed.Length == 0 ? " " : trimmed;
 
         try
         {

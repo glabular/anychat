@@ -80,7 +80,7 @@ function describeCreateChatError(error) {
   }
 
   if (status === 400) {
-    return "Chat name is required.";
+    return "Could not create chat.";
   }
 
   if (typeof status === "number") {
@@ -183,11 +183,6 @@ async function handleCreateChatSubmit() {
   }
 
   const name = nameInput.value.trim();
-  if (!name) {
-    showError("Chat name is required.");
-    nameInput.focus({ preventScroll: true });
-    return;
-  }
 
   clearError();
   setSubmitInFlight(true);

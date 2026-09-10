@@ -99,6 +99,16 @@ function createChatAvatar(chat) {
   return avatarDiv;
 }
 
+/**
+ * Empty Anytype titles are allowed; show a stable label in the UI.
+ * @param {unknown} name
+ * @returns {string}
+ */
+function chatDisplayName(name) {
+  const trimmed = typeof name === "string" ? name.trim() : "";
+  return trimmed || "Untitled";
+}
+
 /** Latest message preview per chat, keyed by spaceId + chatId. */
 const chatMessagePreviews = new Map();
 
@@ -1546,7 +1556,7 @@ function createChatListItem(chat) {
   const chatButton = document.createElement("button");
   chatButton.type = "button";
   chatButton.className = "chat-item";
-  const chatName = chat.name ?? "-no name-";
+  const chatName = chatDisplayName(chat.name);
   const chatId = chat.id ?? "";
   li.dataset.chatName = chatName;
   chatButton.addEventListener("click", () => {

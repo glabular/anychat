@@ -5,6 +5,9 @@ namespace AnyChat.NET.Api.Models;
 /// </summary>
 public sealed class CreateSpaceChatRequest
 {
-    /// <summary>Display name for the new chat.</summary>
+    /// <summary>
+    /// Display name for the new chat. Null/empty/whitespace becomes a single space for Anytype;
+    /// the Web UI shows those as Untitled.
+    /// </summary>
     public string? Name { get; init; }
 }
