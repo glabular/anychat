@@ -84,6 +84,21 @@ export async function createChat(spaceId, name) {
 }
 
 /**
+ * Archive (delete) a chat object in a space.
+ * @param {string} spaceId
+ * @param {string} chatId
+ * @returns {Promise<void>}
+ */
+export async function deleteChat(spaceId, chatId) {
+  const response = await fetch(
+    `${spacesUrl()}/${encodeURIComponent(spaceId)}/chats/${encodeURIComponent(chatId)}`,
+    { method: "DELETE" }
+  );
+
+  await throwIfNotOk(response, `Response status: ${response.status}`);
+}
+
+/**
  * @param {string} spaceId
  * @param {string} memberId participant id or identity
  */
