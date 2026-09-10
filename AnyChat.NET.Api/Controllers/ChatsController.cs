@@ -47,6 +47,29 @@ public class ChatsController(
         }
     }
 
+    [HttpPost]
+    public async Task<IActionResult> Create(string spaceId, [FromBody] CreateSpaceChatRequest request)
+    {
+        var name = request.Name?.Trim();
+        if (string.IsNullOrEmpty(name))
+        {
+            return BadRequest(new { error = "Chat name is required." });
+        }
+
+        try
+        {
+            var chat = await client.Chats.CreateAsync(
+                spaceId,
+                new CreateChatRequest { Name = name });
+
+            return StatusCode(StatusCodes.Status201Created, MapChatListItem(chat));
+        }
+        catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
+        {
+            return AnytypeUnavailableExceptionFilter.CreateResult();
+        }
+    }
+
     [HttpGet("{chatId}/messages")]
     public async Task<IActionResult> ListMessages(
         string spaceId,

@@ -10,6 +10,16 @@ Accept: application/json
 
 ###
 
+POST {{AnyChat.NET.Api_HostAddress}}/api/spaces/{{spaceId}}/chats
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "New chat from AnyChat"
+}
+
+###
+
 GET {{AnyChat.NET.Api_HostAddress}}/api/spaces/{{spaceId}}/chats/{{chatId}}/messages?limit=10
 Accept: application/json
 
