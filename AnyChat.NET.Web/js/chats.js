@@ -102,8 +102,164 @@ function createChatAvatar(chat) {
 /** Latest message preview per chat, keyed by spaceId + chatId. */
 const chatMessagePreviews = new Map();
 
+/** localStorage: `{ [JSON.stringify([spaceId, chatId])]: unixSeconds }` */
+const CHAT_ACTIVITY_SEEDS_STORAGE_KEY = "anychat.chatActivitySeeds";
+
 function chatMessagePreviewKey(spaceId, chatId) {
   return JSON.stringify([spaceId, chatId]);
+}
+
+/**
+ * @returns {Record<string, number>}
+ */
+function readPersistedActivitySeeds() {
+  try {
+    const raw = localStorage.getItem(CHAT_ACTIVITY_SEEDS_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    return /** @type {Record<string, number>} */ (parsed);
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * @param {Record<string, number>} seeds
+ */
+function writePersistedActivitySeeds(seeds) {
+  try {
+    localStorage.setItem(CHAT_ACTIVITY_SEEDS_STORAGE_KEY, JSON.stringify(seeds));
+  } catch {
+    // non-fatal; sort still works for the current session
+  }
+}
+
+/**
+ * @param {string} spaceId
+ * @param {string} chatId
+ * @param {number} unixSeconds
+ */
+function persistActivitySeed(spaceId, chatId, unixSeconds) {
+  const seeds = readPersistedActivitySeeds();
+  seeds[chatMessagePreviewKey(spaceId, chatId)] = unixSeconds;
+  writePersistedActivitySeeds(seeds);
+}
+
+/**
+ * @param {string} spaceId
+ * @param {string} chatId
+ */
+function clearPersistedActivitySeed(spaceId, chatId) {
+  const seeds = readPersistedActivitySeeds();
+  const key = chatMessagePreviewKey(spaceId, chatId);
+  if (!(key in seeds)) {
+    return;
+  }
+  delete seeds[key];
+  writePersistedActivitySeeds(seeds);
+}
+
+/**
+ * Apply stored create-activity seeds into memory for this space; drop orphans.
+ * @param {string} spaceId
+ * @param {string[]} chatIds
+ */
+function hydratePersistedActivitySeeds(spaceId, chatIds) {
+  const idSet = new Set(chatIds.filter(Boolean));
+  const seeds = readPersistedActivitySeeds();
+  let changed = false;
+
+  for (const [key, value] of Object.entries(seeds)) {
+    let parsed;
+    try {
+      parsed = JSON.parse(key);
+    } catch {
+      delete seeds[key];
+      changed = true;
+      continue;
+    }
+
+    if (!Array.isArray(parsed) || parsed.length < 2 || parsed[0] !== spaceId) {
+      continue;
+    }
+
+    const chatId = parsed[1];
+    if (typeof chatId !== "string" || !idSet.has(chatId)) {
+      delete seeds[key];
+      changed = true;
+      continue;
+    }
+
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+      seedChatActivityCreatedAt(spaceId, chatId, value, { persist: false });
+    } else {
+      delete seeds[key];
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    writePersistedActivitySeeds(seeds);
+  }
+}
+
+/**
+ * Client-only activity seed so a just-created empty chat sorts near the top.
+ * Does not post a message. Uses Unix seconds (same units as message `createdAt`).
+ * Persists in localStorage so order survives app restart on this device.
+ * @param {string} spaceId
+ * @param {string} chatId
+ * @param {number} [unixSeconds=Math.floor(Date.now() / 1000)]
+ * @param {{ persist?: boolean }} [options]
+ */
+export function seedChatActivityCreatedAt(
+  spaceId,
+  chatId,
+  unixSeconds = Math.floor(Date.now() / 1000),
+  options = {}
+) {
+  if (!spaceId || !chatId || typeof unixSeconds !== "number") {
+    return;
+  }
+
+  const persist = options.persist !== false;
+
+  const key = chatMessagePreviewKey(spaceId, chatId);
+  const existing = chatMessagePreviews.get(key);
+  chatMessagePreviews.set(key, {
+    senderLabel: null,
+    text: typeof existing?.text === "string" ? existing.text : "",
+    createdAt: unixSeconds,
+    ...(existing?.isMine === true ? { isMine: true } : {}),
+    ...(existing?.sendStatus ? { sendStatus: existing.sendStatus } : {}),
+  });
+
+  if (persist) {
+    persistActivitySeed(spaceId, chatId, unixSeconds);
+  }
+}
+
+/**
+ * Keep a prior activity seed when the latest-message fetch returns empty.
+ * @param {string} spaceId
+ * @param {string} chatId
+ * @returns {ChatPreviewParts | null}
+ */
+function previewPartsAfterEmptyFetch(spaceId, chatId) {
+  const existing = chatMessagePreviews.get(chatMessagePreviewKey(spaceId, chatId));
+  if (existing && typeof existing.createdAt === "number") {
+    return {
+      senderLabel: null,
+      text: typeof existing.text === "string" ? existing.text : "",
+      createdAt: existing.createdAt,
+    };
+  }
+  return null;
 }
 
 /** @type {ChatHistoryState | null} */
@@ -1230,7 +1386,12 @@ function endChatsLoad(token) {
   return true;
 }
 
-export async function loadChatsForSelectedSpace() {
+export async function loadChatsForSelectedSpace(options = {}) {
+  const openChatId =
+    typeof options.openChatId === "string" && options.openChatId
+      ? options.openChatId
+      : null;
+
   const selectedSpaceInput = document.querySelector(
     'input[name="space"]:checked'
   );
@@ -1284,6 +1445,7 @@ export async function loadChatsForSelectedSpace() {
 
   // Empty space: nothing to preview/sort — show empty state immediately.
   if (!Array.isArray(chats) || chats.length === 0) {
+    hydratePersistedActivitySeeds(spaceId, []);
     if (!endChatsLoad(token)) {
       return;
     }
@@ -1312,6 +1474,11 @@ export async function loadChatsForSelectedSpace() {
 
   document.getElementById("chats-list")?.setAttribute("aria-busy", "true");
 
+  hydratePersistedActivitySeeds(
+    spaceId,
+    chats.map((chat) => chat.id).filter((id) => typeof id === "string" && id)
+  );
+
   const rows = chats.map((chat) => createChatListItem(chat));
   await loadChatPreviews(spaceId, rows, token);
 
@@ -1327,6 +1494,37 @@ export async function loadChatsForSelectedSpace() {
 
   paintChatRows(rows);
   setMainPlaceholderVisible(true);
+
+  if (openChatId) {
+    selectChatInList(openChatId);
+  }
+}
+
+/**
+ * Programmatically select a chat row (same path as a user click).
+ * @param {string} chatId
+ * @returns {boolean}
+ */
+function selectChatInList(chatId) {
+  const list = document.getElementById("chats-list");
+  if (!list || !chatId) {
+    return false;
+  }
+
+  for (const li of list.querySelectorAll("li[data-chat-id]")) {
+    if (li.dataset.chatId !== chatId) {
+      continue;
+    }
+    const button = li.querySelector(".chat-item");
+    if (!(button instanceof HTMLElement)) {
+      return false;
+    }
+    button.click();
+    return true;
+  }
+
+  console.warn(`Could not select chat ${chatId} after refresh.`);
+  return false;
 }
 
 /**
@@ -1706,23 +1904,33 @@ async function loadChatPreviews(spaceId, rows, token) {
 
       const latestMessage =
         Array.isArray(messages) && messages.length > 0 ? messages[0] : null;
-      renderChatPreview(
-        row.previewEl,
-        spaceId,
-        row.chatId,
-        latestMessage
-          ? formatMessagePreview(latestMessage, { isOneToOne })
-          : null,
-        row.timestampEl,
-        row.statusEl
-      );
+      if (latestMessage) {
+        clearPersistedActivitySeed(spaceId, row.chatId);
+        renderChatPreview(
+          row.previewEl,
+          spaceId,
+          row.chatId,
+          formatMessagePreview(latestMessage, { isOneToOne }),
+          row.timestampEl,
+          row.statusEl
+        );
+      } else {
+        renderChatPreview(
+          row.previewEl,
+          spaceId,
+          row.chatId,
+          previewPartsAfterEmptyFetch(spaceId, row.chatId),
+          row.timestampEl,
+          row.statusEl
+        );
+      }
     } catch (error) {
       console.error(`Could not load latest message for chat ${row.chatId}:`, error);
       renderChatPreview(
         row.previewEl,
         spaceId,
         row.chatId,
-        null,
+        previewPartsAfterEmptyFetch(spaceId, row.chatId),
         row.timestampEl,
         row.statusEl
       );

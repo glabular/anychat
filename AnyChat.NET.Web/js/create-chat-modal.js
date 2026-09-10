@@ -1,11 +1,13 @@
+import { createChat } from "./api.js";
+
 /**
- * Create-chat modal shell: open/close only via + / Esc / X.
- * Submit wiring lands in a later step.
+ * Create-chat modal: open/close via + / Esc / X; submit creates via API.
  */
 
 let modalBound = false;
 /** @type {HTMLElement | null} */
 let focusBeforeOpen = null;
+let submitInFlight = false;
 
 function getRoot() {
   return document.getElementById("create-chat-modal");
@@ -31,6 +33,12 @@ function getForm() {
   );
 }
 
+function getSubmitButton() {
+  return /** @type {HTMLButtonElement | null} */ (
+    document.getElementById("create-chat-submit")
+  );
+}
+
 function getErrorEl() {
   return document.getElementById("create-chat-error");
 }
@@ -50,6 +58,58 @@ function clearError() {
 }
 
 /**
+ * @param {string} message
+ */
+function showError(message) {
+  const errorEl = getErrorEl();
+  if (!errorEl) {
+    return;
+  }
+  errorEl.textContent = message;
+  errorEl.hidden = false;
+}
+
+/**
+ * @param {unknown} error
+ */
+function describeCreateChatError(error) {
+  const status = error && typeof error === "object" ? error.status : undefined;
+
+  if (status === 503) {
+    return "Lost connection to Anytype. Open the official Anytype app and try again.";
+  }
+
+  if (status === 400) {
+    return "Chat name is required.";
+  }
+
+  if (typeof status === "number") {
+    return `Could not create chat (HTTP ${status}).`;
+  }
+
+  if (error instanceof TypeError) {
+    return "Cannot reach the API.";
+  }
+
+  return "Could not create chat.";
+}
+
+/**
+ * @param {boolean} inFlight
+ */
+function setSubmitInFlight(inFlight) {
+  submitInFlight = inFlight;
+  const submit = getSubmitButton();
+  const nameInput = getNameInput();
+  if (submit) {
+    submit.disabled = inFlight;
+  }
+  if (nameInput) {
+    nameInput.disabled = inFlight;
+  }
+}
+
+/**
  * @param {{ restoreFocus?: boolean }} [options]
  * @returns {boolean} true if the modal was open and is now closed
  */
@@ -59,12 +119,18 @@ export function closeCreateChatModal({ restoreFocus = true } = {}) {
     return false;
   }
 
+  if (submitInFlight) {
+    return true;
+  }
+
   root.hidden = true;
   clearError();
+  setSubmitInFlight(false);
 
   const nameInput = getNameInput();
   if (nameInput) {
     nameInput.value = "";
+    nameInput.disabled = false;
   }
 
   if (restoreFocus && focusBeforeOpen instanceof HTMLElement) {
@@ -93,9 +159,64 @@ export function openCreateChatModal() {
       : null;
 
   clearError();
+  setSubmitInFlight(false);
   nameInput.value = "";
+  nameInput.disabled = false;
   root.hidden = false;
   nameInput.focus({ preventScroll: true });
+}
+
+async function handleCreateChatSubmit() {
+  if (submitInFlight) {
+    return;
+  }
+
+  const nameInput = getNameInput();
+  if (!nameInput) {
+    return;
+  }
+
+  const selectedSpace = document.querySelector('input[name="space"]:checked');
+  if (!selectedSpace) {
+    showError("Select a space first.");
+    return;
+  }
+
+  const name = nameInput.value.trim();
+  if (!name) {
+    showError("Chat name is required.");
+    nameInput.focus({ preventScroll: true });
+    return;
+  }
+
+  clearError();
+  setSubmitInFlight(true);
+
+  try {
+    const chat = await createChat(selectedSpace.value, name);
+    if (!chat?.id) {
+      showError("Chat was created but no id was returned.");
+      return;
+    }
+
+    setSubmitInFlight(false);
+    closeCreateChatModal({ restoreFocus: false });
+
+    // Dynamic import avoids chats.js ↔ create-chat-modal.js cycle.
+    const { loadChatsForSelectedSpace, seedChatActivityCreatedAt } = await import(
+      "./chats.js"
+    );
+    seedChatActivityCreatedAt(selectedSpace.value, chat.id);
+    await loadChatsForSelectedSpace({ openChatId: chat.id });
+  } catch (error) {
+    console.error("Could not create chat:", error);
+    showError(describeCreateChatError(error));
+  } finally {
+    if (isCreateChatModalOpen()) {
+      setSubmitInFlight(false);
+      nameInput.focus({ preventScroll: true });
+    }
+  }
 }
 
 export function initCreateChatModal() {
@@ -113,6 +234,9 @@ export function initCreateChatModal() {
   modalBound = true;
 
   closeButton.addEventListener("click", () => {
+    if (submitInFlight) {
+      return;
+    }
     closeCreateChatModal({ restoreFocus: true });
   });
 
@@ -125,6 +249,6 @@ export function initCreateChatModal() {
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    // Step 5 wires createChat + refresh/open.
+    void handleCreateChatSubmit();
   });
 }
