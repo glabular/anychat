@@ -1,5 +1,5 @@
 /**
- * Open-chat header ⋮ menu shell. Delete wiring lands in a later step.
+ * Open-chat header ⋮ menu (Delete → confirm modal).
  */
 
 let menuBound = false;
@@ -83,8 +83,10 @@ export function initChatPanelMenu() {
 
   deleteItem?.addEventListener("click", (event) => {
     event.stopPropagation();
-    // Step 4 wires confirm + deleteChat.
     closeChatPanelMenu();
+    void import("./delete-chat-confirm.js").then(({ openDeleteChatConfirm }) => {
+      void openDeleteChatConfirm();
+    });
   });
 
   document.addEventListener("mousedown", (event) => {

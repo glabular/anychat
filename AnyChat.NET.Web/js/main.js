@@ -7,6 +7,7 @@ import { initChatsSidebarResize } from "./chats-sidebar-resize.js";
 import { initChatsScrollToTop } from "./chats-scroll-to-top.js";
 import { initChatsCreateButton } from "./chats-create-button.js";
 import { initChatPanelMenu } from "./chat-panel-menu.js";
+import { initDeleteChatConfirm } from "./delete-chat-confirm.js";
 
 /** Desktop shell: do not cycle focus with Tab / Shift+Tab. */
 document.addEventListener(
@@ -27,4 +28,5 @@ initChatsSidebarResize();
 initChatsScrollToTop();
 initChatsCreateButton();
 initChatPanelMenu();
+initDeleteChatConfirm();
 initializeSpaces();

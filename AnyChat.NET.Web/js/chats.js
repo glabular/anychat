@@ -175,6 +175,19 @@ function clearPersistedActivitySeed(spaceId, chatId) {
 }
 
 /**
+ * Drop in-memory preview and localStorage activity seed for a chat (e.g. after delete).
+ * @param {string} spaceId
+ * @param {string} chatId
+ */
+export function clearChatActivitySeed(spaceId, chatId) {
+  if (!spaceId || !chatId) {
+    return;
+  }
+  chatMessagePreviews.delete(chatMessagePreviewKey(spaceId, chatId));
+  clearPersistedActivitySeed(spaceId, chatId);
+}
+
+/**
  * Apply stored create-activity seeds into memory for this space; drop orphans.
  * @param {string} spaceId
  * @param {string[]} chatIds

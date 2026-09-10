@@ -154,3 +154,51 @@
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
+
+.create-chat-actions--confirm {
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.create-chat-body {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.create-chat-button-secondary {
+  box-sizing: border-box;
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background-color: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.create-chat-button-secondary:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+}
+
+.create-chat-button-secondary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.create-chat-button-secondary:focus,
+.create-chat-button-secondary:focus-visible {
+  outline: none;
+}
+
+.create-chat-submit--danger {
+  background-color: var(--color-red);
+  border-color: transparent;
+  color: #fff;
+}
+
+.create-chat-submit--danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+}

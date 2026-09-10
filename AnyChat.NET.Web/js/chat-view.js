@@ -30,6 +30,10 @@ import {
   closeChatPanelMenu,
   isChatPanelMenuOpen,
 } from "./chat-panel-menu.js";
+import {
+  closeDeleteChatConfirm,
+  isDeleteChatConfirmOpen,
+} from "./delete-chat-confirm.js";
 
 /** Bumps when opening a chat or clearing the panel so stale fetches are ignored. */
 let openChatToken = 0;
@@ -353,6 +357,7 @@ export function hideChatPanel(options = {}) {
   openChat = null;
   clearMessageProfilesContext();
   closeChatPanelMenu();
+  closeDeleteChatConfirm({ restoreFocus: false });
   closeMemberProfilePanel({ restoreFocus: false });
   clearChatMessages();
   resetChatHistoryStatus();
@@ -394,10 +399,15 @@ export function closeOpenChat() {
   return true;
 }
 
-/** Escape: create-chat → header menu → member profile → open chat. */
+/** Escape: delete confirm → create-chat → header menu → member profile → open chat. */
 export function initChatViewCloseBindings() {
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") {
+      return;
+    }
+
+    if (closeDeleteChatConfirm({ restoreFocus: true })) {
+      event.preventDefault();
       return;
     }
 
@@ -424,6 +434,12 @@ export function initChatViewCloseBindings() {
   // Mouse X1 ("Back") is button 3. Prevent the browser from navigating away.
   document.addEventListener("mousedown", (event) => {
     if (event.button !== 3) {
+      return;
+    }
+
+    if (isDeleteChatConfirmOpen()) {
+      event.preventDefault();
+      closeDeleteChatConfirm({ restoreFocus: true });
       return;
     }
 
@@ -506,6 +522,11 @@ export function setOpenChat(spaceId, chatId) {
   openChat = { spaceId, chatId };
   restoreComposerDraftToInput(openChat);
   setSendErrorVisible(false);
+}
+
+/** @returns {{ spaceId: string, chatId: string } | null} */
+export function getOpenChat() {
+  return openChat;
 }
 
 /**
