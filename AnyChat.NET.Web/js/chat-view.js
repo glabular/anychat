@@ -22,6 +22,10 @@ import {
   isMemberProfilePanelOpen,
   openMemberProfilePanel,
 } from "./member-profile-panel.js";
+import {
+  closeCreateChatModal,
+  isCreateChatModalOpen,
+} from "./create-chat-modal.js";
 
 /** Bumps when opening a chat or clearing the panel so stale fetches are ignored. */
 let openChatToken = 0;
@@ -385,10 +389,15 @@ export function closeOpenChat() {
   return true;
 }
 
-/** Escape closes the member profile panel first, then the open chat. */
+/** Escape closes create-chat modal first, then member profile, then open chat. */
 export function initChatViewCloseBindings() {
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") {
+      return;
+    }
+
+    if (closeCreateChatModal({ restoreFocus: true })) {
+      event.preventDefault();
       return;
     }
 
@@ -405,6 +414,12 @@ export function initChatViewCloseBindings() {
   // Mouse X1 ("Back") is button 3. Prevent the browser from navigating away.
   document.addEventListener("mousedown", (event) => {
     if (event.button !== 3) {
+      return;
+    }
+
+    if (isCreateChatModalOpen()) {
+      event.preventDefault();
+      closeCreateChatModal({ restoreFocus: true });
       return;
     }
 

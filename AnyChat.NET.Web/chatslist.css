@@ -139,9 +139,9 @@
     background-color: var(--color-accent-active);
 }
 
+.chats-create:focus,
 .chats-create:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
+    outline: none;
 }
 
 .chats-create:disabled {

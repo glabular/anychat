@@ -1,3 +1,10 @@
+import {
+  closeCreateChatModal,
+  initCreateChatModal,
+  isCreateChatModalOpen,
+  openCreateChatModal,
+} from "./create-chat-modal.js";
+
 function getCreateChatButton() {
   return document.getElementById("chats-create");
 }
@@ -16,20 +23,23 @@ export function syncChatsCreateButton() {
   button.disabled = !hasSelectedSpace();
 }
 
-/** One-time wiring for the create-chat FAB (modal in a later step). */
+/** One-time wiring for the create-chat FAB. */
 export function initChatsCreateButton() {
   const button = getCreateChatButton();
   if (!button) {
     return;
   }
 
+  initCreateChatModal();
+
   button.addEventListener("click", () => {
     if (button.disabled) {
       return;
     }
-    // Step 4 wires the modal; stub keeps the control clickable for self-check.
-    console.info("Create chat: modal not wired yet.");
+    openCreateChatModal();
   });
 
   syncChatsCreateButton();
 }
+
+export { closeCreateChatModal, isCreateChatModalOpen };

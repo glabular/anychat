@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="sidebar.css" />
     <link rel="stylesheet" href="chatslist.css" />
+    <link rel="stylesheet" href="create-chat-modal.css" />
   </head>
   <body>
     <div class="layout">
@@ -262,6 +263,52 @@
           </form>
         </section>
       </main>
+    </div>
+    <div
+      id="create-chat-modal"
+      class="create-chat-modal"
+      hidden
+    >
+      <div
+        id="create-chat-dialog"
+        class="create-chat-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-chat-title"
+      >
+        <div class="create-chat-header">
+          <h2 id="create-chat-title" class="create-chat-title">Create a new chat</h2>
+          <button
+            type="button"
+            id="create-chat-close"
+            class="create-chat-close"
+            aria-label="Close"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
+        <form id="create-chat-form" class="create-chat-form">
+          <label class="create-chat-label" for="create-chat-name">
+            Name
+            <input
+              id="create-chat-name"
+              class="create-chat-name"
+              name="name"
+              type="text"
+              autocomplete="off"
+              maxlength="200"
+              placeholder="Chat name"
+              required
+            />
+          </label>
+          <p id="create-chat-error" class="create-chat-error" hidden></p>
+          <div class="create-chat-actions">
+            <button type="submit" class="create-chat-submit" id="create-chat-submit">
+              Create
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
     <div id="member-profile-panel" class="member-profile-panel" hidden>
       <div
