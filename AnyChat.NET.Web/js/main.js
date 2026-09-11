@@ -8,6 +8,7 @@ import { initChatsScrollToTop } from "./chats-scroll-to-top.js";
 import { initChatsCreateButton } from "./chats-create-button.js";
 import { initChatPanelMenu } from "./chat-panel-menu.js";
 import { initDeleteChatConfirm } from "./delete-chat-confirm.js";
+import { initChatRenameTitle } from "./chat-rename-title.js";
 
 /** Desktop shell: do not cycle focus with Tab / Shift+Tab. */
 document.addEventListener(
@@ -29,4 +30,5 @@ initChatsScrollToTop();
 initChatsCreateButton();
 initChatPanelMenu();
 initDeleteChatConfirm();
+initChatRenameTitle();
 initializeSpaces();

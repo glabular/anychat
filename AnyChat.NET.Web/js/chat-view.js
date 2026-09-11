@@ -34,6 +34,10 @@ import {
   closeDeleteChatConfirm,
   isDeleteChatConfirmOpen,
 } from "./delete-chat-confirm.js";
+import {
+  cancelChatRename,
+  isChatRenameOpen,
+} from "./chat-rename-title.js";
 
 /** Bumps when opening a chat or clearing the panel so stale fetches are ignored. */
 let openChatToken = 0;
@@ -326,7 +330,10 @@ export function showChatHeader(name) {
   const title = document.getElementById("chat-panel-title");
   const placeholder = document.getElementById("main-placeholder");
 
+  cancelChatRename({ restoreFocus: false });
+
   if (title) {
+    title.hidden = false;
     title.textContent = name;
   }
   if (panel) {
@@ -356,6 +363,7 @@ export function hideChatPanel(options = {}) {
   openChatToken += 1;
   openChat = null;
   clearMessageProfilesContext();
+  cancelChatRename({ restoreFocus: false });
   closeChatPanelMenu();
   closeDeleteChatConfirm({ restoreFocus: false });
   closeMemberProfilePanel({ restoreFocus: false });
@@ -365,6 +373,7 @@ export function hideChatPanel(options = {}) {
   onChatPanelHidden?.();
 
   if (title) {
+    title.hidden = false;
     title.textContent = "";
   }
   if (panel) {
@@ -399,10 +408,15 @@ export function closeOpenChat() {
   return true;
 }
 
-/** Escape: delete confirm → create-chat → header menu → member profile → open chat. */
+/** Escape: rename → delete confirm → create-chat → header menu → member profile → open chat. */
 export function initChatViewCloseBindings() {
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") {
+      return;
+    }
+
+    if (cancelChatRename({ restoreFocus: true })) {
+      event.preventDefault();
       return;
     }
 
@@ -434,6 +448,12 @@ export function initChatViewCloseBindings() {
   // Mouse X1 ("Back") is button 3. Prevent the browser from navigating away.
   document.addEventListener("mousedown", (event) => {
     if (event.button !== 3) {
+      return;
+    }
+
+    if (isChatRenameOpen()) {
+      event.preventDefault();
+      cancelChatRename({ restoreFocus: true });
       return;
     }
 

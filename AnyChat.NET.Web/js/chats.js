@@ -104,7 +104,7 @@ function createChatAvatar(chat) {
  * @param {unknown} name
  * @returns {string}
  */
-function chatDisplayName(name) {
+export function chatDisplayName(name) {
   const trimmed = typeof name === "string" ? name.trim() : "";
   return trimmed || "Untitled";
 }
@@ -1585,7 +1585,7 @@ function createChatListItem(chat) {
     );
     previouslySelected?.classList.remove("chat-item--selected");
     chatButton.classList.add("chat-item--selected");
-    showChatHeader(chatName);
+    showChatHeader(li.dataset.chatName || chatName);
     const selectedSpaceInput = document.querySelector(
       'input[name="space"]:checked'
     );

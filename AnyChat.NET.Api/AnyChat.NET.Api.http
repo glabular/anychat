@@ -24,6 +24,15 @@ DELETE {{AnyChat.NET.Api_HostAddress}}/api/spaces/{{spaceId}}/chats/{{chatId}}
 
 ###
 
+PATCH {{AnyChat.NET.Api_HostAddress}}/api/spaces/{{spaceId}}/chats/{{chatId}}
+Content-Type: application/json
+
+{
+  "name": "Renamed chat from AnyChat"
+}
+
+###
+
 GET {{AnyChat.NET.Api_HostAddress}}/api/spaces/{{spaceId}}/chats/{{chatId}}/messages?limit=10
 Accept: application/json
 

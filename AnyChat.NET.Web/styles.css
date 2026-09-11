@@ -187,15 +187,94 @@ body.is-chats-sidebar-resizing * {
   border-bottom: 1px solid var(--color-border);
 }
 
+/* Elevate the header stacking context so the fixed dim can cover the app
+   while the title input stays above it (body-level dim would trap the title). */
+.chat-panel-header--renaming {
+  position: relative;
+  z-index: 41;
+}
+
+.chat-panel-title-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.chat-panel-title-wrap--editing {
+  z-index: 1;
+}
+
+.chat-panel-title-wrap--editing .chat-panel-title {
+  visibility: hidden;
+}
+
 .chat-panel-title {
   margin: 0;
-  flex: 1 1 auto;
   min-width: 0;
   font-size: 1.1rem;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.chat-panel-title:focus,
+.chat-panel-title:focus-visible {
+  outline: none;
+}
+
+.chat-panel-title-input {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: normal;
+}
+
+.chat-panel-title-input:focus,
+.chat-panel-title-input:focus-visible {
+  outline: none;
+}
+
+.chat-panel-title-input:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.chat-rename-error {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-danger, #c62828);
+}
+
+.chat-rename-error[hidden] {
+  display: none;
+}
+
+.chat-rename-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-color: rgba(0, 0, 0, 0.45);
+}
+
+.chat-rename-dim[hidden] {
+  display: none;
 }
 
 .chat-panel-menu {

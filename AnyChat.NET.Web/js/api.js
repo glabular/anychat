@@ -99,6 +99,26 @@ export async function deleteChat(spaceId, chatId) {
 }
 
 /**
+ * Rename a chat object in a space (Objects.UpdateAsync via API).
+ * @param {string} spaceId
+ * @param {string} chatId
+ * @param {string} name
+ * @returns {Promise<void>}
+ */
+export async function renameChat(spaceId, chatId, name) {
+  const response = await fetch(
+    `${spacesUrl()}/${encodeURIComponent(spaceId)}/chats/${encodeURIComponent(chatId)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    }
+  );
+
+  await throwIfNotOk(response, `Response status: ${response.status}`);
+}
+
+/**
  * @param {string} spaceId
  * @param {string} memberId participant id or identity
  */

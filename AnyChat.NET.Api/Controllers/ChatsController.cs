@@ -88,6 +88,36 @@ public class ChatsController(
         }
     }
 
+    [HttpPatch("{chatId}")]
+    public async Task<IActionResult> Update(
+        string spaceId,
+        string chatId,
+        [FromBody] UpdateSpaceChatRequest? request)
+    {
+        if (string.IsNullOrWhiteSpace(chatId))
+        {
+            return BadRequest(new { error = "Chat id is required." });
+        }
+
+        // Same blank-name rule as Create: Anytype rejects "" but accepts " ".
+        var trimmed = request?.Name?.Trim() ?? string.Empty;
+        var name = trimmed.Length == 0 ? " " : trimmed;
+
+        try
+        {
+            await client.Objects.UpdateAsync(
+                spaceId,
+                chatId,
+                new UpdateObjectRequest { Name = name });
+
+            return NoContent();
+        }
+        catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
+        {
+            return AnytypeUnavailableExceptionFilter.CreateResult();
+        }
+    }
+
     [HttpGet("{chatId}/messages")]
     public async Task<IActionResult> ListMessages(
         string spaceId,
