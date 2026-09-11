@@ -20,7 +20,7 @@ import {
   hideChatsScrollToTopButton,
   syncChatsScrollToTopButton,
 } from "./chats-scroll-to-top.js";
-import { syncChatsCreateButton } from "./chats-create-button.js";
+import { setChatsCreateButtonReady } from "./chats-create-button.js";
 import {
   beginOpenChatMessages,
   clearMessageProfilesContext,
@@ -1384,6 +1384,7 @@ function beginChatsLoad() {
   // Keep previous empty/list until data arrives (or until the delayed
   // spinner fires). Avoids empty→empty flicker on fast switches.
   // Do not toggle #main-placeholder here — that caused a flash.
+  setChatsCreateButtonReady(false);
   setSpinnerVisible(false);
   chatsList?.setAttribute("aria-busy", "true");
 
@@ -1419,10 +1420,9 @@ export async function loadChatsForSelectedSpace(options = {}) {
     'input[name="space"]:checked'
   );
 
-  syncChatsCreateButton();
-
   if (!selectedSpaceInput) {
     console.warn("No space selected.");
+    setChatsCreateButtonReady(false);
     return;
   }
 
@@ -1447,6 +1447,7 @@ export async function loadChatsForSelectedSpace(options = {}) {
     clearChatsContent();
     hideChatPanel();
     setMainPlaceholderVisible(false);
+    setChatsCreateButtonReady(false);
 
     const chatsEmpty = document.getElementById("chats-empty");
     if (chatsEmpty) {
@@ -1474,6 +1475,7 @@ export async function loadChatsForSelectedSpace(options = {}) {
     }
     populateChatsList(chats ?? []);
     setMainPlaceholderVisible(true);
+    setChatsCreateButtonReady(true);
     return;
   }
 
@@ -1517,6 +1519,7 @@ export async function loadChatsForSelectedSpace(options = {}) {
 
   paintChatRows(rows);
   setMainPlaceholderVisible(true);
+  setChatsCreateButtonReady(true);
 
   if (openChatId) {
     selectChatInList(openChatId);

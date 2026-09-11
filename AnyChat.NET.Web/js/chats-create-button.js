@@ -9,6 +9,9 @@ import { isOneToOneSpaceObject } from "./space-members.js";
 const ONE_TO_ONE_CREATE_TOOLTIP =
   "You can’t create a new chat in a personal one-to-one space.";
 
+/** True only after chats for the selected space have finished loading. */
+let chatsCreateButtonReady = false;
+
 function getCreateChatButton() {
   return document.getElementById("chats-create");
 }
@@ -39,30 +42,40 @@ function getCreateChatAvailability() {
   return { allowed: true, reason: "none" };
 }
 
-/** Enable the + FAB only while a non-1:1 space is selected. */
+/**
+ * Show the + FAB only after chats load completes for a selected space.
+ * @param {boolean} ready
+ */
+export function setChatsCreateButtonReady(ready) {
+  chatsCreateButtonReady = ready;
+  syncChatsCreateButton();
+}
+
+/**
+ * Show/enable the + FAB: visible once chats are ready for a selected space;
+ * enabled only while that space is non–1:1.
+ */
 export function syncChatsCreateButton() {
   const button = getCreateChatButton();
   const wrap = getCreateChatWrap();
-  if (!button) {
+  if (!button || !wrap) {
     return;
   }
 
+  const selected = getSelectedSpaceInput();
   const { allowed, reason } = getCreateChatAvailability();
+  const show = chatsCreateButtonReady && Boolean(selected);
+
+  wrap.hidden = !show;
   button.disabled = !allowed;
 
-  if (wrap) {
-    if (reason === "oneToOne") {
-      wrap.title = ONE_TO_ONE_CREATE_TOOLTIP;
-      wrap.setAttribute("aria-label", ONE_TO_ONE_CREATE_TOOLTIP);
-    } else {
-      wrap.removeAttribute("title");
-      wrap.removeAttribute("aria-label");
-    }
-  }
-
   if (reason === "oneToOne") {
+    wrap.title = ONE_TO_ONE_CREATE_TOOLTIP;
+    wrap.setAttribute("aria-label", ONE_TO_ONE_CREATE_TOOLTIP);
     button.setAttribute("aria-label", ONE_TO_ONE_CREATE_TOOLTIP);
   } else {
+    wrap.removeAttribute("title");
+    wrap.removeAttribute("aria-label");
     button.setAttribute("aria-label", "Create chat");
   }
 }
@@ -77,13 +90,18 @@ export function initChatsCreateButton() {
   initCreateChatModal();
 
   button.addEventListener("click", () => {
-    if (button.disabled) {
+    if (button.disabled || wrapIsHidden()) {
       return;
     }
     openCreateChatModal();
   });
 
   syncChatsCreateButton();
+}
+
+function wrapIsHidden() {
+  const wrap = getCreateChatWrap();
+  return Boolean(wrap?.hidden);
 }
 
 export { closeCreateChatModal, isCreateChatModalOpen };

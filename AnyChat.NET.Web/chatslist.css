@@ -116,6 +116,10 @@
     display: inline-flex;
 }
 
+.chats-create-wrap[hidden] {
+    display: none;
+}
+
 .chats-create {
     box-sizing: border-box;
     width: 40px;
