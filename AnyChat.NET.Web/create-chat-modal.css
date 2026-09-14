@@ -150,9 +150,9 @@
   cursor: not-allowed;
 }
 
+.create-chat-submit:focus,
 .create-chat-submit:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  outline: none;
 }
 
 .create-chat-actions--confirm {
