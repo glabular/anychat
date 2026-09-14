@@ -1,6 +1,6 @@
 using AnyChat.NET.Api.Filters;
 using AnyChat.NET.Api.Models;
-using Anytype.NET;
+using AnyChat.NET.Api.Services;
 using Anytype.NET.Interfaces;
 using Anytype.NET.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -9,20 +9,32 @@ namespace AnyChat.NET.Api.Controllers;
 
 [ApiController]
 [Route("api/spaces/{spaceId}/members")]
-public class MembersController(AnytypeClient client) : ControllerBase
+public class MembersController(AnytypeSession session) : ControllerBase
 {
     [HttpGet("{memberId}")]
     public async Task<IActionResult> Get(string spaceId, string memberId)
     {
+        var client = session.TryGetClient();
+
+        if (client is null)
+        {
+            return AnytypeAuthExceptionFilter.CreateMissingResult();
+        }
+
         try
         {
             var member = await client.Members.GetByIdAsync(spaceId, memberId);
+
             if (member is null || !IsListableMember(member))
             {
                 return NotFound();
             }
 
             return Ok(MapMember(member));
+        }
+        catch (Exception ex) when (AnytypeAuthExceptionFilter.IsAnytypeAuthFailure(ex))
+        {
+            return AnytypeAuthExceptionFilter.CreateInvalidResult();
         }
         catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
         {

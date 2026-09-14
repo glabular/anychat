@@ -1,7 +1,6 @@
 using AnyChat.NET.Api.Filters;
 using AnyChat.NET.Api.Models;
 using AnyChat.NET.Api.Services;
-using Anytype.NET;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AnyChat.NET.Api.Controllers;
@@ -9,12 +8,19 @@ namespace AnyChat.NET.Api.Controllers;
 [ApiController]
 [Route("api/spaces")]
 public class SpacesController(
-    AnytypeClient client,
+    AnytypeSession session,
     SpaceDisplayResolver displayResolver) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> List()
     {
+        var client = session.TryGetClient();
+
+        if (client is null)
+        {
+            return AnytypeAuthExceptionFilter.CreateMissingResult();
+        }
+
         try
         {
             var response = await client.Spaces.ListAsync();
@@ -40,6 +46,10 @@ public class SpacesController(
             }
 
             return Ok(items);
+        }
+        catch (Exception ex) when (AnytypeAuthExceptionFilter.IsAnytypeAuthFailure(ex))
+        {
+            return AnytypeAuthExceptionFilter.CreateInvalidResult();
         }
         catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
         {

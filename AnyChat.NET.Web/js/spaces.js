@@ -1,6 +1,11 @@
 import { describeSpacesLoadError, fetchSpaces } from "./api.js";
 import { showAnytypeConnectionNotice } from "./anytype-connection-notice.js";
 import {
+  authKindFromError,
+  showAnytypeAuthNotice,
+} from "./anytype-auth-notice.js";
+import { openApiKeySetupModal } from "./api-key-setup-modal.js";
+import {
   loadChatsForSelectedSpace,
   setMainPlaceholderVisible,
 } from "./chats.js";
@@ -209,6 +214,15 @@ export async function initializeSpaces() {
       showAnytypeConnectionNotice({
         onRecovered: () => reloadSpacesAfterAnytypeRecovery(),
       });
+    } else {
+      const authKind = authKindFromError(error);
+      if (authKind) {
+        showAnytypeAuthNotice({ kind: authKind });
+        void openApiKeySetupModal({
+          reason: authKind,
+          onSaved: () => reloadSpacesAfterAnytypeRecovery(),
+        });
+      }
     }
   } finally {
     const loading = document.getElementById("spaces-loading");
@@ -219,7 +233,7 @@ export async function initializeSpaces() {
   }
 }
 
-async function reloadSpacesAfterAnytypeRecovery() {
+export async function reloadSpacesAfterAnytypeRecovery() {
   const spaces = await fetchSpaces();
   const spacesSidebar = document.getElementById("spaces-sidebar");
   spacesSidebar?.replaceChildren();

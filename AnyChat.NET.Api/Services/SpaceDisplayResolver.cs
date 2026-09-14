@@ -1,4 +1,3 @@
-using Anytype.NET;
 using Anytype.NET.Models;
 
 namespace AnyChat.NET.Api.Services;
@@ -7,7 +6,7 @@ namespace AnyChat.NET.Api.Services;
 /// Builds a display label for a space from its name or, when that is empty, from its members.
 /// </summary>
 public sealed class SpaceDisplayResolver(
-    AnytypeClient client,
+    AnytypeSession session,
     CurrentUserIdentityStore identityStore)
 {
     /// <summary>
@@ -26,6 +25,12 @@ public sealed class SpaceDisplayResolver(
         }
 
         if (string.IsNullOrWhiteSpace(space.Id))
+        {
+            return null;
+        }
+
+        var client = session.TryGetClient();
+        if (client is null)
         {
             return null;
         }

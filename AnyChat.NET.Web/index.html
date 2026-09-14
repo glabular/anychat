@@ -465,6 +465,85 @@
         ></span>
       </span>
     </button>
+    <button
+      type="button"
+      id="anytype-auth-notice"
+      class="anytype-connection-notice anytype-auth-notice"
+      aria-live="polite"
+      hidden
+    >
+      <span
+        id="anytype-auth-notice-title"
+        class="anytype-connection-notice-title"
+        >API key not set up</span
+      >
+      <span
+        id="anytype-auth-notice-body"
+        class="anytype-connection-notice-body"
+      >
+        Add your Anytype API key to connect. Click here to set it up.
+      </span>
+    </button>
+    <div
+      id="api-key-setup-modal"
+      class="create-chat-modal"
+      hidden
+    >
+      <div
+        id="api-key-setup-dialog"
+        class="create-chat-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="api-key-setup-title"
+      >
+        <div class="create-chat-header">
+          <h2 id="api-key-setup-title" class="create-chat-title">
+            Set up API key
+          </h2>
+          <button
+            type="button"
+            id="api-key-setup-close"
+            class="create-chat-close"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <p id="api-key-setup-hint" class="create-chat-body">
+          Paste the API key from the Anytype app.
+        </p>
+        <form id="api-key-setup-form" class="create-chat-form">
+          <input
+            type="password"
+            id="api-key-setup-input"
+            class="create-chat-name"
+            name="apiKey"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Paste API key"
+            aria-label="API key"
+          />
+          <p id="api-key-setup-error" class="create-chat-error" hidden></p>
+          <div class="create-chat-actions">
+            <button
+              type="button"
+              id="api-key-setup-cancel"
+              class="create-chat-button-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              id="api-key-setup-submit"
+              class="create-chat-submit"
+              disabled
+            >
+              Save
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
     <script type="module" src="js/main.js"></script>
   </body>
 </html>

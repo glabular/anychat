@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 
 namespace AnyChat.NET.Api.Services;
 
@@ -10,7 +10,7 @@ public sealed class CurrentUserIdentityStore
         WriteIndented = false,
     };
 
-    private readonly string _apiKeyFingerprint;
+    private string _apiKeyFingerprint;
     private readonly string _storagePath;
     private readonly object _gate = new();
     private string? _identity;
@@ -29,12 +29,40 @@ public sealed class CurrentUserIdentityStore
 
     public string? Identity => _identity;
 
+    /// <summary>
+    /// Switches the active API-key fingerprint. Clears learned identity when it changes
+    /// and reloads any stored identity that matches the new fingerprint.
+    /// </summary>
+    public void RebindFingerprint(string apiKeyFingerprint)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(apiKeyFingerprint);
+
+        lock (_gate)
+        {
+            if (string.Equals(_apiKeyFingerprint, apiKeyFingerprint, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _apiKeyFingerprint = apiKeyFingerprint;
+            _identity = TryLoadMatchingIdentity();
+        }
+    }
+
     public void Learn(string identity)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(identity);
 
         lock (_gate)
         {
+            if (string.Equals(
+                    _apiKeyFingerprint,
+                    AnytypeSession.UnconfiguredFingerprint,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
             if (_identity is not null)
             {
                 if (string.Equals(_identity, identity, StringComparison.Ordinal))
@@ -53,6 +81,14 @@ public sealed class CurrentUserIdentityStore
 
     private string? TryLoadMatchingIdentity()
     {
+        if (string.Equals(
+                _apiKeyFingerprint,
+                AnytypeSession.UnconfiguredFingerprint,
+                StringComparison.Ordinal))
+        {
+            return null;
+        }
+
         if (!File.Exists(_storagePath))
         {
             return null;

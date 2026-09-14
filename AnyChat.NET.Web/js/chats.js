@@ -532,6 +532,19 @@ function handleChatMessageStreamPayload(sub, raw) {
     return;
   }
 
+  if (
+    parsed?.type === "anytype_auth_missing" ||
+    parsed?.type === "anytype_auth_invalid"
+  ) {
+    void import("./anytype-auth-notice.js").then(({ showAnytypeAuthNotice }) => {
+      showAnytypeAuthNotice({
+        kind:
+          parsed.type === "anytype_auth_missing" ? "missing" : "invalid",
+      });
+    });
+    return;
+  }
+
   // Any other valid event means the stream is healthy — reset reconnect backoff.
   sub.backoffMs = STREAM_BACKOFF_MS_MIN;
   noteAnytypeReachable();

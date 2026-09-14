@@ -2,6 +2,7 @@ import {
   noteAnytypeReachable,
   noteAnytypeUnavailableFromResponse,
 } from "./anytype-connection-notice.js";
+import { noteAnytypeAuthFromResponse } from "./anytype-auth-notice.js";
 
 const API_ORIGIN = "http://localhost:5249";
 
@@ -16,6 +17,15 @@ export function spacesUrl() {
   return onApiHost ? "/api/spaces" : `${API_ORIGIN}/api/spaces`;
 }
 
+function apiRoot() {
+  const onApiHost =
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1") &&
+    window.location.port === "5249";
+
+  return onApiHost ? "/api" : `${API_ORIGIN}/api`;
+}
+
 /**
  * @param {Response} response
  * @param {string} fallbackMessage
@@ -26,10 +36,109 @@ async function throwIfNotOk(response, fallbackMessage) {
     return;
   }
 
+  const authKind = await noteAnytypeAuthFromResponse(response);
   await noteAnytypeUnavailableFromResponse(response);
+
+  let authError;
+  if (authKind === "missing") {
+    authError = "anytype_auth_missing";
+  } else if (authKind === "invalid") {
+    authError = "anytype_auth_invalid";
+  } else if (response.status === 401) {
+    try {
+      const body = await response.clone().json();
+      if (
+        body?.error === "anytype_auth_missing" ||
+        body?.error === "anytype_auth_invalid"
+      ) {
+        authError = body.error;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   const error = new Error(fallbackMessage);
   error.status = response.status;
+  if (authError) {
+    error.authError = authError;
+  }
   throw error;
+}
+
+export async function fetchAuthStatus() {
+  const response = await fetch(`${apiRoot()}/auth/status`);
+  if (!response.ok) {
+    const error = new Error(`Response status: ${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
+  return await response.json();
+}
+
+/**
+ * @param {string} apiKey
+ */
+export async function putApiKey(apiKey) {
+  const response = await fetch(`${apiRoot()}/auth/api-key`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ apiKey }),
+  });
+
+  if (response.ok) {
+    noteAnytypeReachable();
+    return await response.json();
+  }
+
+  const authKind = await noteAnytypeAuthFromResponse(response);
+  await noteAnytypeUnavailableFromResponse(response);
+
+  let authError;
+  if (authKind === "missing") {
+    authError = "anytype_auth_missing";
+  } else if (authKind === "invalid") {
+    authError = "anytype_auth_invalid";
+  }
+
+  const error = new Error(`Response status: ${response.status}`);
+  error.status = response.status;
+  if (authError) {
+    error.authError = authError;
+  }
+  throw error;
+}
+
+/**
+ * @param {unknown} error
+ */
+export function describeAuthSaveError(error) {
+  const authError =
+    error && typeof error === "object"
+      ? /** @type {{ authError?: string }} */ (error).authError
+      : undefined;
+  const status =
+    error && typeof error === "object"
+      ? /** @type {{ status?: number }} */ (error).status
+      : undefined;
+
+  if (authError === "anytype_auth_invalid" || status === 401) {
+    return "That API key was rejected. Check it and try again.";
+  }
+
+  if (status === 503) {
+    return "Lost connection to Anytype. Open the official Anytype app and try again.";
+  }
+
+  if (typeof status === "number") {
+    return `Could not save API key (HTTP ${status}).`;
+  }
+
+  if (error instanceof TypeError) {
+    return "Cannot reach the API.";
+  }
+
+  return "Could not save API key.";
 }
 
 export async function fetchSpaces() {
@@ -45,6 +154,19 @@ export async function fetchSpaces() {
  * 3. Invalid body — response was not usable JSON
  */
 export function describeSpacesLoadError(error) {
+  const authError =
+    error && typeof error === "object"
+      ? /** @type {{ authError?: string }} */ (error).authError
+      : undefined;
+
+  if (authError === "anytype_auth_missing") {
+    return "API key not set up.";
+  }
+
+  if (authError === "anytype_auth_invalid") {
+    return "API key is incorrect.";
+  }
+
   if (error?.status === 503) {
     return "Lost connection to Anytype. Open the official Anytype app and try again.";
   }

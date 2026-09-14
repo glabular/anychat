@@ -1350,3 +1350,15 @@ body.is-chats-sidebar-resizing * {
     animation: none;
   }
 }
+
+/* Auth notice shares connection-notice chrome; sit above it if both visible. */
+.anytype-auth-notice {
+  bottom: 0.75rem;
+  z-index: 41;
+}
+
+.anytype-connection-notice:not([hidden]) ~ .anytype-auth-notice:not([hidden]),
+.anytype-auth-notice:not([hidden]) {
+  bottom: 0.75rem;
+}
+

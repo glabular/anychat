@@ -1,8 +1,5 @@
-using System.Security.Cryptography;
-using System.Text;
 using AnyChat.NET.Api.Filters;
 using AnyChat.NET.Api.Services;
-using Anytype.NET;
 
 namespace AnyChat.NET.Api;
 
@@ -21,22 +18,19 @@ public partial class Program
         builder.Services.AddControllers(options =>
         {
             options.Filters.Add<AnytypeUnavailableExceptionFilter>();
+            options.Filters.Add<AnytypeAuthExceptionFilter>();
         });
         builder.Services.AddOpenApi();
 
-        var apiKey = builder.Configuration["Anytype:ApiKey"]
-            ?? throw new InvalidOperationException("Anytype:ApiKey not configured");
+        var identityPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AnyChat.NET",
+            "current-identity.json");
 
-        builder.Services.AddSingleton(_ => new AnytypeClient(apiKey));
+        builder.Services.AddSingleton(_ => new AnytypeApiKeyStore(AnytypeApiKeyStore.DefaultStoragePath));
         builder.Services.AddSingleton(_ =>
-        {
-            var fingerprint = ComputeApiKeyFingerprint(apiKey);
-            var storagePath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "AnyChat.NET",
-                "current-identity.json");
-            return new CurrentUserIdentityStore(fingerprint, storagePath);
-        });
+            new CurrentUserIdentityStore(AnytypeSession.UnconfiguredFingerprint, identityPath));
+        builder.Services.AddSingleton<AnytypeSession>();
         builder.Services.AddSingleton<CurrentMemberResolver>();
         builder.Services.AddSingleton<SpaceDisplayResolver>();
 
@@ -55,6 +49,10 @@ public partial class Program
         }
 
         var app = builder.Build();
+
+        var configApiKey = app.Configuration["Anytype:ApiKey"];
+        var session = app.Services.GetRequiredService<AnytypeSession>();
+        session.InitializeFromStoreOrConfig(configApiKey);
 
         if (app.Environment.IsDevelopment())
         {
@@ -100,11 +98,5 @@ public partial class Program
         throw new DirectoryNotFoundException(
             "Web UI folder not found. Expected AnyChat.NET.Web next to the API project, " +
             "or a wwwroot folder beside the running app.");
-    }
-
-    private static string ComputeApiKeyFingerprint(string apiKey)
-    {
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(apiKey));
-        return Convert.ToHexString(hash);
     }
 }

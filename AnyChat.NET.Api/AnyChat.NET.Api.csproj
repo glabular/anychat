@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>c69df956-d55f-40fc-a889-21f3453d0d7a</UserSecretsId>
@@ -12,6 +12,7 @@
   <ItemGroup>
     <PackageReference Include="Anytype.NET" Version="4.0.0-alpha.2" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
   </ItemGroup>
 
   <!-- Bundled copy for running/publishing from bin when the sibling folder isn't next to ContentRoot -->

@@ -9,6 +9,7 @@ import { initChatsCreateButton } from "./chats-create-button.js";
 import { initChatPanelMenu } from "./chat-panel-menu.js";
 import { initDeleteChatConfirm } from "./delete-chat-confirm.js";
 import { initChatRenameTitle } from "./chat-rename-title.js";
+import { initApiKeySetupModal } from "./api-key-setup-modal.js";
 
 /** Desktop shell: do not cycle focus with Tab / Shift+Tab. */
 document.addEventListener(
@@ -31,4 +32,5 @@ initChatsCreateButton();
 initChatPanelMenu();
 initDeleteChatConfirm();
 initChatRenameTitle();
+initApiKeySetupModal();
 initializeSpaces();

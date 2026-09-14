@@ -3,7 +3,6 @@ using System.Text.Json.Serialization;
 using AnyChat.NET.Api.Filters;
 using AnyChat.NET.Api.Models;
 using AnyChat.NET.Api.Services;
-using Anytype.NET;
 using Anytype.NET.Interfaces;
 using Anytype.NET.Models;
 using Anytype.NET.Models.Requests;
@@ -15,7 +14,7 @@ namespace AnyChat.NET.Api.Controllers;
 [ApiController]
 [Route("api/spaces/{spaceId}/chats")]
 public class ChatsController(
-    AnytypeClient client,
+    AnytypeSession session,
     CurrentUserIdentityStore identityStore,
     CurrentMemberResolver memberResolver)
     : ControllerBase
@@ -33,6 +32,13 @@ public class ChatsController(
     [HttpGet]
     public async Task<IActionResult> List(string spaceId)
     {
+        var client = session.TryGetClient();
+
+        if (client is null)
+        {
+            return AnytypeAuthExceptionFilter.CreateMissingResult();
+        }
+
         try
         {
             var response = await client.Chats.ListAsync(spaceId);
@@ -40,6 +46,10 @@ public class ChatsController(
             var items = chats.Select(MapChatListItem).ToList();
 
             return Ok(items);
+        }
+        catch (Exception ex) when (AnytypeAuthExceptionFilter.IsAnytypeAuthFailure(ex))
+        {
+            return AnytypeAuthExceptionFilter.CreateInvalidResult();
         }
         catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
         {
@@ -55,6 +65,12 @@ public class ChatsController(
         var trimmed = request?.Name?.Trim() ?? string.Empty;
         var name = trimmed.Length == 0 ? " " : trimmed;
 
+        var client = session.TryGetClient();
+        if (client is null)
+        {
+            return AnytypeAuthExceptionFilter.CreateMissingResult();
+        }
+
         try
         {
             var chat = await client.Chats.CreateAsync(
@@ -62,6 +78,10 @@ public class ChatsController(
                 new CreateChatRequest { Name = name });
 
             return StatusCode(StatusCodes.Status201Created, MapChatListItem(chat));
+        }
+        catch (Exception ex) when (AnytypeAuthExceptionFilter.IsAnytypeAuthFailure(ex))
+        {
+            return AnytypeAuthExceptionFilter.CreateInvalidResult();
         }
         catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
         {
@@ -77,10 +97,20 @@ public class ChatsController(
             return BadRequest(new { error = "Chat id is required." });
         }
 
+        var client = session.TryGetClient();
+        if (client is null)
+        {
+            return AnytypeAuthExceptionFilter.CreateMissingResult();
+        }
+
         try
         {
             await client.Objects.DeleteAsync(spaceId, chatId);
             return NoContent();
+        }
+        catch (Exception ex) when (AnytypeAuthExceptionFilter.IsAnytypeAuthFailure(ex))
+        {
+            return AnytypeAuthExceptionFilter.CreateInvalidResult();
         }
         catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
         {
@@ -103,6 +133,12 @@ public class ChatsController(
         var trimmed = request?.Name?.Trim() ?? string.Empty;
         var name = trimmed.Length == 0 ? " " : trimmed;
 
+        var client = session.TryGetClient();
+        if (client is null)
+        {
+            return AnytypeAuthExceptionFilter.CreateMissingResult();
+        }
+
         try
         {
             await client.Objects.UpdateAsync(
@@ -111,6 +147,10 @@ public class ChatsController(
                 new UpdateObjectRequest { Name = name });
 
             return NoContent();
+        }
+        catch (Exception ex) when (AnytypeAuthExceptionFilter.IsAnytypeAuthFailure(ex))
+        {
+            return AnytypeAuthExceptionFilter.CreateInvalidResult();
         }
         catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
         {
@@ -127,6 +167,12 @@ public class ChatsController(
     {
         limit = ClampMessageLimit(limit);
 
+        var client = session.TryGetClient();
+        if (client is null)
+        {
+            return AnytypeAuthExceptionFilter.CreateMissingResult();
+        }
+
         try
         {
             var response = await client.Chats.ListMessagesAsync(
@@ -139,6 +185,10 @@ public class ChatsController(
             var messages = (response.Messages ?? []).Select(message => MapMessage(message, participantId));
 
             return Ok(messages);
+        }
+        catch (Exception ex) when (AnytypeAuthExceptionFilter.IsAnytypeAuthFailure(ex))
+        {
+            return AnytypeAuthExceptionFilter.CreateInvalidResult();
         }
         catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
         {
@@ -163,6 +213,13 @@ public class ChatsController(
         Response.Headers.CacheControl = "no-cache";
         Response.Headers.Append("X-Accel-Buffering", "no");
         HttpContext.Features.Get<IHttpResponseBodyFeature>()?.DisableBuffering();
+
+        var client = session.TryGetClient();
+        if (client is null)
+        {
+            await TryWriteAnytypeAuthAsync(AnytypeAuthResponse.ErrorMissing);
+            return;
+        }
 
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken,
@@ -213,6 +270,12 @@ public class ChatsController(
         }
         catch (Exception ex) when (
             !streamToken.IsCancellationRequested
+            && AnytypeAuthExceptionFilter.IsAnytypeAuthFailure(ex))
+        {
+            await TryWriteAnytypeAuthAsync(AnytypeAuthResponse.ErrorInvalid);
+        }
+        catch (Exception ex) when (
+            !streamToken.IsCancellationRequested
             && AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
         {
             await TryWriteAnytypeUnavailableAsync();
@@ -242,6 +305,25 @@ public class ChatsController(
         }
     }
 
+    private async Task TryWriteAnytypeAuthAsync(string errorCode)
+    {
+        try
+        {
+            var dto = new ChatMessageStreamEventDto { Type = errorCode };
+            var json = JsonSerializer.Serialize(dto, StreamJsonOptions);
+            await Response.WriteAsync($"data: {json}\n\n");
+            await Response.Body.FlushAsync(CancellationToken.None);
+        }
+        catch (OperationCanceledException)
+        {
+            // Browser gone during the status write.
+        }
+        catch (IOException)
+        {
+            // Browser gone during the status write.
+        }
+    }
+
     [HttpPost("{chatId}/messages")]
     public async Task<IActionResult> SendMessage(
         string spaceId,
@@ -252,6 +334,12 @@ public class ChatsController(
         if (string.IsNullOrEmpty(text))
         {
             return BadRequest(new { error = "Message text is required." });
+        }
+
+        var client = session.TryGetClient();
+        if (client is null)
+        {
+            return AnytypeAuthExceptionFilter.CreateMissingResult();
         }
 
         try
@@ -284,6 +372,10 @@ public class ChatsController(
                     IdentityLearned = identityLearned,
                 });
         }
+        catch (Exception ex) when (AnytypeAuthExceptionFilter.IsAnytypeAuthFailure(ex))
+        {
+            return AnytypeAuthExceptionFilter.CreateInvalidResult();
+        }
         catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
         {
             return AnytypeUnavailableExceptionFilter.CreateResult();
@@ -292,6 +384,12 @@ public class ChatsController(
 
     private async Task<bool> TryLearnIdentityAsync(string spaceId, string chatId, string messageId)
     {
+        var client = session.TryGetClient();
+        if (client is null)
+        {
+            return false;
+        }
+
         for (var attempt = 1; attempt <= IdentityLearnMaxAttempts; attempt++)
         {
             try

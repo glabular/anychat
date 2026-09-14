@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using Anytype.NET;
 
 namespace AnyChat.NET.Api.Services;
 
@@ -7,10 +6,12 @@ namespace AnyChat.NET.Api.Services;
 /// Resolves the learned vault identity to a space-specific participant id.
 /// </summary>
 public sealed class CurrentMemberResolver(
-    AnytypeClient client,
+    AnytypeSession session,
     CurrentUserIdentityStore identityStore)
 {
     private readonly ConcurrentDictionary<string, string> _participantIdsBySpace = new(StringComparer.Ordinal);
+
+    public void ClearCache() => _participantIdsBySpace.Clear();
 
     public async Task<string?> ResolveParticipantIdAsync(string spaceId)
     {
@@ -24,6 +25,12 @@ public sealed class CurrentMemberResolver(
         if (_participantIdsBySpace.TryGetValue(spaceId, out var cachedId))
         {
             return cachedId;
+        }
+
+        var client = session.TryGetClient();
+        if (client is null)
+        {
+            return null;
         }
 
         try
