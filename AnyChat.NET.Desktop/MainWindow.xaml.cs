@@ -30,6 +30,7 @@ public partial class MainWindow : Window
         "WebView2");
 
     private bool _hasRevealedWebView;
+    private bool _isStoppingHost;
 
     public MainWindow()
     {
@@ -55,9 +56,33 @@ public partial class MainWindow : Window
         TryRestorePlacement();
     }
 
-    private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    private async void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         TrySavePlacement();
+
+        // In-process Kestrel must be stopped with await on Closing. Blocking
+        // StopAsync().GetResult() from OnExit deadlocks the WPF sync context and
+        // leaves AnyChat.NET.Desktop.exe running (VS debug never ends).
+        if (_isStoppingHost
+            || App.UseExternalApi()
+            || Application.Current is not App app
+            || !app.HasInProcessHost)
+        {
+            return;
+        }
+
+        e.Cancel = true;
+        _isStoppingHost = true;
+
+        try
+        {
+            await app.StopInProcessHostAsync();
+        }
+        finally
+        {
+            Closing -= OnClosing;
+            Close();
+        }
     }
 
     private void TryRestorePlacement()
@@ -226,14 +251,19 @@ public partial class MainWindow : Window
             return;
         }
 
+        var hint = App.UseExternalApi()
+            ? "Start the Api project (console) first, or run Desktop without ANYCHAT_EXTERNAL_API."
+            : "The in-process API did not respond. Restart AnyChat, or check that port 5249 is free.";
+
         WebView.CoreWebView2.NavigateToString(
-            """
+            $$"""
             <!DOCTYPE html>
             <html lang="en">
             <head><meta charset="UTF-8"><title>AnyChat</title></head>
             <body style="font-family: system-ui, sans-serif; margin: 2rem; background: #171717; color: #f8f8f8;">
-              <h1>Cannot reach Anytype</h1>
-              <p>Please make sure your Anytype client is running and try again.</p>
+              <h1>Cannot reach local AnyChat API</h1>
+              <p>{{hint}}</p>
+              <p>If the UI loaded before but chats fail, make sure your Anytype client is running.</p>
             </body>
             </html>
             """);

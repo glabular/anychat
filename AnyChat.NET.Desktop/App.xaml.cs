@@ -2,6 +2,8 @@
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
+using AnyChat.NET.Api;
+using Microsoft.AspNetCore.Builder;
 
 namespace AnyChat.NET.Desktop;
 
@@ -9,6 +11,12 @@ public partial class App : Application
 {
     private const int DwmwaCloak = 13;
     private const int StableFramesBeforeUncloak = 2;
+    private const string ExternalApiEnvVar = "ANYCHAT_EXTERNAL_API";
+
+    private WebApplication? _webApp;
+
+    /// <summary>True while this process still owns a running in-process host.</summary>
+    internal bool HasInProcessHost => _webApp is not null;
 
     static App()
     {
@@ -24,6 +32,15 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        if (!UseExternalApi())
+        {
+            if (!TryStartInProcessHost(e.Args))
+            {
+                Shutdown(1);
+                return;
+            }
+        }
 
         var mainWindow = new MainWindow();
         MainWindow = mainWindow;
@@ -64,6 +81,87 @@ public partial class App : Application
 
         mainWindow.ContentRendered += onFirstContentRendered;
         mainWindow.Show();
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        // Prefer await from MainWindow.Closing. If something else exits the app
+        // while the host is still up, stop off the UI sync context to avoid deadlock.
+        if (_webApp is not null)
+        {
+            Task.Run(StopInProcessHostAsync).GetAwaiter().GetResult();
+        }
+
+        base.OnExit(e);
+    }
+
+    private bool TryStartInProcessHost(string[] args)
+    {
+        try
+        {
+            _webApp = AnyChatWebHost.Create(args, AppContext.BaseDirectory);
+            _webApp.StartAsync().GetAwaiter().GetResult();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                "AnyChat could not start its local API on " + AnyChatWebHost.DefaultUrl + ".\n\n" +
+                "If the Api console is already running, either close it or launch Desktop with " +
+                ExternalApiEnvVar + "=1 (profile \"Desktop (external API)\").\n\n" +
+                ex.Message,
+                "AnyChat",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            Task.Run(StopInProcessHostAsync).GetAwaiter().GetResult();
+
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Stops in-process Kestrel. Must be awaited (not blocked on the UI thread via
+    /// GetResult on OnExit) or WPF deadlocks and the process never exits.
+    /// </summary>
+    internal async Task StopInProcessHostAsync()
+    {
+        if (_webApp is null)
+        {
+            return;
+        }
+
+        var app = _webApp;
+        _webApp = null;
+
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await app.StopAsync(cts.Token).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Best-effort shutdown so the process can still exit.
+        }
+
+        try
+        {
+            await app.DisposeAsync().ConfigureAwait(false);
+        }
+        catch
+        {
+            // Ignore dispose races on exit.
+        }
+    }
+
+    /// <summary>
+    /// When set, Desktop only opens the WebView against an already-running Api
+    /// (visible console via VS multi-startup). Does not start in-process Kestrel.
+    /// </summary>
+    internal static bool UseExternalApi()
+    {
+        var value = Environment.GetEnvironmentVariable(ExternalApiEnvVar);
+        
+        return value is "1" or "true" or "True" or "TRUE" or "yes" or "YES";
     }
 
     private static bool SetWindowCloaked(IntPtr handle, bool cloaked)
