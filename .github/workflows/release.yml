@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Resolve and check version
+        id: version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if ($tag -notmatch '^v(\d+\.\d+\.\d+)$') {
+            throw "Tag '$tag' must look like v1.2.3"
+          }
+          $tagVersion = $Matches[1]
+
+          $props = Get-Content -Raw Directory.Build.props
+          if ($props -notmatch '<Version>([^<]+)</Version>') {
+            throw "Could not read <Version> from Directory.Build.props"
+          }
+          $propsVersion = $Matches[1].Trim()
+
+          if ($tagVersion -ne $propsVersion) {
+            throw "Tag version '$tagVersion' does not match Directory.Build.props Version '$propsVersion'"
+          }
+
+          "version=$tagVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "Releasing anychat $tagVersion"
+
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet publish AnyChat.NET.Desktop/AnyChat.NET.Desktop.csproj `
+            -c Release `
+            -r win-x64 `
+            --no-self-contained `
+            -o artifacts/publish
+
+      - name: Pack zip and checksums
+        id: pack
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $zipName = "anychat-$version-win-x64.zip"
+          $outDir = "artifacts/release"
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+
+          Compress-Archive -Path "artifacts/publish/*" -DestinationPath "$outDir/$zipName" -Force
+
+          $hash = (Get-FileHash -Algorithm SHA256 "$outDir/$zipName").Hash.ToLowerInvariant()
+          Set-Content -Path "$outDir/SHA256SUMS.txt" -Value "$hash  $zipName" -Encoding ascii
+
+          "zip_name=$zipName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "zip_path=$outDir/$zipName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Get-Content "$outDir/SHA256SUMS.txt"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            artifacts/release/${{ steps.pack.outputs.zip_name }}
+            artifacts/release/SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: anychat ${{ steps.version.outputs.version }}
+          body: |
+            Framework-dependent Windows x64 build of **anychat** `${{ steps.version.outputs.version }}`.
+
+            Built by GitHub Actions from this tag’s commit. Requires .NET 10 Desktop Runtime and .NET 10 ASP.NET Core Runtime.
+
+            Verify the zip with `SHA256SUMS.txt` (see README).
+          files: |
+            artifacts/release/${{ steps.pack.outputs.zip_name }}
+            artifacts/release/SHA256SUMS.txt
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
