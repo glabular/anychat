@@ -10,6 +10,6 @@ Desktop chat client for [Anytype](https://anytype.io/).
 
 ## Download
 
-1. Open [Releases](https://github.com/glabular/AnyChat.NET/releases).
+1. Open [Releases](https://github.com/glabular/anychat/releases).
 2. Download `anychat-VERSION-win-x64.zip`
 3. Unzip and run `AnyChat.NET.Desktop.exe`

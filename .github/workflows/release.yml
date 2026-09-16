@@ -81,17 +81,46 @@ jobs:
             artifacts/release/${{ steps.pack.outputs.zip_name }}
             artifacts/release/SHA256SUMS.txt
 
+      - name: Release notes from CHANGELOG.md
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $path = "CHANGELOG.md"
+          if (!(Test-Path $path)) {
+            throw "CHANGELOG.md is missing"
+          }
+
+          $content = Get-Content -Raw $path
+          $escaped = [regex]::Escape($version)
+          $match = [regex]::Match(
+            $content,
+            "(?ms)^## \[$escaped\].*?(?=^## \[|\z)"
+          )
+          if (-not $match.Success) {
+            throw "CHANGELOG.md has no '## [$version]' section. Add release notes before tagging."
+          }
+
+          $notes = $match.Value -replace '(?m)^## \[.*?\][^\r\n]*\r?\n?', ''
+          $notes = $notes.Trim()
+          if ([string]::IsNullOrWhiteSpace($notes)) {
+            throw "CHANGELOG.md section for $version is empty"
+          }
+
+          $notesPath = "artifacts/release/notes.md"
+          New-Item -ItemType Directory -Force -Path "artifacts/release" | Out-Null
+          [System.IO.File]::WriteAllText(
+            (Join-Path $pwd $notesPath),
+            $notes + "`n"
+          )
+          Write-Host "--- release notes ---"
+          Write-Host $notes
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: anychat ${{ steps.version.outputs.version }}
-          body: |
-            Framework-dependent Windows x64 build of **anychat** `${{ steps.version.outputs.version }}`.
-
-            Built by GitHub Actions from this tag’s commit. Requires .NET 10 Desktop Runtime and .NET 10 ASP.NET Core Runtime.
-
-            Verify the zip with `SHA256SUMS.txt` (see README).
+          body_path: artifacts/release/notes.md
           files: |
             artifacts/release/${{ steps.pack.outputs.zip_name }}
             artifacts/release/SHA256SUMS.txt
