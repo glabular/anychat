@@ -139,6 +139,12 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
+.chats-create > span {
+    display: block;
+    line-height: 1;
+    transform: translateY(-0.06em);
+}
+
 .chats-create-wrap:has(.chats-create:disabled) {
     cursor: not-allowed;
 }
