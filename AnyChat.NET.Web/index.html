@@ -569,22 +569,32 @@
               placeholder="4-digit code"
               aria-label="4-digit code from Anytype"
             />
-            <div class="create-chat-actions">
+            <div class="create-chat-actions api-key-setup-challenge-actions">
               <button
                 type="button"
-                id="api-key-setup-challenge-back"
-                class="create-chat-button-secondary"
+                id="api-key-setup-challenge-resend"
+                class="api-key-setup-link"
+                hidden
               >
-                Back
+                Request a new code
               </button>
-              <button
-                type="submit"
-                id="api-key-setup-challenge-submit"
-                class="create-chat-submit"
-                disabled
-              >
-                Continue
-              </button>
+              <div class="api-key-setup-challenge-actions-end">
+                <button
+                  type="button"
+                  id="api-key-setup-challenge-back"
+                  class="create-chat-button-secondary"
+                >
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  id="api-key-setup-challenge-submit"
+                  class="create-chat-submit"
+                  disabled
+                >
+                  Continue
+                </button>
+              </div>
             </div>
           </form>
         </div>

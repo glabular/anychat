@@ -248,6 +248,27 @@
   outline: none;
 }
 
+.api-key-setup-link[hidden] {
+  display: none;
+}
+
+.api-key-setup-challenge-actions {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.api-key-setup-challenge-actions-end {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.api-key-setup-challenge-actions .api-key-setup-link {
+  text-align: left;
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .api-key-setup-instructions {
   margin: 0 0 0.75rem;
 }
