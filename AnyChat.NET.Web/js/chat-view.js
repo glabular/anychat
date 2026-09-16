@@ -38,12 +38,15 @@ import {
   cancelChatRename,
   isChatRenameOpen,
 } from "./chat-rename-title.js";
+import { markIdentityKnown } from "./identity-notice.js";
 
 /** Bumps when opening a chat or clearing the panel so stale fetches are ignored. */
 let openChatToken = 0;
 let openChat = null;
 let sendPending = false;
 let reloadOpenChatMessages = null;
+/** @type {((chatId: string) => void | Promise<void>) | null} */
+let remountOpenChatOnIdentityLearned = null;
 let onChatPanelHidden = null;
 let onListDraftIndicatorChanged = null;
 let onOutgoingPreviewChanged = null;
@@ -602,6 +605,10 @@ function rememberSelfParticipantFromMessages(messages) {
 
 export function setOpenChatMessagesReload(callback) {
   reloadOpenChatMessages = callback;
+}
+
+export function setRemountOpenChatOnIdentityLearned(callback) {
+  remountOpenChatOnIdentityLearned = callback;
 }
 
 export function setOnChatPanelHidden(callback) {
@@ -1362,7 +1369,13 @@ export function initChatComposer(
           openChat?.spaceId === target.spaceId
           && openChat?.chatId === target.chatId
         ) {
-          await reloadOpenChatMessages?.(target.spaceId, target.chatId);
+          const learnedNow =
+            response?.identityLearned === true && markIdentityKnown();
+          if (learnedNow) {
+            await remountOpenChatOnIdentityLearned?.(target.chatId);
+          } else {
+            await reloadOpenChatMessages?.(target.spaceId, target.chatId);
+          }
         }
       } catch (error) {
         console.error("Could not send message:", error);

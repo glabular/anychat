@@ -10,7 +10,8 @@ namespace AnyChat.NET.Api.Controllers;
 [Route("api/auth")]
 public class AuthController(
     AnytypeSession session,
-    CurrentMemberResolver memberResolver) : ControllerBase
+    CurrentMemberResolver memberResolver,
+    CurrentUserIdentityStore identityStore) : ControllerBase
 {
     [HttpGet("status")]
     public ActionResult<AuthStatusResponse> Status()
@@ -19,6 +20,7 @@ public class AuthController(
         {
             Configured = session.IsConfigured,
             FingerprintPrefix = session.FingerprintPrefix,
+            IdentityKnown = identityStore.IsKnown,
         });
     }
 
@@ -63,6 +65,7 @@ public class AuthController(
         {
             Configured = true,
             FingerprintPrefix = session.FingerprintPrefix,
+            IdentityKnown = identityStore.IsKnown,
         });
     }
 }

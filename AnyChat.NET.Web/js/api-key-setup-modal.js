@@ -4,6 +4,7 @@ import {
   putApiKey,
 } from "./api.js";
 import { hideAnytypeAuthNotice } from "./anytype-auth-notice.js";
+import { applyIdentityNoticeStatus } from "./identity-notice.js";
 
 /**
  * Paste / replace Anytype API key. Save probes Anytype then persists via the API.
@@ -229,8 +230,12 @@ async function handleSubmit() {
   setSubmitInFlight(true);
 
   try {
-    await putApiKey(apiKey);
+    const status = await putApiKey(apiKey);
     hideAnytypeAuthNotice();
+    applyIdentityNoticeStatus({
+      configured: status?.configured === true,
+      identityKnown: status?.identityKnown === true,
+    });
     setSubmitInFlight(false);
     closeApiKeySetupModal({ restoreFocus: false });
 

@@ -45,6 +45,7 @@ import {
   setOnOutgoingPreviewChanged,
   setOpenChat,
   setOpenChatMessagesReload,
+  setRemountOpenChatOnIdentityLearned,
   showChatHeader,
   hasListDraftIndicator,
   getComposerDraft,
@@ -1817,6 +1818,10 @@ setOpenChatMessagesReload(async (spaceId, chatId) => {
   }
 
   await reloadMessagesAfterSend(spaceId, chatId);
+});
+
+setRemountOpenChatOnIdentityLearned(async (chatId) => {
+  await openChatMessages(chatId);
 });
 
 initChatComposer(

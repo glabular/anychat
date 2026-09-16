@@ -434,6 +434,35 @@
         </div>
       </div>
     </div>
+    <div id="identity-notice" class="identity-notice" hidden>
+      <div
+        id="identity-notice-popover"
+        class="identity-notice-popover"
+        role="dialog"
+        aria-labelledby="identity-notice-title"
+        hidden
+      >
+        <h2 id="identity-notice-title" class="identity-notice-title">
+          Seeing all message bubbles on the left?
+        </h2>
+        <p class="identity-notice-body">
+            anychat can’t tell which messages are yours until it learns your chat identity.
+            Before that, all message bubbles may appear on the left. That happens 
+            the first time you send a message in any chat. After that, your bubbles 
+            move to the right.
+        </p>
+      </div>
+      <button
+        type="button"
+        id="identity-notice-button"
+        class="identity-notice-button"
+        aria-label="Why your messages aren’t on the right yet"
+        aria-expanded="false"
+        aria-controls="identity-notice-popover"
+      >
+        <span class="identity-notice-button-glyph" aria-hidden="true">!</span>
+      </button>
+    </div>
     <button
       type="button"
       id="anytype-connection-notice"
