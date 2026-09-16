@@ -149,15 +149,20 @@
     cursor: not-allowed;
 }
 
+/* Mid-reload: ignore clicks, keep full opacity (no flicker / see-through). */
+.chats-create.chats-create--pending {
+    pointer-events: none;
+}
+
 .chats-create:disabled {
     pointer-events: none;
 }
 
-.chats-create:hover:not(:disabled) {
+.chats-create:hover:not(:disabled):not(.chats-create--pending) {
     background-color: var(--color-surface-hover);
 }
 
-.chats-create:active:not(:disabled) {
+.chats-create:active:not(:disabled):not(.chats-create--pending) {
     background-color: var(--color-accent-active);
 }
 

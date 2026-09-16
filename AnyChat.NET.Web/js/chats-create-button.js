@@ -43,7 +43,8 @@ function getCreateChatAvailability() {
 }
 
 /**
- * Show the + FAB only after chats load completes for a selected space.
+ * Mark whether chats for the selected space have finished loading.
+ * Ready gates clicks only — never hide/dim the FAB across space switches.
  * @param {boolean} ready
  */
 export function setChatsCreateButtonReady(ready) {
@@ -52,8 +53,8 @@ export function setChatsCreateButtonReady(ready) {
 }
 
 /**
- * Show/enable the + FAB: visible once chats are ready for a selected space;
- * enabled only while that space is non–1:1.
+ * Show/enable the + FAB: visible while a space is selected (stable across reloads).
+ * While chats load, block interaction without dimming. Dim/disable only for 1:1.
  */
 export function syncChatsCreateButton() {
   const button = getCreateChatButton();
@@ -64,12 +65,20 @@ export function syncChatsCreateButton() {
 
   const selected = getSelectedSpaceInput();
   const { allowed, reason } = getCreateChatAvailability();
-  const show = chatsCreateButtonReady && Boolean(selected);
+  const show = Boolean(selected);
+  const pending = show && !chatsCreateButtonReady;
+  const oneToOne = reason === "oneToOne";
 
   wrap.hidden = !show;
-  button.disabled = !allowed;
+  // Dimmed :disabled look is reserved for 1:1 — not for mid-reload pending.
+  button.disabled = oneToOne;
+  button.classList.toggle("chats-create--pending", pending);
+  button.setAttribute(
+    "aria-disabled",
+    chatsCreateButtonReady && allowed ? "false" : "true"
+  );
 
-  if (reason === "oneToOne") {
+  if (oneToOne) {
     wrap.title = ONE_TO_ONE_CREATE_TOOLTIP;
     wrap.setAttribute("aria-label", ONE_TO_ONE_CREATE_TOOLTIP);
     button.setAttribute("aria-label", ONE_TO_ONE_CREATE_TOOLTIP);
@@ -78,6 +87,13 @@ export function syncChatsCreateButton() {
     wrap.removeAttribute("aria-label");
     button.setAttribute("aria-label", "Create chat");
   }
+}
+
+function isCreateChatInteractive() {
+  if (!chatsCreateButtonReady || wrapIsHidden()) {
+    return false;
+  }
+  return getCreateChatAvailability().allowed;
 }
 
 /** One-time wiring for the create-chat FAB. */
@@ -90,7 +106,7 @@ export function initChatsCreateButton() {
   initCreateChatModal();
 
   button.addEventListener("click", () => {
-    if (button.disabled || wrapIsHidden()) {
+    if (!isCreateChatInteractive()) {
       return;
     }
     openCreateChatModal();
