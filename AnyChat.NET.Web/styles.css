@@ -1295,9 +1295,14 @@ body.is-chats-sidebar-resizing * {
   padding: 0.7rem 0.8rem;
   border: 1px solid var(--color-border);
   border-radius: 0.5rem;
-  background-color: var(--color-light-bg);
+  /* Darker than message bubbles (--color-light-bg) so the tip stays readable over chat. */
+  background-color: var(--color-bg);
   color: var(--color-text);
-  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 0.35rem 1.25rem rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .identity-notice-popover[hidden] {
