@@ -58,12 +58,15 @@
   background: transparent;
   color: var(--color-text-muted);
   font: inherit;
-  font-size: 1.35rem;
-  line-height: 1;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.create-chat-close-icon {
+  display: block;
+  flex: 0 0 auto;
 }
 
 .create-chat-close:hover {
