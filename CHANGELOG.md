@@ -8,6 +8,18 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-16
+
+### Added
+
+- Corner tip when chat identity is not learned yet: soft “!” button, explainer
+  popover, remount open chat after the first send so own bubbles move right
+- Inviting ice glow and inward ring pulse on the tip button
+
+### Fixed
+
+- Tip popover contrast over the message list (darker panel + stronger shadow)
+
 ## [0.1.0] - 2026-09-15
 
 ### Added
