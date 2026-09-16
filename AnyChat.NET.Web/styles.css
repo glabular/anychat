@@ -1244,18 +1244,13 @@ body.is-chats-sidebar-resizing * {
   display: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .identity-notice {
-    transition: none;
-  }
-}
-
 .identity-notice-button,
 .identity-notice-popover {
   pointer-events: auto;
 }
 
 .identity-notice-button {
+  position: relative;
   box-sizing: border-box;
   width: 40px;
   height: 40px;
@@ -1269,11 +1264,88 @@ body.is-chats-sidebar-resizing * {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  /* Soft ice glow + depth; rings are decorative pseudo-elements. */
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.35),
+    0 0 10px rgba(42, 167, 238, 0.35),
+    0 0 18px rgba(42, 167, 238, 0.18);
   flex-shrink: 0;
+  overflow: visible;
+}
+
+.identity-notice-button::before,
+.identity-notice-button::after,
+.identity-notice-ring {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(120, 160, 185, 0.2);
+  pointer-events: none;
+  box-sizing: border-box;
+  /* Even stagger + linear motion so a ring is always inbound (no cycle pause). */
+  animation: identity-notice-ring-inward 1.8s linear infinite;
+}
+
+.identity-notice-button::before {
+  animation-delay: 0s;
+}
+
+.identity-notice-button::after {
+  animation-delay: -0.6s;
+}
+
+.identity-notice-ring {
+  content: none;
+  animation-delay: -1.2s;
+}
+
+.identity-notice-button[aria-expanded="true"] {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.identity-notice-button[aria-expanded="true"]::before,
+.identity-notice-button[aria-expanded="true"]::after,
+.identity-notice-button[aria-expanded="true"] .identity-notice-ring {
+  animation: none;
+  opacity: 0;
+}
+
+@keyframes identity-notice-ring-inward {
+  0% {
+    transform: scale(1.5);
+    border-color: rgba(120, 160, 185, 0.15);
+    opacity: 0.2;
+  }
+
+  35% {
+    transform: scale(1.22);
+    border-color: rgba(70, 170, 220, 0.45);
+    opacity: 0.55;
+  }
+
+  65% {
+    transform: scale(1.04);
+    border-color: rgba(42, 167, 238, 0.85);
+    opacity: 0.9;
+  }
+
+  82% {
+    transform: scale(1);
+    border-color: rgba(42, 167, 238, 1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(0.9);
+    border-color: rgba(42, 167, 238, 0.7);
+    opacity: 0;
+  }
 }
 
 .identity-notice-button-glyph {
+  position: relative;
+  z-index: 1;
   font-size: 1.2rem;
   font-weight: 700;
   line-height: 1;
@@ -1286,6 +1358,25 @@ body.is-chats-sidebar-resizing * {
 .identity-notice-button:focus,
 .identity-notice-button:focus-visible {
   outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .identity-notice {
+    transition: none;
+  }
+
+  .identity-notice-button {
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.35),
+      0 0 8px rgba(42, 167, 238, 0.28);
+  }
+
+  .identity-notice-button::before,
+  .identity-notice-button::after,
+  .identity-notice-button .identity-notice-ring {
+    animation: none;
+    opacity: 0;
+  }
 }
 
 .identity-notice-popover {
