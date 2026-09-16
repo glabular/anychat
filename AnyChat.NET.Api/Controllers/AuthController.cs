@@ -13,15 +13,75 @@ public class AuthController(
     CurrentMemberResolver memberResolver,
     CurrentUserIdentityStore identityStore) : ControllerBase
 {
+    private const string ChallengeAppName = "anychat";
+
     [HttpGet("status")]
     public ActionResult<AuthStatusResponse> Status()
     {
-        return Ok(new AuthStatusResponse
+        return Ok(CreateStatusResponse(session.IsConfigured));
+    }
+
+    [HttpPost("challenge")]
+    public async Task<IActionResult> CreateChallenge()
+    {
+        try
         {
-            Configured = session.IsConfigured,
-            FingerprintPrefix = session.FingerprintPrefix,
-            IdentityKnown = identityStore.IsKnown,
-        });
+            var challengeId = await AnytypeClient.Auth.CreateChallengeAsync(ChallengeAppName);
+            
+            if (string.IsNullOrWhiteSpace(challengeId))
+            {
+                return BadRequest(new { error = "challenge_failed", message = "Could not start authentication with Anytype." });
+            }
+
+            return Ok(new CreateChallengeResponse { ChallengeId = challengeId.Trim() });
+        }
+        catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
+        {
+            return AnytypeUnavailableExceptionFilter.CreateResult();
+        }
+        catch (Exception)
+        {
+            return BadRequest(new { error = "challenge_failed", message = "Could not start authentication with Anytype." });
+        }
+    }
+
+    [HttpPost("api-key/from-challenge")]
+    public async Task<IActionResult> SetApiKeyFromChallenge(
+        [FromBody] CreateApiKeyFromChallengeRequest? request)
+    {
+        var challengeId = request?.ChallengeId?.Trim();
+        var code = request?.Code?.Trim();
+
+        if (string.IsNullOrWhiteSpace(challengeId) || string.IsNullOrWhiteSpace(code))
+        {
+            return BadRequest(new { error = "challenge_invalid", message = "Challenge id and code are required." });
+        }
+
+        string apiKey;
+
+        try
+        {
+            apiKey = await AnytypeClient.Auth.CreateApiKeyAsync(challengeId, code);
+        }
+        catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
+        {
+            return AnytypeUnavailableExceptionFilter.CreateResult();
+        }
+        catch (Exception ex) when (AnytypeAuthExceptionFilter.IsAnytypeAuthFailure(ex))
+        {
+            return AnytypeAuthExceptionFilter.CreateInvalidResult();
+        }
+        catch (Exception)
+        {
+            return BadRequest(new { error = "challenge_invalid", message = "That code was rejected. Check it and try again." });
+        }
+
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return BadRequest(new { error = "challenge_invalid", message = "That code was rejected. Check it and try again." });
+        }
+
+        return await ProbeAndPersistApiKeyAsync(apiKey.Trim());
     }
 
     [HttpPut("api-key")]
@@ -34,6 +94,11 @@ public class AuthController(
             return AnytypeAuthExceptionFilter.CreateMissingResult();
         }
 
+        return await ProbeAndPersistApiKeyAsync(apiKey);
+    }
+
+    private async Task<IActionResult> ProbeAndPersistApiKeyAsync(string apiKey)
+    {
         AnytypeClient probeClient;
 
         try
@@ -61,11 +126,14 @@ public class AuthController(
         session.SetApiKey(apiKey);
         memberResolver.ClearCache();
 
-        return Ok(new AuthStatusResponse
+        return Ok(CreateStatusResponse(configured: true));
+    }
+
+    private AuthStatusResponse CreateStatusResponse(bool configured) =>
+        new()
         {
-            Configured = true,
+            Configured = configured,
             FingerprintPrefix = session.FingerprintPrefix,
             IdentityKnown = identityStore.IsKnown,
-        });
-    }
+        };
 }

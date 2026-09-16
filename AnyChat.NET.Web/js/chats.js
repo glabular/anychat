@@ -537,9 +537,9 @@ function handleChatMessageStreamPayload(sub, raw) {
     parsed?.type === "anytype_auth_missing" ||
     parsed?.type === "anytype_auth_invalid"
   ) {
-    void import("./anytype-auth-notice.js").then(({ showAnytypeAuthNotice }) => {
-      showAnytypeAuthNotice({
-        kind:
+    void import("./api-key-setup-modal.js").then(({ openApiKeySetupModal }) => {
+      openApiKeySetupModal({
+        reason:
           parsed.type === "anytype_auth_missing" ? "missing" : "invalid",
       });
     });

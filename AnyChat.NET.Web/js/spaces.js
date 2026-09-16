@@ -2,7 +2,6 @@ import { describeSpacesLoadError, fetchSpaces } from "./api.js";
 import { showAnytypeConnectionNotice } from "./anytype-connection-notice.js";
 import {
   authKindFromError,
-  showAnytypeAuthNotice,
 } from "./anytype-auth-notice.js";
 import { openApiKeySetupModal } from "./api-key-setup-modal.js";
 import {
@@ -217,7 +216,6 @@ export async function initializeSpaces() {
     } else {
       const authKind = authKindFromError(error);
       if (authKind) {
-        showAnytypeAuthNotice({ kind: authKind });
         void openApiKeySetupModal({
           reason: authKind,
           onSaved: () => reloadSpacesAfterAnytypeRecovery(),

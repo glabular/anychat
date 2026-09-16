@@ -16,3 +16,15 @@ public sealed class SetApiKeyRequest
 {
     public string? ApiKey { get; init; }
 }
+
+public sealed class CreateChallengeResponse
+{
+    public required string ChallengeId { get; init; }
+}
+
+public sealed class CreateApiKeyFromChallengeRequest
+{
+    public string? ChallengeId { get; init; }
+
+    public string? Code { get; init; }
+}

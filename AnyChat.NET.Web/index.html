@@ -446,10 +446,9 @@
           Seeing all message bubbles on the left?
         </h2>
         <p class="identity-notice-body">
-            anychat can’t tell which messages are yours until it learns your chat identity.
-            Before that, all message bubbles may appear on the left. That happens 
-            the first time you send a message in any chat. After that, your bubbles 
-            move to the right.
+            anychat needs to learn your chat identity. 
+            Once you send your first message, your message bubbles 
+            will automatically move to the right side.
         </p>
       </div>
       <button
@@ -495,25 +494,6 @@
         ></span>
       </span>
     </button>
-    <button
-      type="button"
-      id="anytype-auth-notice"
-      class="anytype-connection-notice anytype-auth-notice"
-      aria-live="polite"
-      hidden
-    >
-      <span
-        id="anytype-auth-notice-title"
-        class="anytype-connection-notice-title"
-        >API key not set up</span
-      >
-      <span
-        id="anytype-auth-notice-body"
-        class="anytype-connection-notice-body"
-      >
-        Add your Anytype API key to connect. Click here to set it up.
-      </span>
-    </button>
     <div
       id="api-key-setup-modal"
       class="create-chat-modal"
@@ -528,50 +508,120 @@
       >
         <div class="create-chat-header">
           <h2 id="api-key-setup-title" class="create-chat-title">
-            Set up API key
+            Connect to Anytype
           </h2>
-          <button
-            type="button"
-            id="api-key-setup-close"
-            class="create-chat-close"
-            aria-label="Close"
-          >
-            ×
-          </button>
         </div>
-        <p id="api-key-setup-hint" class="create-chat-body">
-          Paste the API key from the Anytype app.
-        </p>
-        <form id="api-key-setup-form" class="create-chat-form">
-          <input
-            type="password"
-            id="api-key-setup-input"
-            class="create-chat-name"
-            name="apiKey"
-            autocomplete="off"
-            spellcheck="false"
-            placeholder="Paste API key"
-            aria-label="API key"
-          />
-          <p id="api-key-setup-error" class="create-chat-error" hidden></p>
-          <div class="create-chat-actions">
+        <p id="api-key-setup-error" class="create-chat-error" hidden></p>
+        <div id="api-key-setup-step-choose" class="api-key-setup-step">
+          <div id="api-key-setup-choose-hint" class="api-key-setup-instructions">
+            <p id="api-key-setup-choose-lead" class="create-chat-body" hidden></p>
+            <ol class="api-key-setup-steps">
+              <li>
+                Open the official Anytype app on this computer (if it is not
+                already running).
+              </li>
+              <li>Click <strong>Connect with Anytype</strong> below.</li>
+              <li>
+                Anytype will show a 4-digit code — type that code here when
+                asked.
+              </li>
+            </ol>
+          </div>
+          <div class="api-key-setup-choose-actions">
             <button
               type="button"
-              id="api-key-setup-cancel"
-              class="create-chat-button-secondary"
+              id="api-key-setup-connect"
+              class="create-chat-submit api-key-setup-primary"
             >
-              Cancel
+              Connect with Anytype
             </button>
             <button
-              type="submit"
-              id="api-key-setup-submit"
-              class="create-chat-submit"
-              disabled
+              type="button"
+              id="api-key-setup-paste-instead"
+              class="api-key-setup-link"
             >
-              Save
+              Paste an existing API key instead
             </button>
           </div>
-        </form>
+        </div>
+        <div id="api-key-setup-step-challenge" class="api-key-setup-step" hidden>
+          <div
+            id="api-key-setup-challenge-hint"
+            class="api-key-setup-instructions"
+          >
+            <ol class="api-key-setup-steps">
+                <li>
+                    Look for a small Anytype window displaying a 4-digit code.
+                </li>
+              <li>Type that code below, then click Continue.</li>
+            </ol>
+          </div>
+          <form id="api-key-setup-challenge-form" class="create-chat-form">
+            <input
+              type="text"
+              id="api-key-setup-code-input"
+              class="create-chat-name"
+              name="challengeCode"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              spellcheck="false"
+              maxlength="4"
+              placeholder="4-digit code"
+              aria-label="4-digit code from Anytype"
+            />
+            <div class="create-chat-actions">
+              <button
+                type="button"
+                id="api-key-setup-challenge-back"
+                class="create-chat-button-secondary"
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                id="api-key-setup-challenge-submit"
+                class="create-chat-submit"
+                disabled
+              >
+                Continue
+              </button>
+            </div>
+          </form>
+        </div>
+        <div id="api-key-setup-step-paste" class="api-key-setup-step" hidden>
+          <p id="api-key-setup-hint" class="create-chat-body">
+            Paste the API key from the Anytype app.
+          </p>
+          <form id="api-key-setup-form" class="create-chat-form">
+            <input
+              type="password"
+              id="api-key-setup-input"
+              class="create-chat-name"
+              name="apiKey"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="Paste API key"
+              aria-label="API key"
+            />
+            <div class="create-chat-actions">
+              <button
+                type="button"
+                id="api-key-setup-paste-back"
+                class="create-chat-button-secondary"
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                id="api-key-setup-submit"
+                class="create-chat-submit"
+                disabled
+              >
+                Save
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
     <script type="module" src="js/main.js"></script>

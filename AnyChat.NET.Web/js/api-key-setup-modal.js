@@ -1,14 +1,17 @@
 import {
+  createAuthChallenge,
   describeAuthSaveError,
   fetchAuthStatus,
   putApiKey,
+  putApiKeyFromChallenge,
 } from "./api.js";
-import { hideAnytypeAuthNotice } from "./anytype-auth-notice.js";
 import { applyIdentityNoticeStatus } from "./identity-notice.js";
 
 /**
- * Paste / replace Anytype API key. Save probes Anytype then persists via the API.
+ * Connect / replace Anytype API key via challenge (preferred) or paste.
  */
+
+/** @typedef {"choose" | "challenge" | "paste"} SetupStep */
 
 let modalBound = false;
 /** @type {HTMLElement | null} */
@@ -16,13 +19,25 @@ let focusBeforeOpen = null;
 let submitInFlight = false;
 /** @type {(() => void | Promise<void>) | null} */
 let onSavedCallback = null;
+/** @type {string | null} */
+let activeChallengeId = null;
+/** @type {"missing" | "invalid" | "settings"} */
+let openReason = "missing";
 
 function getRoot() {
   return document.getElementById("api-key-setup-modal");
 }
 
-function getDialog() {
-  return document.getElementById("api-key-setup-dialog");
+function getStepChoose() {
+  return document.getElementById("api-key-setup-step-choose");
+}
+
+function getStepChallenge() {
+  return document.getElementById("api-key-setup-step-challenge");
+}
+
+function getStepPaste() {
+  return document.getElementById("api-key-setup-step-paste");
 }
 
 function getKeyInput() {
@@ -31,28 +46,62 @@ function getKeyInput() {
   );
 }
 
-function getForm() {
+function getCodeInput() {
+  return /** @type {HTMLInputElement | null} */ (
+    document.getElementById("api-key-setup-code-input")
+  );
+}
+
+function getPasteForm() {
   return /** @type {HTMLFormElement | null} */ (
     document.getElementById("api-key-setup-form")
   );
 }
 
-function getSubmitButton() {
+function getChallengeForm() {
+  return /** @type {HTMLFormElement | null} */ (
+    document.getElementById("api-key-setup-challenge-form")
+  );
+}
+
+function getPasteSubmitButton() {
   return /** @type {HTMLButtonElement | null} */ (
     document.getElementById("api-key-setup-submit")
   );
 }
 
-function getCancelButton() {
-  return document.getElementById("api-key-setup-cancel");
+function getChallengeSubmitButton() {
+  return /** @type {HTMLButtonElement | null} */ (
+    document.getElementById("api-key-setup-challenge-submit")
+  );
 }
 
-function getCloseButton() {
-  return document.getElementById("api-key-setup-close");
+function getConnectButton() {
+  return /** @type {HTMLButtonElement | null} */ (
+    document.getElementById("api-key-setup-connect")
+  );
+}
+
+function getPasteInsteadButton() {
+  return /** @type {HTMLButtonElement | null} */ (
+    document.getElementById("api-key-setup-paste-instead")
+  );
+}
+
+function getChallengeBackButton() {
+  return document.getElementById("api-key-setup-challenge-back");
+}
+
+function getPasteBackButton() {
+  return document.getElementById("api-key-setup-paste-back");
 }
 
 function getErrorEl() {
   return document.getElementById("api-key-setup-error");
+}
+
+function getChooseLeadEl() {
+  return document.getElementById("api-key-setup-choose-lead");
 }
 
 function getHintEl() {
@@ -89,42 +138,123 @@ function showError(message) {
   errorEl.hidden = false;
 }
 
+function isConnectionRequired() {
+  return openReason === "missing" || openReason === "invalid";
+}
+
 /**
  * @param {boolean} inFlight
  */
 function setSubmitInFlight(inFlight) {
   submitInFlight = inFlight;
-  const cancel = getCancelButton();
-  const close = getCloseButton();
-  const input = getKeyInput();
-  if (cancel instanceof HTMLButtonElement) {
-    cancel.disabled = inFlight;
+  const challengeBack = getChallengeBackButton();
+  const pasteBack = getPasteBackButton();
+  const connect = getConnectButton();
+  const pasteInstead = getPasteInsteadButton();
+  const keyInput = getKeyInput();
+  const codeInput = getCodeInput();
+
+  for (const el of [challengeBack, pasteBack, connect, pasteInstead]) {
+    if (el instanceof HTMLButtonElement) {
+      el.disabled = inFlight;
+    }
   }
-  if (close instanceof HTMLButtonElement) {
-    close.disabled = inFlight;
+  if (keyInput) {
+    keyInput.disabled = inFlight;
   }
-  if (input) {
-    input.disabled = inFlight;
+  if (codeInput) {
+    codeInput.disabled = inFlight;
   }
-  syncSaveEnabled();
+  syncActionEnabled();
 }
 
-function syncSaveEnabled() {
-  const submit = getSubmitButton();
-  const input = getKeyInput();
-  if (!submit) {
-    return;
+function syncActionEnabled() {
+  const pasteSubmit = getPasteSubmitButton();
+  const challengeSubmit = getChallengeSubmitButton();
+  const keyInput = getKeyInput();
+  const codeInput = getCodeInput();
+
+  if (pasteSubmit) {
+    const hasText = Boolean(keyInput?.value?.trim());
+    pasteSubmit.disabled = submitInFlight || !hasText;
   }
 
-  const hasText = Boolean(input?.value?.trim());
-  submit.disabled = submitInFlight || !hasText;
+  if (challengeSubmit) {
+    const code = codeInput?.value?.trim() ?? "";
+    const codeOk = /^\d{4}$/.test(code);
+    challengeSubmit.disabled = submitInFlight || !codeOk || !activeChallengeId;
+  }
 }
 
 /**
- * @param {{ restoreFocus?: boolean }} [options]
+ * @param {SetupStep} step
+ */
+function showStep(step) {
+  const choose = getStepChoose();
+  const challenge = getStepChallenge();
+  const paste = getStepPaste();
+
+  if (choose) {
+    choose.hidden = step !== "choose";
+  }
+  if (challenge) {
+    challenge.hidden = step !== "challenge";
+  }
+  if (paste) {
+    paste.hidden = step !== "paste";
+  }
+
+  syncActionEnabled();
+}
+
+function applyTitleAndHints() {
+  const title = getTitleEl();
+  const chooseLead = getChooseLeadEl();
+  const pasteHint = getHintEl();
+
+  if (title) {
+    if (openReason === "invalid") {
+      title.textContent = "Connection rejected";
+    } else if (openReason === "settings") {
+      title.textContent = "Anytype connection";
+    } else {
+      title.textContent = "Connect to Anytype";
+    }
+  }
+
+  if (chooseLead) {
+    if (openReason === "invalid") {
+      chooseLead.hidden = false;
+      chooseLead.textContent =
+        "Your previous connection stopped working. Follow these steps to connect again:";
+    } else if (openReason === "settings") {
+      chooseLead.hidden = false;
+      chooseLead.textContent =
+        "To replace your connection, follow these steps:";
+    } else {
+      chooseLead.hidden = true;
+      chooseLead.textContent = "";
+    }
+  }
+
+  if (pasteHint) {
+    if (openReason === "invalid") {
+      pasteHint.textContent =
+        "The stored Anytype API key was rejected. Paste a valid key to continue.";
+    } else {
+      pasteHint.textContent = "Paste the API key from the Anytype app.";
+    }
+  }
+}
+
+/**
+ * @param {{ restoreFocus?: boolean; force?: boolean }} [options]
  * @returns {boolean}
  */
-export function closeApiKeySetupModal({ restoreFocus = true } = {}) {
+export function closeApiKeySetupModal({
+  restoreFocus = true,
+  force = false,
+} = {}) {
   const root = getRoot();
   if (!root || root.hidden) {
     return false;
@@ -134,15 +264,26 @@ export function closeApiKeySetupModal({ restoreFocus = true } = {}) {
     return true;
   }
 
+  // Missing/invalid: stay open until the user connects (unless force after save).
+  if (!force && isConnectionRequired()) {
+    return true;
+  }
+
   root.hidden = true;
   clearError();
   setSubmitInFlight(false);
+  activeChallengeId = null;
+  showStep("choose");
 
-  const input = getKeyInput();
-  if (input) {
-    input.value = "";
+  const keyInput = getKeyInput();
+  if (keyInput) {
+    keyInput.value = "";
   }
-  syncSaveEnabled();
+  const codeInput = getCodeInput();
+  if (codeInput) {
+    codeInput.value = "";
+  }
+  syncActionEnabled();
 
   if (restoreFocus && focusBeforeOpen instanceof HTMLElement) {
     focusBeforeOpen.focus({ preventScroll: true });
@@ -156,14 +297,11 @@ export function closeApiKeySetupModal({ restoreFocus = true } = {}) {
  */
 export async function openApiKeySetupModal(options = {}) {
   const root = getRoot();
-  const input = getKeyInput();
-  const title = getTitleEl();
-  const hint = getHintEl();
-  if (!root || !input) {
+  const connect = getConnectButton();
+  if (!root || !connect) {
     return;
   }
 
-  // Always refresh the post-save hook when opening from spaces / settings.
   onSavedCallback =
     typeof options.onSaved === "function" ? options.onSaved : onSavedCallback;
 
@@ -174,45 +312,107 @@ export async function openApiKeySetupModal(options = {}) {
 
   clearError();
   setSubmitInFlight(false);
-  input.value = "";
-  syncSaveEnabled();
+  activeChallengeId = null;
+
+  const keyInput = getKeyInput();
+  if (keyInput) {
+    keyInput.value = "";
+  }
+  const codeInput = getCodeInput();
+  if (codeInput) {
+    codeInput.value = "";
+  }
 
   let configured = false;
   try {
     const status = await fetchAuthStatus();
     configured = Boolean(status?.configured);
   } catch {
-    // Status fetch failed — still allow paste.
+    // Status fetch failed — still allow setup.
   }
 
-  const reason = options.reason || (configured ? "settings" : "missing");
-
-  if (title) {
-    if (reason === "invalid") {
-      title.textContent = "API key is incorrect";
-    } else if (reason === "settings" && configured) {
-      title.textContent = "API key settings";
-    } else {
-      title.textContent = "Set up API key";
-    }
-  }
-
-  if (hint) {
-    hint.hidden = false;
-    if (reason === "invalid") {
-      hint.textContent =
-        "The stored Anytype API key was rejected. Paste a valid key to continue.";
-    } else {
-      hint.textContent =
-        "Paste the API key from the Anytype app.";
-    }
-  }
+  openReason = options.reason || (configured ? "settings" : "missing");
+  applyTitleAndHints();
+  showStep("choose");
 
   root.hidden = false;
-  input.focus({ preventScroll: true });
+  connect.focus({ preventScroll: true });
 }
 
-async function handleSubmit() {
+async function finishSaveSuccess(status) {
+  applyIdentityNoticeStatus({
+    configured: status?.configured === true,
+    identityKnown: status?.identityKnown === true,
+  });
+  setSubmitInFlight(false);
+  closeApiKeySetupModal({ restoreFocus: false, force: true });
+
+  const cb = onSavedCallback;
+  onSavedCallback = null;
+  if (typeof cb === "function") {
+    await cb();
+  }
+}
+
+async function startChallengeFlow() {
+  if (submitInFlight) {
+    return;
+  }
+
+  clearError();
+  setSubmitInFlight(true);
+
+  try {
+    const result = await createAuthChallenge();
+    const challengeId =
+      typeof result?.challengeId === "string" ? result.challengeId.trim() : "";
+    if (!challengeId) {
+      throw Object.assign(new Error("Challenge missing id"), { status: 400 });
+    }
+
+    activeChallengeId = challengeId;
+    const codeInput = getCodeInput();
+    if (codeInput) {
+      codeInput.value = "";
+    }
+    showStep("challenge");
+    setSubmitInFlight(false);
+    codeInput?.focus({ preventScroll: true });
+  } catch (error) {
+    console.error("Could not start Anytype challenge:", error);
+    showError(describeAuthSaveError(error, { context: "challenge" }));
+    setSubmitInFlight(false);
+    getConnectButton()?.focus({ preventScroll: true });
+  }
+}
+
+async function handleChallengeSubmit() {
+  if (submitInFlight) {
+    return;
+  }
+
+  const codeInput = getCodeInput();
+  const code = codeInput?.value?.trim() ?? "";
+  if (!/^\d{4}$/.test(code) || !activeChallengeId) {
+    showError("Enter the 4-digit code from Anytype Desktop.");
+    codeInput?.focus({ preventScroll: true });
+    return;
+  }
+
+  setSubmitInFlight(true);
+
+  try {
+    const status = await putApiKeyFromChallenge(activeChallengeId, code);
+    await finishSaveSuccess(status);
+  } catch (error) {
+    console.error("Could not complete Anytype challenge:", error);
+    showError(describeAuthSaveError(error, { context: "challenge" }));
+    setSubmitInFlight(false);
+    codeInput?.focus({ preventScroll: true });
+  }
+}
+
+async function handlePasteSubmit() {
   if (submitInFlight) {
     return;
   }
@@ -225,31 +425,36 @@ async function handleSubmit() {
     return;
   }
 
-  // Keep any existing error visible while checking — clearing it then
-  // re-showing the same rejection message causes a layout flicker.
   setSubmitInFlight(true);
 
   try {
     const status = await putApiKey(apiKey);
-    hideAnytypeAuthNotice();
-    applyIdentityNoticeStatus({
-      configured: status?.configured === true,
-      identityKnown: status?.identityKnown === true,
-    });
-    setSubmitInFlight(false);
-    closeApiKeySetupModal({ restoreFocus: false });
-
-    const cb = onSavedCallback;
-    onSavedCallback = null;
-    if (typeof cb === "function") {
-      await cb();
-    }
+    await finishSaveSuccess(status);
   } catch (error) {
     console.error("Could not save API key:", error);
-    showError(describeAuthSaveError(error));
+    showError(describeAuthSaveError(error, { context: "paste" }));
     setSubmitInFlight(false);
     input?.focus({ preventScroll: true });
   }
+}
+
+function goBackToChoose() {
+  if (submitInFlight) {
+    return;
+  }
+
+  clearError();
+  activeChallengeId = null;
+  const codeInput = getCodeInput();
+  if (codeInput) {
+    codeInput.value = "";
+  }
+  const keyInput = getKeyInput();
+  if (keyInput) {
+    keyInput.value = "";
+  }
+  showStep("choose");
+  getConnectButton()?.focus({ preventScroll: true });
 }
 
 export function initApiKeySetupModal() {
@@ -258,32 +463,71 @@ export function initApiKeySetupModal() {
   }
 
   const root = getRoot();
-  const form = getForm();
-  const cancel = getCancelButton();
-  const close = getCloseButton();
-  if (!root || !form || !cancel || !close) {
+  const pasteForm = getPasteForm();
+  const challengeForm = getChallengeForm();
+  const connect = getConnectButton();
+  const pasteInstead = getPasteInsteadButton();
+  const challengeBack = getChallengeBackButton();
+  const pasteBack = getPasteBackButton();
+  if (
+    !root ||
+    !pasteForm ||
+    !challengeForm ||
+    !connect ||
+    !pasteInstead ||
+    !challengeBack ||
+    !pasteBack
+  ) {
     return;
   }
 
   modalBound = true;
 
-  const input = getKeyInput();
-  input?.addEventListener("input", () => {
+  const keyInput = getKeyInput();
+  keyInput?.addEventListener("input", () => {
     clearError();
-    syncSaveEnabled();
+    syncActionEnabled();
   });
 
-  form.addEventListener("submit", (event) => {
+  const codeInput = getCodeInput();
+  codeInput?.addEventListener("input", () => {
+    // Keep digits only for a 4-digit Anytype code.
+    if (codeInput.value) {
+      codeInput.value = codeInput.value.replace(/\D/g, "").slice(0, 4);
+    }
+    clearError();
+    syncActionEnabled();
+  });
+
+  pasteForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    void handleSubmit();
+    void handlePasteSubmit();
   });
 
-  cancel.addEventListener("click", () => {
-    closeApiKeySetupModal({ restoreFocus: true });
+  challengeForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void handleChallengeSubmit();
   });
 
-  close.addEventListener("click", () => {
-    closeApiKeySetupModal({ restoreFocus: true });
+  connect.addEventListener("click", () => {
+    void startChallengeFlow();
+  });
+
+  pasteInstead.addEventListener("click", () => {
+    if (submitInFlight) {
+      return;
+    }
+    clearError();
+    showStep("paste");
+    getKeyInput()?.focus({ preventScroll: true });
+  });
+
+  challengeBack.addEventListener("click", () => {
+    goBackToChoose();
+  });
+
+  pasteBack.addEventListener("click", () => {
+    goBackToChoose();
   });
 
   root.addEventListener("mousedown", (event) => {

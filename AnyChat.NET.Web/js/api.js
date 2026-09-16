@@ -77,6 +77,74 @@ export async function fetchAuthStatus() {
 }
 
 /**
+ * @param {Response} response
+ * @returns {Promise<never>}
+ */
+async function throwAuthSetupFailure(response) {
+  const authKind = await noteAnytypeAuthFromResponse(response);
+  await noteAnytypeUnavailableFromResponse(response);
+
+  let authError;
+  if (authKind === "missing") {
+    authError = "anytype_auth_missing";
+  } else if (authKind === "invalid") {
+    authError = "anytype_auth_invalid";
+  } else if (response.status === 400) {
+    try {
+      const body = await response.clone().json();
+      if (
+        body?.error === "challenge_failed" ||
+        body?.error === "challenge_invalid"
+      ) {
+        authError = body.error;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const error = new Error(`Response status: ${response.status}`);
+  error.status = response.status;
+  if (authError) {
+    error.authError = authError;
+  }
+  throw error;
+}
+
+export async function createAuthChallenge() {
+  const response = await fetch(`${apiRoot()}/auth/challenge`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (response.ok) {
+    noteAnytypeReachable();
+    return await response.json();
+  }
+
+  return throwAuthSetupFailure(response);
+}
+
+/**
+ * @param {string} challengeId
+ * @param {string} code
+ */
+export async function putApiKeyFromChallenge(challengeId, code) {
+  const response = await fetch(`${apiRoot()}/auth/api-key/from-challenge`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ challengeId, code }),
+  });
+
+  if (response.ok) {
+    noteAnytypeReachable();
+    return await response.json();
+  }
+
+  return throwAuthSetupFailure(response);
+}
+
+/**
  * @param {string} apiKey
  */
 export async function putApiKey(apiKey) {
@@ -91,28 +159,15 @@ export async function putApiKey(apiKey) {
     return await response.json();
   }
 
-  const authKind = await noteAnytypeAuthFromResponse(response);
-  await noteAnytypeUnavailableFromResponse(response);
-
-  let authError;
-  if (authKind === "missing") {
-    authError = "anytype_auth_missing";
-  } else if (authKind === "invalid") {
-    authError = "anytype_auth_invalid";
-  }
-
-  const error = new Error(`Response status: ${response.status}`);
-  error.status = response.status;
-  if (authError) {
-    error.authError = authError;
-  }
-  throw error;
+  return throwAuthSetupFailure(response);
 }
 
 /**
  * @param {unknown} error
+ * @param {{ context?: "paste" | "challenge" }} [options]
  */
-export function describeAuthSaveError(error) {
+export function describeAuthSaveError(error, options = {}) {
+  const context = options.context === "challenge" ? "challenge" : "paste";
   const authError =
     error && typeof error === "object"
       ? /** @type {{ authError?: string }} */ (error).authError
@@ -122,12 +177,37 @@ export function describeAuthSaveError(error) {
       ? /** @type {{ status?: number }} */ (error).status
       : undefined;
 
-  if (authError === "anytype_auth_invalid" || status === 401) {
-    return "That API key was rejected. Check it and try again.";
-  }
-
   if (status === 503) {
     return "Lost connection to Anytype. Open the official Anytype app and try again.";
+  }
+
+  if (context === "challenge") {
+    if (authError === "challenge_failed") {
+      return "Could not start authentication with Anytype. Try again.";
+    }
+
+    if (
+      authError === "challenge_invalid" ||
+      authError === "anytype_auth_invalid" ||
+      status === 401 ||
+      status === 400
+    ) {
+      return "That code was rejected. Check it and try again.";
+    }
+
+    if (typeof status === "number") {
+      return `Could not connect (HTTP ${status}).`;
+    }
+
+    if (error instanceof TypeError) {
+      return "Cannot reach the API.";
+    }
+
+    return "Could not connect with Anytype.";
+  }
+
+  if (authError === "anytype_auth_invalid" || status === 401) {
+    return "That API key was rejected. Check it and try again.";
   }
 
   if (typeof status === "number") {
