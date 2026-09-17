@@ -81,4 +81,58 @@ public sealed class AnytypeApiKeyStore
         File.WriteAllBytes(tempPath, cipher);
         File.Move(tempPath, _storagePath, overwrite: true);
     }
+
+    /// <summary>
+    /// Removes the persisted key file. Overwrites ciphertext before delete when possible.
+    /// Safe if the file is already missing.
+    /// </summary>
+    public void Clear()
+    {
+        DeleteQuietly(_storagePath + ".tmp");
+
+        if (!File.Exists(_storagePath))
+        {
+            return;
+        }
+
+        try
+        {
+            // DPAPI ciphertext is useless without this Windows user, but overwrite
+            // before delete so the blob is less likely to remain in slack space.
+            var length = new FileInfo(_storagePath).Length;
+            if (length > 0 && length <= 1_048_576)
+            {
+                var zeros = new byte[length];
+                File.WriteAllBytes(_storagePath, zeros);
+                CryptographicOperations.ZeroMemory(zeros);
+            }
+
+            File.Delete(_storagePath);
+        }
+        catch (IOException)
+        {
+            DeleteQuietly(_storagePath);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            DeleteQuietly(_storagePath);
+        }
+    }
+
+    private static void DeleteQuietly(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
 }

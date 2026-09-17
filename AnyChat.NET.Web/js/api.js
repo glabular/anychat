@@ -182,6 +182,23 @@ export async function putApiKey(apiKey) {
 }
 
 /**
+ * Deletes the stored Anytype API key and learned identity (LocalAppData files + live session).
+ */
+export async function deleteApiKey() {
+  const response = await fetch(`${apiRoot()}/auth/api-key`, {
+    method: "DELETE",
+  });
+
+  if (response.ok) {
+    return await response.json();
+  }
+
+  const error = new Error(`Response status: ${response.status}`);
+  error.status = response.status;
+  throw error;
+}
+
+/**
  * @param {unknown} error
  * @param {{ context?: "paste" | "challenge" }} [options]
  */

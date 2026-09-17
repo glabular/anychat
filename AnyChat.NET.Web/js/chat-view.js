@@ -585,6 +585,12 @@ export function clearMessageProfilesContext() {
   messageProfiles = null;
 }
 
+/** Drop in-memory drafts after logout so text does not survive a new session. */
+export function clearComposerSessionState() {
+  composerDrafts.clear();
+  listDraftIndicators.clear();
+}
+
 /**
  * Remember the current user's participant id from isMine messages.
  * @param {object[] | null | undefined} messages

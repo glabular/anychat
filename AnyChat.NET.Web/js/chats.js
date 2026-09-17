@@ -188,6 +188,16 @@ export function clearChatActivitySeed(spaceId, chatId) {
   clearPersistedActivitySeed(spaceId, chatId);
 }
 
+/** Drop chat preview/activity state after logout (memory + localStorage). */
+export function clearAccountChatState() {
+  chatMessagePreviews.clear();
+  try {
+    localStorage.removeItem(CHAT_ACTIVITY_SEEDS_STORAGE_KEY);
+  } catch {
+    // non-fatal
+  }
+}
+
 /**
  * Apply stored create-activity seeds into memory for this space; drop orphans.
  * @param {string} spaceId

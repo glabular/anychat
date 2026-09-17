@@ -1,6 +1,18 @@
-import { fetchAppVersion } from "./api.js";
-import { hideChatPanel } from "./chat-view.js";
-import { setMainPlaceholderVisible } from "./chats.js";
+import { deleteApiKey, fetchAppVersion } from "./api.js";
+import { openApiKeySetupModal } from "./api-key-setup-modal.js";
+import {
+  clearComposerSessionState,
+  hideChatPanel,
+} from "./chat-view.js";
+import {
+  clearAccountChatState,
+  setMainPlaceholderVisible,
+} from "./chats.js";
+import { setChatsCreateButtonReady } from "./chats-create-button.js";
+import { applyIdentityNoticeStatus } from "./identity-notice.js";
+import { clearSpaceMembersCache } from "./space-members.js";
+
+const SELECTED_SPACE_STORAGE_KEY = "anychat.selectedSpaceId";
 
 let settingsOpen = false;
 /** Space selected when settings opened; restored by the back control. */
@@ -30,6 +42,12 @@ function getSettingsButton() {
 
 function getSettingsBackButton() {
   return document.getElementById("settings-back");
+}
+
+function getSettingsLogoutButton() {
+  return /** @type {HTMLButtonElement | null} */ (
+    document.getElementById("settings-logout")
+  );
 }
 
 function getChatsSidebarView() {
@@ -211,6 +229,78 @@ function selectSetting(settingId) {
   }
 }
 
+function clearLoggedOutUi() {
+  hideChatPanel();
+  clearComposerSessionState();
+  clearAccountChatState();
+  clearSpaceMembersCache();
+  setMainPlaceholderVisible(false);
+  setChatsCreateButtonReady(false);
+
+  try {
+    localStorage.removeItem(SELECTED_SPACE_STORAGE_KEY);
+  } catch {
+    // non-fatal
+  }
+
+  const spacesSidebar = document.getElementById("spaces-sidebar");
+  spacesSidebar?.querySelectorAll("label").forEach((el) => el.remove());
+  spacesSidebar?.setAttribute("aria-busy", "false");
+
+  const chatsList = document.getElementById("chats-list");
+  if (chatsList) {
+    chatsList.replaceChildren();
+    chatsList.hidden = false;
+  }
+
+  const chatsEmpty = document.getElementById("chats-empty");
+  if (chatsEmpty) {
+    chatsEmpty.hidden = true;
+    chatsEmpty.replaceChildren();
+  }
+
+  const chatsLoading = document.getElementById("chats-loading");
+  if (chatsLoading) {
+    chatsLoading.hidden = true;
+  }
+
+  applyIdentityNoticeStatus({ configured: false, identityKnown: false });
+}
+
+async function handleLogout() {
+  const logoutButton = getSettingsLogoutButton();
+  if (logoutButton?.disabled) {
+    return;
+  }
+
+  if (logoutButton) {
+    logoutButton.disabled = true;
+  }
+
+  try {
+    await deleteApiKey();
+  } catch (error) {
+    console.error("Could not log out / clear API key:", error);
+    if (logoutButton) {
+      logoutButton.disabled = false;
+    }
+    return;
+  }
+
+  exitSettings();
+  clearLoggedOutUi();
+
+  const { reloadSpacesAfterAnytypeRecovery } = await import("./spaces.js");
+  void openApiKeySetupModal({
+    reason: "missing",
+    onSaved: () => reloadSpacesAfterAnytypeRecovery(),
+  });
+
+  if (logoutButton) {
+    logoutButton.disabled = false;
+  }
+}
+
 export function initSettings() {
   getSettingsButton()?.addEventListener("click", () => {
     enterSettings();
@@ -218,6 +308,10 @@ export function initSettings() {
 
   getSettingsBackButton()?.addEventListener("click", () => {
     void restoreSpaceBeforeSettings();
+  });
+
+  getSettingsLogoutButton()?.addEventListener("click", () => {
+    void handleLogout();
   });
 
   getSettingsNav()?.addEventListener("click", (event) => {

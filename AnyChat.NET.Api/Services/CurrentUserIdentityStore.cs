@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace AnyChat.NET.Api.Services;
@@ -46,6 +47,20 @@ public sealed class CurrentUserIdentityStore
 
             _apiKeyFingerprint = apiKeyFingerprint;
             _identity = TryLoadMatchingIdentity();
+        }
+    }
+
+    /// <summary>
+    /// Drops in-memory identity and deletes <c>current-identity.json</c> (and <c>.tmp</c>).
+    /// Call on logout so vault identity and API-key fingerprint do not remain on disk.
+    /// </summary>
+    public void Clear()
+    {
+        lock (_gate)
+        {
+            _identity = null;
+            _apiKeyFingerprint = AnytypeSession.UnconfiguredFingerprint;
+            ClearStorageFiles();
         }
     }
 
@@ -139,6 +154,55 @@ public sealed class CurrentUserIdentityStore
 
         File.WriteAllText(tempPath, json);
         File.Move(tempPath, _storagePath, overwrite: true);
+    }
+
+    private void ClearStorageFiles()
+    {
+        DeleteQuietly(_storagePath + ".tmp");
+
+        if (!File.Exists(_storagePath))
+        {
+            return;
+        }
+
+        try
+        {
+            // Identity JSON holds vault identity + API-key fingerprint — wipe before delete.
+            var length = new FileInfo(_storagePath).Length;
+            if (length > 0 && length <= 1_048_576)
+            {
+                var zeros = new byte[length];
+                File.WriteAllBytes(_storagePath, zeros);
+                CryptographicOperations.ZeroMemory(zeros);
+            }
+
+            File.Delete(_storagePath);
+        }
+        catch (IOException)
+        {
+            DeleteQuietly(_storagePath);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            DeleteQuietly(_storagePath);
+        }
+    }
+
+    private static void DeleteQuietly(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
     }
 
     private sealed class IdentityRecord

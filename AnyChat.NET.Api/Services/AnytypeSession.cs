@@ -115,6 +115,23 @@ public sealed class AnytypeSession
         ApplyKeyInMemory(trimmed);
     }
 
+    /// <summary>
+    /// Deletes the LocalAppData API-key file and learned-identity file, and drops
+    /// the live client. Does not re-apply a config/user-secrets key until the next
+    /// process start.
+    /// </summary>
+    public void ClearApiKey()
+    {
+        _keyStore.Clear();
+        _identityStore.Clear();
+
+        lock (_gate)
+        {
+            _client = null;
+            _fingerprint = UnconfiguredFingerprint;
+        }
+    }
+
     private void ApplyKeyInMemory(string apiKey)
     {
         var fingerprint = ComputeApiKeyFingerprint(apiKey);

@@ -97,6 +97,14 @@ public class AuthController(
         return await ProbeAndPersistApiKeyAsync(apiKey);
     }
 
+    [HttpDelete("api-key")]
+    public ActionResult<AuthStatusResponse> ClearApiKey()
+    {
+        session.ClearApiKey();
+        memberResolver.ClearCache();
+        return Ok(CreateStatusResponse(configured: false));
+    }
+
     private async Task<IActionResult> ProbeAndPersistApiKeyAsync(string apiKey)
     {
         AnytypeClient probeClient;

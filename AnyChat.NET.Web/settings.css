@@ -126,9 +126,14 @@
   cursor: pointer;
 }
 
-.settings-logout:hover {
+.settings-logout:hover:not(:disabled) {
   background-color: color-mix(in srgb, var(--color-red) 14%, transparent);
   color: var(--color-red);
+}
+
+.settings-logout:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .settings-logout:focus,
