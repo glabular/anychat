@@ -91,7 +91,7 @@
 }
 
 .spaces-sidebar label:has(input:checked) {
-  background-color: var(--color-accent-active);
+  background-color: var(--color-light-bg);
 }
 
 .spaces-sidebar legend {
