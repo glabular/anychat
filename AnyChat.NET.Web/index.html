@@ -543,6 +543,44 @@
         </div>
       </div>
     </div>
+    <div
+      id="logout-confirm-modal"
+      class="create-chat-modal"
+      hidden
+    >
+      <div
+        id="logout-confirm-dialog"
+        class="create-chat-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="logout-confirm-title"
+      >
+        <div class="create-chat-header">
+          <h2 id="logout-confirm-title" class="create-chat-title">Log out?</h2>
+        </div>
+        <p class="create-chat-body">
+          This removes your Anytype connection and learned identity from this
+          device. You will need to connect again to use anychat.
+        </p>
+        <p id="logout-confirm-error" class="create-chat-error" hidden></p>
+        <div class="create-chat-actions create-chat-actions--confirm">
+          <button
+            type="button"
+            id="logout-confirm-cancel"
+            class="create-chat-button-secondary"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            id="logout-confirm-submit"
+            class="create-chat-submit create-chat-submit--danger"
+          >
+            Log out
+          </button>
+        </div>
+      </div>
+    </div>
     <div id="identity-notice" class="identity-notice" hidden>
       <div
         id="identity-notice-popover"

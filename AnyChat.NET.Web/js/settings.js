@@ -10,6 +10,7 @@ import {
 } from "./chats.js";
 import { setChatsCreateButtonReady } from "./chats-create-button.js";
 import { applyIdentityNoticeStatus } from "./identity-notice.js";
+import { openLogoutConfirm } from "./logout-confirm.js";
 import { clearSpaceMembersCache } from "./space-members.js";
 
 const SELECTED_SPACE_STORAGE_KEY = "anychat.selectedSpaceId";
@@ -284,7 +285,7 @@ async function handleLogout() {
     if (logoutButton) {
       logoutButton.disabled = false;
     }
-    return;
+    throw error;
   }
 
   exitSettings();
@@ -301,6 +302,11 @@ async function handleLogout() {
   }
 }
 
+/** Clears stored credentials and returns the UI to the connect flow. */
+export async function performLogout() {
+  await handleLogout();
+}
+
 export function initSettings() {
   getSettingsButton()?.addEventListener("click", () => {
     enterSettings();
@@ -311,7 +317,7 @@ export function initSettings() {
   });
 
   getSettingsLogoutButton()?.addEventListener("click", () => {
-    void handleLogout();
+    openLogoutConfirm();
   });
 
   getSettingsNav()?.addEventListener("click", (event) => {

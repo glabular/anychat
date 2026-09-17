@@ -35,6 +35,10 @@ import {
   isDeleteChatConfirmOpen,
 } from "./delete-chat-confirm.js";
 import {
+  closeLogoutConfirm,
+  isLogoutConfirmOpen,
+} from "./logout-confirm.js";
+import {
   cancelChatRename,
   isChatRenameOpen,
 } from "./chat-rename-title.js";
@@ -369,6 +373,7 @@ export function hideChatPanel(options = {}) {
   cancelChatRename({ restoreFocus: false });
   closeChatPanelMenu();
   closeDeleteChatConfirm({ restoreFocus: false });
+  closeLogoutConfirm({ restoreFocus: false });
   closeMemberProfilePanel({ restoreFocus: false });
   clearChatMessages();
   resetChatHistoryStatus();
@@ -414,7 +419,7 @@ export function closeOpenChat() {
   return true;
 }
 
-/** Escape: rename → delete confirm → create-chat → header menu → member profile → open chat. */
+/** Escape: rename → delete confirm → logout confirm → create-chat → header menu → member profile → open chat. */
 export function initChatViewCloseBindings() {
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") {
@@ -427,6 +432,11 @@ export function initChatViewCloseBindings() {
     }
 
     if (closeDeleteChatConfirm({ restoreFocus: true })) {
+      event.preventDefault();
+      return;
+    }
+
+    if (closeLogoutConfirm({ restoreFocus: true })) {
       event.preventDefault();
       return;
     }
@@ -466,6 +476,12 @@ export function initChatViewCloseBindings() {
     if (isDeleteChatConfirmOpen()) {
       event.preventDefault();
       closeDeleteChatConfirm({ restoreFocus: true });
+      return;
+    }
+
+    if (isLogoutConfirmOpen()) {
+      event.preventDefault();
+      closeLogoutConfirm({ restoreFocus: true });
       return;
     }
 
