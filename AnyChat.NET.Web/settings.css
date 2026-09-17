@@ -125,6 +125,41 @@
   display: none;
 }
 
+body.is-settings .main {
+  padding: 0;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.settings-about {
+  padding: 2rem 2.5rem;
+  max-width: 28rem;
+}
+
+.settings-about-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.settings-about-lead {
+  margin: 0 0 1.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.settings-about-version {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+#settings-about-version-value {
+  color: var(--color-text);
+}
+
 /* Belt-and-suspenders: chats empty hint must never show over settings. */
 body.is-settings #main-placeholder {
   display: none !important;

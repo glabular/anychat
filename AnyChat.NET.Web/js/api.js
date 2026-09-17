@@ -77,6 +77,25 @@ export async function fetchAuthStatus() {
 }
 
 /**
+ * Product SemVer from the API (Directory.Build.props via assembly).
+ * @returns {Promise<string>}
+ */
+export async function fetchAppVersion() {
+  const response = await fetch(`${apiRoot()}/version`);
+  if (!response.ok) {
+    const error = new Error(`Response status: ${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
+  const data = await response.json();
+  const version = typeof data?.version === "string" ? data.version.trim() : "";
+  if (!version) {
+    throw new Error("Version response missing version.");
+  }
+  return version;
+}
+
+/**
  * @param {Response} response
  * @returns {Promise<never>}
  */

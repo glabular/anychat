@@ -1,9 +1,14 @@
+import { fetchAppVersion } from "./api.js";
 import { hideChatPanel } from "./chat-view.js";
 import { setMainPlaceholderVisible } from "./chats.js";
 
 let settingsOpen = false;
 /** Space selected when settings opened; restored by the back control. */
 let spaceIdBeforeSettings = null;
+/** @type {string | null} */
+let cachedAppVersion = null;
+/** @type {Promise<string> | null} */
+let appVersionLoadPromise = null;
 
 export function isSettingsOpen() {
   return settingsOpen;
@@ -37,6 +42,10 @@ function getSettingsNav() {
 
 function getSettingsPanel() {
   return document.getElementById("settings-panel");
+}
+
+function getAboutVersionValue() {
+  return document.getElementById("settings-about-version-value");
 }
 
 function clearSettingsSelection() {
@@ -76,6 +85,42 @@ async function restoreSpaceBeforeSettings() {
   const { loadChatsForSelectedSpace } = await import("./chats.js");
   selectSpace(spaceId);
   loadChatsForSelectedSpace();
+}
+
+function setAboutVersionLabel(text) {
+  const el = getAboutVersionValue();
+  if (el) {
+    el.textContent = text;
+  }
+}
+
+async function loadAboutVersion() {
+  if (cachedAppVersion) {
+    setAboutVersionLabel(cachedAppVersion);
+    return;
+  }
+
+  setAboutVersionLabel("…");
+
+  if (!appVersionLoadPromise) {
+    appVersionLoadPromise = fetchAppVersion()
+      .then((version) => {
+        cachedAppVersion = version;
+        return version;
+      })
+      .catch((error) => {
+        console.error("Could not load app version:", error);
+        appVersionLoadPromise = null;
+        throw error;
+      });
+  }
+
+  try {
+    const version = await appVersionLoadPromise;
+    setAboutVersionLabel(version);
+  } catch {
+    setAboutVersionLabel("unavailable");
+  }
 }
 
 export function enterSettings() {
@@ -159,6 +204,10 @@ function selectSetting(settingId) {
   );
   if (detail) {
     detail.hidden = false;
+  }
+
+  if (settingId === "about") {
+    void loadAboutVersion();
   }
 }
 
