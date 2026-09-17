@@ -1356,9 +1356,15 @@ function setSpinnerVisible(visible) {
 /** Visible when spaces/chats are available; hide only on load errors. */
 export function setMainPlaceholderVisible(visible) {
   const mainPlaceholder = document.getElementById("main-placeholder");
-  if (mainPlaceholder) {
-    mainPlaceholder.hidden = !visible;
+  if (!mainPlaceholder) {
+    return;
   }
+  // Settings owns the main pane; never flash the chats empty hint over it.
+  if (visible && document.body.classList.contains("is-settings")) {
+    mainPlaceholder.hidden = true;
+    return;
+  }
+  mainPlaceholder.hidden = !visible;
 }
 
 function restoreChatsEmptyContent(chatsEmpty) {

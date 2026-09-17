@@ -383,7 +383,10 @@ export function hideChatPanel(options = {}) {
     panel.hidden = true;
   }
   if (placeholder) {
-    placeholder.hidden = false;
+    // Stay blank while settings is open (hideChatPanel otherwise shows the hint).
+    placeholder.hidden = document.body.classList.contains("is-settings")
+      ? true
+      : false;
   }
   main?.classList.remove("main--chat-open");
 }

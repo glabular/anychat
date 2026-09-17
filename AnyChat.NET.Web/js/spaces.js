@@ -9,6 +9,11 @@ import {
   setMainPlaceholderVisible,
 } from "./chats.js";
 import { setChatsCreateButtonReady } from "./chats-create-button.js";
+import {
+  ensureReturnSpaceId,
+  exitSettings,
+  isSettingsOpen,
+} from "./settings.js";
 
 const SELECTED_SPACE_STORAGE_KEY = "anychat.selectedSpaceId";
 
@@ -46,8 +51,15 @@ export function populateSpacesSidebar(spaces) {
 
   if (spaces.length > 0) {
     const spaceId = resolveInitialSpaceId(spaces);
-    selectSpace(spaceId);
-    loadChatsForSelectedSpace();
+    if (isSettingsOpen()) {
+      // User opened settings before spaces arrived — keep settings UI, remember
+      // the space for Back, and do not flash the main chats placeholder.
+      persistSelectedSpaceId(spaceId);
+      ensureReturnSpaceId(spaceId);
+    } else {
+      selectSpace(spaceId);
+      loadChatsForSelectedSpace();
+    }
   } else {
     setChatsCreateButtonReady(false);
   }
@@ -68,6 +80,7 @@ export function bindSpaceChangeToChats() {
   const spacesSidebar = document.getElementById("spaces-sidebar");
   spacesSidebar?.addEventListener("change", (event) => {
     if (event.target.matches('input[name="space"]')) {
+      exitSettings();
       persistSelectedSpaceId(event.target.value);
       loadChatsForSelectedSpace();
     }
@@ -110,6 +123,7 @@ export function bindSpaceKeyboardShortcuts() {
     }
 
     selectSpace(spaceInput.value);
+    exitSettings();
     loadChatsForSelectedSpace();
   });
 }
