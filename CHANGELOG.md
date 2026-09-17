@@ -8,6 +8,17 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-17
+
+### Added
+
+- Challenge-based Anytype API key setup (4-digit code preferred; paste key still available)
+- Settings shell: gear under the spaces rail, About pane, Log out with confirm
+
+### Changed
+
+- Spaces rail uses a tab-style selected state
+
 ## [0.2.0] - 2026-09-16
 
 ### Added
