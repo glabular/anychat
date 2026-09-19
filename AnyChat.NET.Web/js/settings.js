@@ -1,4 +1,5 @@
 import { deleteApiKey, fetchAppVersion } from "./api.js";
+import { noteAboutClick } from "./about-confetti.js";
 import { openApiKeySetupModal } from "./api-key-setup-modal.js";
 import {
   clearComposerSessionState,
@@ -348,6 +349,9 @@ export function initSettings() {
     const settingId = item.getAttribute("data-setting");
     if (settingId) {
       selectSetting(settingId);
+      if (settingId === "about") {
+        noteAboutClick();
+      }
     }
   });
 

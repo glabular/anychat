@@ -11,6 +11,7 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 ### Added
 
 - About pane: author, GitHub repo link, and invite to the anychat public space
+- Easter egg 
 
 ### Changed
 
