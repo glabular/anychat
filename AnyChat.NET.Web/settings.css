@@ -22,10 +22,12 @@
 .settings-back {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 32px;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  /* Same origin as the 32×32 control; extend right for a larger hit target. */
+  width: 52px;
   height: 32px;
-  padding: 0;
+  padding: 0 0 0 10px;
   border: none;
   border-radius: 999px;
   background: transparent;

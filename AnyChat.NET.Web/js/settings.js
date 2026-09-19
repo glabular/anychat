@@ -10,7 +10,10 @@ import {
 } from "./chats.js";
 import { setChatsCreateButtonReady } from "./chats-create-button.js";
 import { applyIdentityNoticeStatus } from "./identity-notice.js";
-import { openLogoutConfirm } from "./logout-confirm.js";
+import {
+  isLogoutConfirmOpen,
+  openLogoutConfirm,
+} from "./logout-confirm.js";
 import { clearSpaceMembersCache } from "./space-members.js";
 
 const SELECTED_SPACE_STORAGE_KEY = "anychat.selectedSpaceId";
@@ -104,6 +107,19 @@ async function restoreSpaceBeforeSettings() {
   const { loadChatsForSelectedSpace } = await import("./chats.js");
   selectSpace(spaceId);
   loadChatsForSelectedSpace();
+}
+
+/**
+ * Same as the Back chevron: leave settings and restore the prior space.
+ * @returns {boolean} true when settings was open and back was taken
+ */
+export function goBackFromSettings() {
+  if (!settingsOpen) {
+    return false;
+  }
+
+  void restoreSpaceBeforeSettings();
+  return true;
 }
 
 function setAboutVersionLabel(text) {
@@ -333,5 +349,19 @@ export function initSettings() {
     if (settingId) {
       selectSetting(settingId);
     }
+  });
+
+  // Mouse X1 ("Back") mirrors the chevron. Leave logout confirm to chat-view.
+  document.addEventListener("mousedown", (event) => {
+    if (event.button !== 3 || !settingsOpen) {
+      return;
+    }
+
+    if (isLogoutConfirmOpen()) {
+      return;
+    }
+
+    event.preventDefault();
+    goBackFromSettings();
   });
 }
