@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Diagnostics;
+using System.IO;
 using System.Reflection;
 using System.Text.Json;
 using System.Windows;
@@ -303,7 +304,64 @@ public partial class MainWindow : Window
 
         WebView.AllowExternalDrop = false;
 
-        WebView.CoreWebView2.NewWindowRequested += (_, e) => e.Handled = true;
+        // Keep the shell on the local app origin; open http(s) elsewhere in the
+        // system browser (About links, invite.any.coop, GitHub, etc.).
+        WebView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
+        WebView.CoreWebView2.NavigationStarting += OnNavigationStarting;
+    }
+
+    private void OnNewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
+    {
+        e.Handled = true;
+        TryOpenExternalBrowser(e.Uri);
+    }
+
+    private void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
+    {
+        if (!IsExternalHttpUrl(e.Uri))
+        {
+            return;
+        }
+
+        e.Cancel = true;
+        TryOpenExternalBrowser(e.Uri);
+    }
+
+    private static bool IsExternalHttpUrl(string? uriString)
+    {
+        if (!Uri.TryCreate(uriString, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        if (uri.Scheme is not ("http" or "https"))
+        {
+            return false;
+        }
+
+        return !uri.IsLoopback;
+    }
+
+    private static void TryOpenExternalBrowser(string? uriString)
+    {
+        if (!Uri.TryCreate(uriString, UriKind.Absolute, out var uri))
+        {
+            return;
+        }
+
+        if (uri.Scheme is not ("http" or "https"))
+        {
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch
+        {
+            // Best-effort; ignore if the OS has no browser handler.
+        }
     }
 
 #if DEBUG

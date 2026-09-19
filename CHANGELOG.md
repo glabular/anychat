@@ -8,6 +8,10 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 
 ## [Unreleased]
 
+### Added
+
+- About pane: author, GitHub repo link, and invite to the anychat public space
+
 ### Fixed
 
 - Anytype reconnect countdown no longer jumps or resets when the active-chat
