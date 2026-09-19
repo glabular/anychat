@@ -1,4 +1,4 @@
-/** @type {ReturnType<typeof setInterval> | null} */
+/** @type {ReturnType<typeof setTimeout> | null} */
 let countdownTimer = null;
 
 /** @type {ReturnType<typeof setTimeout> | null} */
@@ -133,7 +133,7 @@ export function hideAnytypeConnectionNotice(options = {}) {
 
 export function clearAnytypeReconnectCountdown() {
   if (countdownTimer !== null) {
-    clearInterval(countdownTimer);
+    clearTimeout(countdownTimer);
     countdownTimer = null;
   }
 }
@@ -163,22 +163,31 @@ export function setAnytypeReconnectRetryText(text, options = {}) {
 export function startAnytypeReconnectCountdown(delayMs) {
   clearAnytypeReconnectCountdown();
 
-  let secondsLeft = Math.max(1, Math.ceil(delayMs / 1000));
-  setAnytypeReconnectRetryText(formatRetryInSeconds(secondsLeft), {
-    showSpinner: false,
-  });
+  const deadlineMs = performance.now() + Math.max(0, delayMs);
 
-  countdownTimer = setInterval(() => {
-    secondsLeft -= 1;
-    if (secondsLeft <= 0) {
+  function updateCountdown() {
+    const remainingMs = deadlineMs - performance.now();
+    if (remainingMs <= 0) {
       clearAnytypeReconnectCountdown();
       setAnytypeReconnectRetryText("Trying again...", { showSpinner: true });
       return;
     }
+
+    const secondsLeft = Math.max(1, Math.ceil(remainingMs / 1000));
     setAnytypeReconnectRetryText(formatRetryInSeconds(secondsLeft), {
       showSpinner: false,
     });
-  }, 1000);
+
+    // Recalculate from the deadline instead of decrementing a counter. Browser
+    // timers can run late under load, after sleep, or when WebView2 throttles.
+    const nextSecondBoundaryMs = remainingMs - (secondsLeft - 1) * 1000;
+    countdownTimer = setTimeout(
+      updateCountdown,
+      Math.max(1, nextSecondBoundaryMs)
+    );
+  }
+
+  updateCountdown();
 }
 
 /**

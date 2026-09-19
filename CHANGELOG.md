@@ -8,6 +8,11 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 
 ## [Unreleased]
 
+### Fixed
+
+- Anytype reconnect countdown no longer jumps or resets when the active-chat
+  stream and background recovery probe retry at different times
+
 ## [0.3.0] - 2026-09-17
 
 ### Added

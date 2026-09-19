@@ -5,13 +5,9 @@ import {
   spacesUrl,
 } from "./api.js";
 import {
-  clearAnytypeReconnectCountdown,
-  isAnytypeConnectionNoticeVisible,
   noteAnytypeReachable,
   noteAnytypeUnavailableFromResponse,
-  setAnytypeReconnectRetryText,
   showAnytypeConnectionNotice,
-  startAnytypeReconnectCountdown,
 } from "./anytype-connection-notice.js";
 import { formatChatListTimestamp } from "./date-format.js";
 import { createSendStatusElement, resolveOutgoingSendStatus } from "./message-send-status.js";
@@ -377,13 +373,12 @@ function beginChatHistoryState(spaceId, chatId, token) {
 
 /**
  * Tear down the active-chat EventSource and any pending reconnect.
- * Does not hide the global Anytype notice (REST/SSE share that across navigation).
+ * The global recovery probe exclusively owns the Anytype notice and countdown.
  */
 function stopChatMessageStream() {
   const sub = messageStream;
   messageStream = null;
   if (!sub) {
-    clearAnytypeReconnectCountdown();
     return;
   }
 
@@ -398,13 +393,6 @@ function stopChatMessageStream() {
     sub.eventSource.onopen = null;
     sub.eventSource.close();
     sub.eventSource = null;
-  }
-
-  // Stop the SSE retry line; keep the global Anytype connection notice if shown.
-  clearAnytypeReconnectCountdown();
-  const retry = document.getElementById("anytype-connection-notice-retry");
-  if (retry) {
-    retry.hidden = true;
   }
 }
 
@@ -458,13 +446,6 @@ function openChatMessageStreamConnection() {
   const eventSource = new EventSource(url);
   sub.eventSource = eventSource;
 
-  eventSource.onopen = () => {
-    if (!isChatMessageStreamCurrent(sub)) {
-      return;
-    }
-    noteAnytypeReachable();
-  };
-
   eventSource.onmessage = (event) => {
     if (!isChatMessageStreamCurrent(sub)) {
       stopChatMessageStream();
@@ -503,18 +484,11 @@ function scheduleChatMessageStreamReconnect(sub) {
   const delayMs = sub.backoffMs;
   sub.backoffMs = Math.min(sub.backoffMs * 2, STREAM_BACKOFF_MS_MAX);
 
-  if (isAnytypeConnectionNoticeVisible()) {
-    startAnytypeReconnectCountdown(delayMs);
-  }
-
   sub.reconnectTimer = setTimeout(() => {
     sub.reconnectTimer = null;
     if (!isChatMessageStreamCurrent(sub)) {
       stopChatMessageStream();
       return;
-    }
-    if (isAnytypeConnectionNoticeVisible()) {
-      setAnytypeReconnectRetryText("Trying again...", { showSpinner: true });
     }
     openChatMessageStreamConnection();
   }, delayMs);
