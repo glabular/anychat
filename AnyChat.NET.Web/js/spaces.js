@@ -206,13 +206,15 @@ function getSpaceButton(space, shortcutNumber) {
   const nameSpan = document.createElement("span");
   nameSpan.className = "space-tooltip__name";
   nameSpan.textContent = displayName;
-
-  const shortcutSpan = document.createElement("span");
-  shortcutSpan.className = "space-tooltip__shortcut";
-  shortcutSpan.textContent = `Ctrl + ${shortcutNumber}`;
-
   tooltipSpan.appendChild(nameSpan);
-  tooltipSpan.appendChild(shortcutSpan);
+
+  // Digits only go 1–9;
+  if (shortcutNumber >= 1 && shortcutNumber <= 9) {
+    const shortcutSpan = document.createElement("span");
+    shortcutSpan.className = "space-tooltip__shortcut";
+    shortcutSpan.textContent = `Ctrl + ${shortcutNumber}`;
+    tooltipSpan.appendChild(shortcutSpan);
+  }
 
   label.setAttribute("aria-label", displayName);
 
