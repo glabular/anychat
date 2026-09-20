@@ -1,6 +1,8 @@
 using AnyChat.NET.Api.Filters;
 using AnyChat.NET.Api.Models;
 using AnyChat.NET.Api.Services;
+using Anytype.NET.Models;
+using Anytype.NET.Models.Requests;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AnyChat.NET.Api.Controllers;
@@ -30,19 +32,7 @@ public class SpacesController(
 
             foreach (var space in spaces)
             {
-                var displayName = await displayResolver.ResolveDisplayNameAsync(space);
-
-                items.Add(new SpaceListItemDto
-                {
-                    Id = space.Id,
-                    Name = space.Name,
-                    Object = space.Object,
-                    Icon = space.Icon,
-                    Description = space.Description,
-                    GatewayUrl = space.GatewayUrl,
-                    NetworkId = space.NetworkId,
-                    DisplayName = displayName,
-                });
+                items.Add(await MapSpaceListItemAsync(space));
             }
 
             return Ok(items);
@@ -55,5 +45,62 @@ public class SpacesController(
         {
             return AnytypeUnavailableExceptionFilter.CreateResult();
         }
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateAppSpaceRequest? request)
+    {
+        var name = request?.Name?.Trim() ?? string.Empty;
+        if (name.Length == 0)
+        {
+            return BadRequest(new { error = "Space name is required." });
+        }
+
+        var description = request?.Description?.Trim() ?? string.Empty;
+
+        var client = session.TryGetClient();
+        if (client is null)
+        {
+            return AnytypeAuthExceptionFilter.CreateMissingResult();
+        }
+
+        try
+        {
+            var space = await client.Spaces.CreateAsync(
+                new CreateSpaceRequest
+                {
+                    Name = name,
+                    Description = description,
+                });
+
+            return StatusCode(
+                StatusCodes.Status201Created,
+                await MapSpaceListItemAsync(space));
+        }
+        catch (Exception ex) when (AnytypeAuthExceptionFilter.IsAnytypeAuthFailure(ex))
+        {
+            return AnytypeAuthExceptionFilter.CreateInvalidResult();
+        }
+        catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
+        {
+            return AnytypeUnavailableExceptionFilter.CreateResult();
+        }
+    }
+
+    private async Task<SpaceListItemDto> MapSpaceListItemAsync(Space space)
+    {
+        var displayName = await displayResolver.ResolveDisplayNameAsync(space);
+
+        return new SpaceListItemDto
+        {
+            Id = space.Id,
+            Name = space.Name,
+            Object = space.Object,
+            Icon = space.Icon,
+            Description = space.Description,
+            GatewayUrl = space.GatewayUrl,
+            NetworkId = space.NetworkId,
+            DisplayName = displayName,
+        };
     }
 }

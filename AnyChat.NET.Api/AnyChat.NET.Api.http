@@ -5,6 +5,17 @@ Accept: application/json
 
 ###
 
+POST {{AnyChat.NET.Api_HostAddress}}/api/spaces
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "New space from AnyChat",
+  "description": "Optional description"
+}
+
+###
+
 GET {{AnyChat.NET.Api_HostAddress}}/api/spaces/{{spaceId}}/chats
 Accept: application/json
 
