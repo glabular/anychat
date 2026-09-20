@@ -9,6 +9,7 @@ import {
   setMainPlaceholderVisible,
 } from "./chats.js";
 import { setChatsCreateButtonReady } from "./chats-create-button.js";
+import { setSpacesCreateButtonReady } from "./spaces-create-button.js";
 import {
   ensureReturnSpaceId,
   exitSettings,
@@ -41,13 +42,37 @@ function resolveInitialSpaceId(spaces) {
   return spaces[0]?.id ?? null;
 }
 
+/**
+ * Remove only space radios; keep legend, loading, and create +.
+ * @param {HTMLElement} spacesSidebar
+ */
+function clearSpaceLabels(spacesSidebar) {
+  for (const label of [
+    ...spacesSidebar.querySelectorAll('label:has(input[name="space"])'),
+  ]) {
+    label.remove();
+  }
+}
+
 export function populateSpacesSidebar(spaces) {
   const spacesSidebar = document.getElementById("spaces-sidebar");
+  if (!spacesSidebar) {
+    return;
+  }
+
+  const createButton = document.getElementById("spaces-create");
+  clearSpaceLabels(spacesSidebar);
 
   spaces.forEach((space, index) => {
     const spaceButton = getSpaceButton(space, index + 1);
-    spacesSidebar.appendChild(spaceButton);
+    if (createButton) {
+      spacesSidebar.insertBefore(spaceButton, createButton);
+    } else {
+      spacesSidebar.appendChild(spaceButton);
+    }
   });
+
+  setSpacesCreateButtonReady(true);
 
   if (spaces.length > 0) {
     const spaceId = resolveInitialSpaceId(spaces);
@@ -199,6 +224,10 @@ export async function initializeSpaces() {
 
   try {
     const spaces = await fetchSpaces();
+    const loading = document.getElementById("spaces-loading");
+    if (loading) {
+      loading.hidden = true;
+    }
     populateSpacesSidebar(spaces);
     setMainPlaceholderVisible(true);
 
@@ -222,6 +251,7 @@ export async function initializeSpaces() {
 
     setMainPlaceholderVisible(false);
     setChatsCreateButtonReady(false);
+    setSpacesCreateButtonReady(false);
 
     if (error?.status === 503) {
       showAnytypeConnectionNotice({
@@ -248,7 +278,9 @@ export async function initializeSpaces() {
 export async function reloadSpacesAfterAnytypeRecovery() {
   const spaces = await fetchSpaces();
   const spacesSidebar = document.getElementById("spaces-sidebar");
-  spacesSidebar?.replaceChildren();
+  if (spacesSidebar) {
+    clearSpaceLabels(spacesSidebar);
+  }
 
   const chatsEmpty = document.getElementById("chats-empty");
   if (chatsEmpty) {
