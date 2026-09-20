@@ -264,6 +264,31 @@ export async function fetchSpaces() {
 }
 
 /**
+ * Create a space via the API proxy (Anytype Spaces.CreateAsync).
+ * @param {string} name
+ * @param {string} [description]
+ * @returns {Promise<{
+ *   id?: string,
+ *   name?: string,
+ *   object?: string,
+ *   description?: string,
+ *   displayName?: string,
+ *   gatewayUrl?: string,
+ *   networkId?: string
+ * }>}
+ */
+export async function createSpace(name, description = "") {
+  const response = await fetch(spacesUrl(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, description }),
+  });
+
+  await throwIfNotOk(response, `Response status: ${response.status}`);
+  return await response.json();
+}
+
+/**
  * User-facing message for the three most common spaces-load failures.
  * 1. HTTP error — API ran but returned 4xx/5xx
  * 2. Unreachable — API down / connection refused / CORS-looking network fail
