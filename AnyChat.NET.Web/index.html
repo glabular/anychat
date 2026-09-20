@@ -517,6 +517,77 @@
         </form>
       </div>
     </div>
+    <div
+      id="create-space-modal"
+      class="create-chat-modal"
+      hidden
+    >
+      <div
+        id="create-space-dialog"
+        class="create-chat-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-space-title"
+      >
+        <div class="create-chat-header">
+          <h2 id="create-space-title" class="create-chat-title">Create a new space</h2>
+          <button
+            type="button"
+            id="create-space-close"
+            class="create-chat-close"
+            aria-label="Close"
+          >
+            <svg
+              class="create-chat-close-icon"
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path
+                d="M2.5 2.5 L9.5 9.5 M9.5 2.5 L2.5 9.5"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+        </div>
+        <form id="create-space-form" class="create-chat-form">
+          <label class="create-chat-label" for="create-space-name">
+            Name
+            <input
+              id="create-space-name"
+              class="create-chat-name"
+              name="name"
+              type="text"
+              autocomplete="off"
+              maxlength="200"
+              placeholder="Space name"
+            />
+          </label>
+          <label class="create-chat-label" for="create-space-description">
+            Description
+            <textarea
+              id="create-space-description"
+              class="create-chat-name create-chat-description"
+              name="description"
+              rows="3"
+              maxlength="2000"
+              placeholder="Optional description"
+            ></textarea>
+          </label>
+          <p id="create-space-error" class="create-chat-error" hidden></p>
+          <div class="create-chat-actions">
+            <button type="submit" class="create-chat-submit" id="create-space-submit">
+              Create
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
     <div id="member-profile-panel" class="member-profile-panel" hidden>
       <div
         id="member-profile-card"

@@ -1,5 +1,11 @@
+import {
+  closeCreateSpaceModal,
+  initCreateSpaceModal,
+  openCreateSpaceModal,
+} from "./create-space-modal.js";
+
 /**
- * Create-space + at the end of the spaces list (modal wired in a later step).
+ * Create-space + at the end of the spaces list.
  */
 
 let createBound = false;
@@ -35,11 +41,14 @@ export function initSpacesCreateButton() {
   }
 
   createBound = true;
+  initCreateSpaceModal();
 
   button.addEventListener("click", () => {
     if (button.disabled || button.hidden) {
       return;
     }
-    // Step 4: openCreateSpaceModal()
+    openCreateSpaceModal();
   });
 }
+
+export { closeCreateSpaceModal };

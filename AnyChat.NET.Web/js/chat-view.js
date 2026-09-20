@@ -27,6 +27,10 @@ import {
   isCreateChatModalOpen,
 } from "./create-chat-modal.js";
 import {
+  closeCreateSpaceModal,
+  isCreateSpaceModalOpen,
+} from "./create-space-modal.js";
+import {
   closeChatPanelMenu,
   isChatPanelMenuOpen,
 } from "./chat-panel-menu.js";
@@ -419,7 +423,7 @@ export function closeOpenChat() {
   return true;
 }
 
-/** Escape: rename → delete confirm → logout confirm → create-chat → header menu → member profile → open chat. */
+/** Escape: rename → delete confirm → logout confirm → create-space → create-chat → header menu → member profile → open chat. */
 export function initChatViewCloseBindings() {
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") {
@@ -437,6 +441,11 @@ export function initChatViewCloseBindings() {
     }
 
     if (closeLogoutConfirm({ restoreFocus: true })) {
+      event.preventDefault();
+      return;
+    }
+
+    if (closeCreateSpaceModal({ restoreFocus: true })) {
       event.preventDefault();
       return;
     }
@@ -482,6 +491,12 @@ export function initChatViewCloseBindings() {
     if (isLogoutConfirmOpen()) {
       event.preventDefault();
       closeLogoutConfirm({ restoreFocus: true });
+      return;
+    }
+
+    if (isCreateSpaceModalOpen()) {
+      event.preventDefault();
+      closeCreateSpaceModal({ restoreFocus: true });
       return;
     }
 

@@ -54,7 +54,11 @@ function clearSpaceLabels(spacesSidebar) {
   }
 }
 
-export function populateSpacesSidebar(spaces) {
+/**
+ * @param {unknown[]} spaces
+ * @param {{ selectSpaceId?: string | null }} [options]
+ */
+export function populateSpacesSidebar(spaces, options = {}) {
   const spacesSidebar = document.getElementById("spaces-sidebar");
   if (!spacesSidebar) {
     return;
@@ -75,7 +79,11 @@ export function populateSpacesSidebar(spaces) {
   setSpacesCreateButtonReady(true);
 
   if (spaces.length > 0) {
-    const spaceId = resolveInitialSpaceId(spaces);
+    const preferredId = options.selectSpaceId;
+    const spaceId =
+      preferredId && spaces.some((space) => space.id === preferredId)
+        ? preferredId
+        : resolveInitialSpaceId(spaces);
     if (isSettingsOpen()) {
       // User opened settings before spaces arrived — keep settings UI, remember
       // the space for Back, and do not flash the main chats placeholder.
@@ -289,5 +297,27 @@ export async function reloadSpacesAfterAnytypeRecovery() {
   }
 
   populateSpacesSidebar(spaces);
+  setMainPlaceholderVisible(true);
+}
+
+/**
+ * Reload the spaces rail and select a specific space (e.g. after create).
+ * @param {string} spaceId
+ */
+export async function reloadSpacesAndSelect(spaceId) {
+  const spaces = await fetchSpaces();
+  const spacesSidebar = document.getElementById("spaces-sidebar");
+  if (spacesSidebar) {
+    clearSpaceLabels(spacesSidebar);
+  }
+
+  const chatsEmpty = document.getElementById("chats-empty");
+  if (chatsEmpty) {
+    chatsEmpty.hidden = true;
+    chatsEmpty.replaceChildren();
+  }
+
+  exitSettings();
+  populateSpacesSidebar(spaces, { selectSpaceId: spaceId });
   setMainPlaceholderVisible(true);
 }
