@@ -201,6 +201,11 @@
   visibility: visible;
 }
 
+.spaces-create:hover:not(:disabled) .space-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
 .spaces-create {
   display: flex;
   width: 72px;
@@ -212,10 +217,20 @@
   border: none;
   background: transparent;
   color: var(--color-text-muted);
+  /* Match space <label>s: buttons do not inherit body font by default. */
+  font: inherit;
   font-size: 1.5rem;
   font-weight: bold;
   line-height: 1;
   cursor: pointer;
+  position: relative;
+}
+
+.spaces-create .space-tooltip {
+  font-size: 0.75rem;
+  font-weight: normal;
+  line-height: normal;
+  color: var(--color-text);
 }
 
 .spaces-create:hover:not(:disabled) {
