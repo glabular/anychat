@@ -111,7 +111,7 @@
 
 .create-chat-description {
   min-height: 4.5rem;
-  resize: vertical;
+  resize: none;
   line-height: 1.35;
 }
 
