@@ -120,6 +120,44 @@
     display: none;
 }
 
+/*
+  Same look as .space-tooltip. Cap width so the tip wraps inside the
+  chats column when the window/sidebar is narrow (fixed rem, not cqi).
+*/
+.chats-create-tooltip {
+    box-sizing: border-box;
+    display: block;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    width: max-content;
+    max-width: 14rem;
+    white-space: normal;
+    padding: 0.4rem 1rem;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: normal;
+    line-height: 1.35;
+    text-align: center;
+    position: absolute;
+    right: calc(100% + 0.5rem);
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease;
+}
+
+.chats-create-tooltip[hidden] {
+    display: none;
+}
+
+.chats-create-wrap:hover .chats-create-tooltip:not([hidden]) {
+    opacity: 1;
+    visibility: visible;
+}
+
 .chats-create {
     box-sizing: border-box;
     width: 40px;

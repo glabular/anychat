@@ -20,6 +20,10 @@ function getCreateChatWrap() {
   return document.getElementById("chats-create-wrap");
 }
 
+function getCreateChatTooltip() {
+  return document.getElementById("chats-create-tooltip");
+}
+
 function getSelectedSpaceInput() {
   return /** @type {HTMLInputElement | null} */ (
     document.querySelector('input[name="space"]:checked')
@@ -78,14 +82,24 @@ export function syncChatsCreateButton() {
     chatsCreateButtonReady && allowed ? "false" : "true"
   );
 
+  // Never use native title — browser chrome breaks the dark UI.
+  wrap.removeAttribute("title");
+
+  const tooltip = getCreateChatTooltip();
   if (oneToOne) {
-    wrap.title = ONE_TO_ONE_CREATE_TOOLTIP;
     wrap.setAttribute("aria-label", ONE_TO_ONE_CREATE_TOOLTIP);
     button.setAttribute("aria-label", ONE_TO_ONE_CREATE_TOOLTIP);
+    if (tooltip) {
+      tooltip.textContent = ONE_TO_ONE_CREATE_TOOLTIP;
+      tooltip.hidden = false;
+    }
   } else {
-    wrap.removeAttribute("title");
     wrap.removeAttribute("aria-label");
     button.setAttribute("aria-label", "Create chat");
+    if (tooltip) {
+      tooltip.textContent = "";
+      tooltip.hidden = true;
+    }
   }
 }
 
