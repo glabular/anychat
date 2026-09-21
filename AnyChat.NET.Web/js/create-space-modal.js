@@ -100,23 +100,30 @@ function describeCreateSpaceError(error) {
   return "Could not create space.";
 }
 
+function syncSubmitEnabled() {
+  const submit = getSubmitButton();
+  const nameInput = getNameInput();
+  if (!submit) {
+    return;
+  }
+  const hasName = Boolean(nameInput?.value?.trim());
+  submit.disabled = submitInFlight || !hasName;
+}
+
 /**
  * @param {boolean} inFlight
  */
 function setSubmitInFlight(inFlight) {
   submitInFlight = inFlight;
-  const submit = getSubmitButton();
   const nameInput = getNameInput();
   const descriptionInput = getDescriptionInput();
-  if (submit) {
-    submit.disabled = inFlight;
-  }
   if (nameInput) {
     nameInput.disabled = inFlight;
   }
   if (descriptionInput) {
     descriptionInput.disabled = inFlight;
   }
+  syncSubmitEnabled();
 }
 
 /**
@@ -135,7 +142,6 @@ export function closeCreateSpaceModal({ restoreFocus = true } = {}) {
 
   root.hidden = true;
   clearError();
-  setSubmitInFlight(false);
 
   const nameInput = getNameInput();
   if (nameInput) {
@@ -148,6 +154,8 @@ export function closeCreateSpaceModal({ restoreFocus = true } = {}) {
     descriptionInput.value = "";
     descriptionInput.disabled = false;
   }
+
+  setSubmitInFlight(false);
 
   if (restoreFocus && focusBeforeOpen instanceof HTMLElement) {
     focusBeforeOpen.focus({ preventScroll: true });
@@ -176,11 +184,11 @@ export function openCreateSpaceModal() {
       : null;
 
   clearError();
-  setSubmitInFlight(false);
   nameInput.value = "";
   nameInput.disabled = false;
   descriptionInput.value = "";
   descriptionInput.disabled = false;
+  setSubmitInFlight(false);
   root.hidden = false;
   nameInput.focus({ preventScroll: true });
 }
@@ -264,4 +272,12 @@ export function initCreateSpaceModal() {
     event.preventDefault();
     void handleCreateSpaceSubmit();
   });
+
+  const nameInput = getNameInput();
+  nameInput?.addEventListener("input", () => {
+    clearError();
+    syncSubmitEnabled();
+  });
+
+  syncSubmitEnabled();
 }
