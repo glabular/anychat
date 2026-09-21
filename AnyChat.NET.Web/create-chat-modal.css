@@ -113,6 +113,23 @@
   min-height: 4.5rem;
   resize: none;
   line-height: 1.35;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.create-chat-description::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+}
+
+.create-chat-description::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.create-chat-description::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
 }
 
 .create-chat-error {
