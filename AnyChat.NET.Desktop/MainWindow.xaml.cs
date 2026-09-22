@@ -74,6 +74,7 @@ public partial class MainWindow : Window
 
         e.Cancel = true;
         _isStoppingHost = true;
+        Hide();
 
         try
         {
