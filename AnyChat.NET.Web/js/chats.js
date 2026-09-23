@@ -106,6 +106,28 @@ export function chatDisplayName(name) {
   return trimmed || "Untitled";
 }
 
+/**
+ * Title for chat list rows and the panel header. In a one-to-one space, prefer
+ * the selected space's display name (peer label from the API) over chat.name
+ * (often "General"). Falls back to {@link chatDisplayName} when not 1:1 or the
+ * space label is missing.
+ * @param {{ name?: string } | null | undefined} chat
+ * @returns {string}
+ */
+function chatTitleForUi(chat) {
+  if (isOneToOneSpace()) {
+    const selected = document.querySelector('input[name="space"]:checked');
+    const spaceLabel =
+      typeof selected?.dataset.spaceName === "string"
+        ? selected.dataset.spaceName.trim()
+        : "";
+    if (spaceLabel) {
+      return spaceLabel;
+    }
+  }
+  return chatDisplayName(chat?.name);
+}
+
 /** Latest message preview per chat, keyed by spaceId + chatId. */
 const chatMessagePreviews = new Map();
 
@@ -1576,7 +1598,7 @@ function createChatListItem(chat) {
   const chatButton = document.createElement("button");
   chatButton.type = "button";
   chatButton.className = "chat-item";
-  const chatName = chatDisplayName(chat.name);
+  const chatName = chatTitleForUi(chat);
   const chatId = chat.id ?? "";
   li.dataset.chatName = chatName;
   chatButton.addEventListener("click", () => {
