@@ -237,6 +237,10 @@ body.is-chats-sidebar-resizing * {
   cursor: pointer;
 }
 
+.chat-panel-title--not-renamable {
+  cursor: default;
+}
+
 .chat-panel-title:focus,
 .chat-panel-title:focus-visible {
   outline: none;

@@ -1,4 +1,5 @@
 import { renameChat } from "./api.js";
+import { isOneToOneSpaceObject } from "./space-members.js";
 
 /** @type {string} */
 let initialInputValue = "";
@@ -7,6 +8,41 @@ let previousDisplayName = "";
 let saveInFlight = false;
 let saveToken = 0;
 let renameBound = false;
+
+/**
+ * One-to-one panel titles are peer labels, not the Anytype chat name.
+ * @returns {boolean}
+ */
+function isSelectedSpaceOneToOne() {
+  const space = /** @type {HTMLInputElement | null} */ (
+    document.querySelector('input[name="space"]:checked')
+  );
+  return isOneToOneSpaceObject(space?.dataset.spaceObject ?? "");
+}
+
+/**
+ * Toggle rename affordances on the panel title (button role vs plain heading).
+ * Call when the open chat header changes.
+ */
+export function syncChatRenameTitleAffordances() {
+  const title = getTitle();
+  if (!(title instanceof HTMLElement)) {
+    return;
+  }
+
+  if (isSelectedSpaceOneToOne()) {
+    title.removeAttribute("role");
+    title.removeAttribute("aria-label");
+    title.tabIndex = -1;
+    title.classList.add("chat-panel-title--not-renamable");
+    return;
+  }
+
+  title.setAttribute("role", "button");
+  title.setAttribute("aria-label", "Rename chat");
+  title.tabIndex = 0;
+  title.classList.remove("chat-panel-title--not-renamable");
+}
 
 /**
  * Empty Anytype titles are allowed; show a stable label in the UI.
@@ -166,7 +202,7 @@ export function cancelChatRename({ restoreFocus = true } = {}) {
 }
 
 function beginChatRename() {
-  if (isChatRenameOpen() || saveInFlight) {
+  if (isChatRenameOpen() || saveInFlight || isSelectedSpaceOneToOne()) {
     return;
   }
 
@@ -272,10 +308,7 @@ export function initChatRenameTitle() {
   }
 
   renameBound = true;
-
-  title.tabIndex = 0;
-  title.setAttribute("role", "button");
-  title.setAttribute("aria-label", "Rename chat");
+  syncChatRenameTitleAffordances();
 
   title.addEventListener("click", () => {
     beginChatRename();

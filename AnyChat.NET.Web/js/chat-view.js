@@ -45,6 +45,7 @@ import {
 import {
   cancelChatRename,
   isChatRenameOpen,
+  syncChatRenameTitleAffordances,
 } from "./chat-rename-title.js";
 import { markIdentityKnown } from "./identity-notice.js";
 
@@ -347,6 +348,7 @@ export function showChatHeader(name) {
     title.hidden = false;
     title.textContent = name;
   }
+  syncChatRenameTitleAffordances();
   if (panel) {
     panel.hidden = false;
   }
