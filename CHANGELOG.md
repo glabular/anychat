@@ -15,6 +15,7 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 
 ### Changed
 
+- Anytype challenge code uses four large OTP boxes and auto-submits
 - Anytype connect copy matches the new Allow dialog; no code resend
 - Modal primary/secondary text buttons use shared pill styles
 - Disable browser focus rings app-wide
