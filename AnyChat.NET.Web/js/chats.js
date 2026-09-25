@@ -28,6 +28,8 @@ import {
   isOpenChatMessagesCurrent,
   prependOlderChatMessages,
   appendNewerChatMessages,
+  closeOpenChat,
+  getOpenChat,
   renderOpenChatMessages,
   renderOpenChatMessagesError,
   rerenderOpenChatMessagesPreservingViewport,
@@ -1430,7 +1432,7 @@ function setSpinnerVisible(visible) {
   }
 }
 
-/** Visible when spaces/chats are available; hide only on load errors. */
+/** Visible when spaces/chats are available and no chat is open; hide on errors. */
 export function setMainPlaceholderVisible(visible) {
   const mainPlaceholder = document.getElementById("main-placeholder");
   if (!mainPlaceholder) {
@@ -1438,6 +1440,12 @@ export function setMainPlaceholderVisible(visible) {
   }
   // Settings owns the main pane; never flash the chats empty hint over it.
   if (visible && document.body.classList.contains("is-settings")) {
+    mainPlaceholder.hidden = true;
+    return;
+  }
+  // Open chat owns the main pane — reconcile/list refresh must not resurface
+  // the empty hint above the panel (seen on window focus).
+  if (visible && document.querySelector(".main")?.classList.contains("main--chat-open")) {
     mainPlaceholder.hidden = true;
     return;
   }
@@ -1621,6 +1629,195 @@ export async function loadChatsForSelectedSpace(options = {}) {
   if (openChatId) {
     selectChatInList(openChatId);
   }
+}
+
+/**
+ * Tear down chats UI when no space is selected (e.g. remote space delete).
+ * Bumps loadToken so in-flight full loads / reconciles bail out.
+ */
+export function clearChatsUiWhenNoSpaceSelected() {
+  loadToken += 1;
+  resetChatHistoryState();
+  hideChatPanel();
+  clearChatsContent();
+
+  const chatsEmpty = document.getElementById("chats-empty");
+  if (chatsEmpty) {
+    chatsEmpty.hidden = true;
+    chatsEmpty.replaceChildren();
+  }
+
+  setMainPlaceholderVisible(true);
+  setChatsCreateButtonReady(false);
+}
+
+/**
+ * Soft-refresh the chats list for the selected space without resetting the
+ * open thread. Removes archived/missing chats, appends new ones, updates
+ * titles. No-op while a full load is in progress or settings owns the column.
+ * @returns {Promise<void>}
+ */
+export async function reconcileChatsForSelectedSpace() {
+  if (document.body.classList.contains("is-settings")) {
+    return;
+  }
+
+  const chatsList = document.getElementById("chats-list");
+  if (chatsList?.getAttribute("aria-busy") === "true") {
+    return;
+  }
+
+  const selectedSpaceInput = document.querySelector(
+    'input[name="space"]:checked'
+  );
+  if (!selectedSpaceInput) {
+    return;
+  }
+
+  const spaceId = selectedSpaceInput.value;
+  const tokenAtStart = loadToken;
+
+  let chats;
+  try {
+    chats = await fetchChats(spaceId);
+  } catch (error) {
+    console.error(`Could not reconcile chats for space ${spaceId}:`, error);
+    void import("./anytype-auth-notice.js").then(({ authKindFromError }) => {
+      const authKind = authKindFromError(error);
+      if (!authKind) {
+        return;
+      }
+      void import("./api-key-setup-modal.js").then(
+        ({ isApiKeySetupModalOpen, openApiKeySetupModal }) => {
+          if (!isApiKeySetupModalOpen()) {
+            openApiKeySetupModal({ reason: authKind });
+          }
+        }
+      );
+    });
+    return;
+  }
+
+  if (tokenAtStart !== loadToken) {
+    return;
+  }
+
+  const stillSelected = document.querySelector('input[name="space"]:checked');
+  if (!stillSelected || stillSelected.value !== spaceId) {
+    return;
+  }
+
+  if (chatsList?.getAttribute("aria-busy") === "true") {
+    return;
+  }
+
+  noteAnytypeReachable();
+
+  const serverChats = Array.isArray(chats) ? chats : [];
+  const serverById = new Map();
+  for (const chat of serverChats) {
+    if (typeof chat?.id === "string" && chat.id.length > 0) {
+      serverById.set(chat.id, chat);
+    }
+  }
+
+  const list = document.getElementById("chats-list");
+  if (!list) {
+    return;
+  }
+
+  const open = getOpenChat();
+  const openChatId =
+    open && open.spaceId === spaceId && typeof open.chatId === "string"
+      ? open.chatId
+      : null;
+
+  for (const li of [...list.querySelectorAll("li[data-chat-id]")]) {
+    const chatId = li.dataset.chatId;
+    if (!chatId || serverById.has(chatId)) {
+      continue;
+    }
+    li.remove();
+    clearChatActivitySeed(spaceId, chatId);
+    if (openChatId && chatId === openChatId) {
+      closeOpenChat();
+    }
+  }
+
+  hydratePersistedActivitySeeds(spaceId, [...serverById.keys()]);
+
+  /** @type {Array<{ li: HTMLLIElement, previewEl: HTMLParagraphElement, timestampEl: HTMLSpanElement, statusEl: HTMLElement, chatId: string }>} */
+  const newRows = [];
+
+  for (const chat of serverById.values()) {
+    const existing = list.querySelector(
+      `li[data-chat-id="${CSS.escape(chat.id)}"]`
+    );
+    if (existing instanceof HTMLLIElement) {
+      const title = chatTitleForUi(chat);
+      if (existing.dataset.chatName !== title) {
+        existing.dataset.chatName = title;
+        const nameEl = existing.querySelector(".chat-name");
+        if (nameEl) {
+          nameEl.textContent = title;
+        }
+        if (openChatId && chat.id === openChatId) {
+          showChatHeader(title);
+        }
+      }
+      continue;
+    }
+
+    newRows.push(createChatListItem(chat));
+  }
+
+  if (newRows.length > 0) {
+    await loadChatPreviews(spaceId, newRows, tokenAtStart);
+    if (tokenAtStart !== loadToken) {
+      return;
+    }
+    const still = document.querySelector('input[name="space"]:checked');
+    if (!still || still.value !== spaceId) {
+      return;
+    }
+
+    for (const row of newRows) {
+      list.appendChild(row.li);
+    }
+  }
+
+  const remaining = [...list.querySelectorAll("li[data-chat-id]")];
+  const chatsEmpty = document.getElementById("chats-empty");
+
+  if (remaining.length === 0) {
+    list.replaceChildren();
+    if (chatsEmpty) {
+      restoreChatsEmptyContent(chatsEmpty);
+      chatsEmpty.hidden = false;
+    }
+    hideChatsScrollToTopButton();
+    setMainPlaceholderVisible(true);
+    setChatsCreateButtonReady(true);
+    return;
+  }
+
+  if (chatsEmpty) {
+    chatsEmpty.hidden = true;
+  }
+
+  const rowsForSort = remaining.map((li) => ({
+    li,
+    chatId: li.dataset.chatId ?? "",
+  }));
+  sortChatRowsByActivity(spaceId, rowsForSort);
+  for (const row of rowsForSort) {
+    list.appendChild(row.li);
+  }
+  syncChatsScrollToTopButton();
+  // Keep empty hint only when nothing is open; do not flash it over an open chat
+  // (focus → reconcile used to force this visible).
+  setMainPlaceholderVisible(!getOpenChat());
+  setChatsCreateButtonReady(true);
 }
 
 /**

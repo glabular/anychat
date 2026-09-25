@@ -1,10 +1,11 @@
 import { describeSpacesLoadError, fetchSpaces } from "./api.js";
-import { showAnytypeConnectionNotice } from "./anytype-connection-notice.js";
+import { noteAnytypeReachable, showAnytypeConnectionNotice } from "./anytype-connection-notice.js";
 import {
   authKindFromError,
 } from "./anytype-auth-notice.js";
 import { openApiKeySetupModal } from "./api-key-setup-modal.js";
 import {
+  clearChatsUiWhenNoSpaceSelected,
   loadChatsForSelectedSpace,
   setMainPlaceholderVisible,
 } from "./chats.js";
@@ -18,6 +19,22 @@ import {
 
 const SELECTED_SPACE_STORAGE_KEY = "anychat.selectedSpaceId";
 
+/** True after the first successful spaces populate (enables soft reconcile). */
+let spacesRailReady = false;
+
+export function isSpacesRailReady() {
+  return spacesRailReady;
+}
+
+function markSpacesRailReady() {
+  if (spacesRailReady) {
+    return;
+  }
+  spacesRailReady = true;
+  void import("./anytype-list-sync.js").then((mod) => {
+    mod.enableAnytypeListSync();
+  });
+}
 function readPersistedSpaceId() {
   try {
     return localStorage.getItem(SELECTED_SPACE_STORAGE_KEY);
@@ -96,6 +113,8 @@ export function populateSpacesSidebar(spaces, options = {}) {
   } else {
     setChatsCreateButtonReady(false);
   }
+
+  markSpacesRailReady();
 }
 
 export function selectSpace(spaceId) {
@@ -300,6 +319,210 @@ export async function reloadSpacesAfterAnytypeRecovery() {
 
   populateSpacesSidebar(spaces);
   setMainPlaceholderVisible(true);
+}
+
+/**
+ * Soft-refresh the spaces rail without wiping selection when it still exists.
+ * Removes spaces deleted/left elsewhere; appends new ones. If the selected
+ * space vanished, clears chats UI (no auto-select).
+ * @returns {Promise<void>}
+ */
+export async function reconcileSpaces() {
+  if (!spacesRailReady) {
+    return;
+  }
+
+  const loading = document.getElementById("spaces-loading");
+  if (loading && !loading.hidden) {
+    return;
+  }
+
+  const spacesSidebar = document.getElementById("spaces-sidebar");
+  if (!spacesSidebar) {
+    return;
+  }
+
+  let spaces;
+  try {
+    spaces = await fetchSpaces();
+  } catch (error) {
+    console.error("Could not reconcile spaces:", error);
+    const authKind = authKindFromError(error);
+    if (authKind) {
+      void import("./api-key-setup-modal.js").then(
+        ({ isApiKeySetupModalOpen, openApiKeySetupModal: openAuth }) => {
+          if (!isApiKeySetupModalOpen()) {
+            openAuth({ reason: authKind });
+          }
+        }
+      );
+    }
+    return;
+  }
+
+  if (!Array.isArray(spaces)) {
+    return;
+  }
+
+  noteAnytypeReachable();
+
+  const serverById = new Map();
+  for (const space of spaces) {
+    if (typeof space?.id === "string" && space.id.length > 0) {
+      serverById.set(space.id, space);
+    }
+  }
+
+  const selected = document.querySelector('input[name="space"]:checked');
+  const selectedId = selected?.value ?? null;
+  const selectedLost = Boolean(selectedId && !serverById.has(selectedId));
+
+  for (const label of [
+    ...spacesSidebar.querySelectorAll('label:has(input[name="space"])'),
+  ]) {
+    const input = label.querySelector('input[name="space"]');
+    const id = input instanceof HTMLInputElement ? input.value : "";
+    if (!id || serverById.has(id)) {
+      continue;
+    }
+    label.remove();
+  }
+
+  const createButton = document.getElementById("spaces-create");
+  const existingIds = new Set(
+    [...spacesSidebar.querySelectorAll('input[name="space"]')].map(
+      (input) => input.value
+    )
+  );
+
+  for (const space of serverById.values()) {
+    if (existingIds.has(space.id)) {
+      updateSpaceLabel(space);
+      continue;
+    }
+
+    const nextIndex =
+      spacesSidebar.querySelectorAll('input[name="space"]').length + 1;
+    const spaceButton = getSpaceButton(space, nextIndex);
+    if (createButton) {
+      spacesSidebar.insertBefore(spaceButton, createButton);
+    } else {
+      spacesSidebar.appendChild(spaceButton);
+    }
+  }
+
+  renumberSpaceShortcuts(spacesSidebar);
+  setSpacesCreateButtonReady(true);
+
+  if (selectedLost) {
+    if (isSettingsOpen()) {
+      exitSettings();
+    }
+    clearChatsUiWhenNoSpaceSelected();
+    try {
+      localStorage.removeItem(SELECTED_SPACE_STORAGE_KEY);
+    } catch {
+      // non-fatal
+    }
+  }
+
+  if (serverById.size === 0) {
+    setChatsCreateButtonReady(false);
+  }
+}
+
+/**
+ * Refresh label metadata for an existing space radio without reselecting.
+ * @param {object} space
+ */
+function updateSpaceLabel(space) {
+  const input = document.querySelector(
+    `input[name="space"][value="${CSS.escape(space.id)}"]`
+  );
+  if (!(input instanceof HTMLInputElement)) {
+    return;
+  }
+
+  const displayName = getSpaceDisplayName(space);
+  input.dataset.spaceName = displayName;
+  input.dataset.spaceObject = space.object ?? "";
+  input.dataset.gatewayUrl =
+    typeof space.gatewayUrl === "string" ? space.gatewayUrl : "";
+
+  const label = input.closest("label");
+  if (label) {
+    label.setAttribute("aria-label", displayName);
+  }
+
+  const nameSpan = label?.querySelector(".space-tooltip__name");
+  if (nameSpan) {
+    nameSpan.textContent = displayName;
+  }
+
+  const letterEl = label
+    ? [...label.children].find(
+        (el) =>
+          el instanceof HTMLElement
+          && el.tagName === "SPAN"
+          && !el.classList.contains("space-tooltip")
+      )
+    : null;
+  if (letterEl instanceof HTMLElement) {
+    const resolvedFromApi = !!(
+      space?.displayName?.trim() || space?.name?.trim()
+    );
+    if (resolvedFromApi) {
+      letterEl.textContent = getSpaceDisplayLetter(space, 1);
+      letterEl.className = "";
+    } else {
+      letterEl.className = "space-letter--fallback";
+    }
+  }
+}
+
+/**
+ * Keep Ctrl+1–9 order and fallback letters aligned with DOM order.
+ * @param {HTMLElement} spacesSidebar
+ */
+function renumberSpaceShortcuts(spacesSidebar) {
+  const labels = [
+    ...spacesSidebar.querySelectorAll('label:has(input[name="space"])'),
+  ];
+  labels.forEach((label, index) => {
+    const shortcutNumber = index + 1;
+    const letterSpan = [...label.children].find(
+      (el) =>
+        el instanceof HTMLElement
+        && el.tagName === "SPAN"
+        && !el.classList.contains("space-tooltip")
+    );
+    if (
+      letterSpan instanceof HTMLElement
+      && letterSpan.classList.contains("space-letter--fallback")
+    ) {
+      letterSpan.textContent =
+        shortcutNumber >= 1 && shortcutNumber <= 9
+          ? String(shortcutNumber)
+          : "#";
+    }
+
+    const shortcutSpan = label.querySelector(".space-tooltip__shortcut");
+    if (shortcutNumber >= 1 && shortcutNumber <= 9) {
+      if (shortcutSpan) {
+        shortcutSpan.textContent = `Ctrl + ${shortcutNumber}`;
+      } else {
+        const tooltip = label.querySelector(".space-tooltip");
+        if (tooltip) {
+          const created = document.createElement("span");
+          created.className = "space-tooltip__shortcut";
+          created.textContent = `Ctrl + ${shortcutNumber}`;
+          tooltip.appendChild(created);
+        }
+      }
+    } else if (shortcutSpan) {
+      shortcutSpan.remove();
+    }
+  });
 }
 
 /**

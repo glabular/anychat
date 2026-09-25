@@ -25,6 +25,9 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 
 - Open chat reflects Anytype Desktop message edits and deletes over the
   existing SSE stream (no reopen)
+- Spaces and chats lists soft-refresh while the window is visible so remote
+  archives/deletes appear without restarting or reselecting
+- Focusing the window no longer flashes the empty main hint over an open chat
 - Anytype reconnect countdown no longer jumps or resets when the active-chat
   stream and background recovery probe retry at different times
 
