@@ -23,6 +23,8 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 
 ### Fixed
 
+- Open chat reflects Anytype Desktop message edits and deletes over the
+  existing SSE stream (no reopen)
 - Anytype reconnect countdown no longer jumps or resets when the active-chat
   stream and background recovery probe retry at different times
 

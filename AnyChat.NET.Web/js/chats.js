@@ -517,7 +517,8 @@ function scheduleChatMessageStreamReconnect(sub) {
 }
 
 /**
- * Parse one SSE `data:` payload and merge `message_added` into the open chat.
+ * Parse one SSE `data:` payload and apply live message events to the open chat.
+ * Handles message_added, message_updated, and message_deleted.
  * @param {ChatMessageStreamSubscription} sub
  * @param {string} raw
  */
@@ -556,7 +557,20 @@ function handleChatMessageStreamPayload(sub, raw) {
   sub.backoffMs = STREAM_BACKOFF_MS_MIN;
   noteAnytypeReachable();
 
-  if (parsed?.type !== "message_added") {
+  const state = chatHistoryState;
+  if (!state || !isChatMessageStreamCurrent(sub)) {
+    return;
+  }
+
+  if (parsed?.type === "message_deleted") {
+    applyMessageDeletedFromStream(state, parsed.id);
+    return;
+  }
+
+  if (
+    parsed?.type !== "message_added"
+    && parsed?.type !== "message_updated"
+  ) {
     return;
   }
 
@@ -565,24 +579,77 @@ function handleChatMessageStreamPayload(sub, raw) {
     return;
   }
 
-  const state = chatHistoryState;
-  if (!state || !isChatMessageStreamCurrent(sub)) {
-    return;
-  }
-
   const result = mergeIncomingMessageIntoState(state, message);
-  applyMergeResultToDom(state, result, { scrollMode: "ifAtLatest" });
+  applyMergeResultToDom(state, result, {
+    scrollMode: "ifAtLatest",
+    // Updates change bubble text; confirm-without-reorder only patches send status.
+    refreshContent: parsed.type === "message_updated",
+  });
   if (result.kind === "insert") {
     maybeResolveIncomingAuthor(sub, state, message);
   }
 
-  if (result.kind === "insert" || result.kind === "confirm") {
+  if (
+    (result.kind === "insert" || result.kind === "confirm")
+    && isOpenChatTipMessage(state, message.id)
+  ) {
     updateChatListPreview(
       state.spaceId,
       state.chatId,
       formatMessagePreview(message, { isOneToOne: isOneToOneSpace() })
     );
   }
+}
+
+/**
+ * @param {ChatHistoryState} state
+ * @param {string | null | undefined} messageId
+ * @returns {boolean}
+ */
+function isOpenChatTipMessage(state, messageId) {
+  if (typeof messageId !== "string" || messageId.length === 0) {
+    return false;
+  }
+  const tip = state.messages[state.messages.length - 1];
+  return tip?.id === messageId;
+}
+
+/**
+ * Remove a message deleted upstream from open-chat state + DOM; refresh list
+ * preview when the deleted row was the tip.
+ * @param {ChatHistoryState} state
+ * @param {unknown} messageId
+ */
+function applyMessageDeletedFromStream(state, messageId) {
+  if (typeof messageId !== "string" || messageId.length === 0) {
+    return;
+  }
+
+  const wasTip = isOpenChatTipMessage(state, messageId);
+  const existingIndex = state.messages.findIndex(
+    (entry) => entry?.id === messageId
+  );
+  if (existingIndex < 0) {
+    state.messageIds.delete(messageId);
+    return;
+  }
+
+  state.messages.splice(existingIndex, 1);
+  state.messageIds.delete(messageId);
+  rerenderOpenChatMessagesPreservingViewport(state.messages);
+
+  if (!wasTip) {
+    return;
+  }
+
+  const tip = state.messages[state.messages.length - 1];
+  updateChatListPreview(
+    state.spaceId,
+    state.chatId,
+    tip
+      ? formatMessagePreview(tip, { isOneToOne: isOneToOneSpace() })
+      : { senderLabel: null, text: "", createdAt: null }
+  );
 }
 
 /**
@@ -825,18 +892,22 @@ function mergeIncomingMessageIntoState(state, incoming) {
  *   index?: number,
  *   reordered?: boolean,
  * }} result
- * @param {{ scrollMode?: "always" | "ifAtLatest" }} [options]
+ * @param {{
+ *   scrollMode?: "always" | "ifAtLatest",
+ *   refreshContent?: boolean,
+ * }} [options]
  * @returns {number} newly inserted visible row count
  */
 function applyMergeResultToDom(state, result, options = {}) {
   const scrollMode = options.scrollMode ?? "ifAtLatest";
+  const refreshContent = options.refreshContent === true;
 
   if (result.kind === "noop" || !result.message) {
     return 0;
   }
 
   if (result.kind === "confirm") {
-    if (result.reordered) {
+    if (result.reordered || refreshContent) {
       rerenderOpenChatMessagesPreservingViewport(state.messages);
     } else {
       const status = resolveOutgoingSendStatus(result.message);
