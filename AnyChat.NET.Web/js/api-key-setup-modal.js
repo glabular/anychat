@@ -13,9 +13,6 @@ import { applyIdentityNoticeStatus } from "./identity-notice.js";
 
 /** @typedef {"choose" | "challenge" | "paste"} SetupStep */
 
-/** Anytype’s code window lasts ~30s; only offer a new request after it has expired. */
-const RESEND_VISIBLE_AFTER_MS = 31_000;
-
 let modalBound = false;
 /** @type {HTMLElement | null} */
 let focusBeforeOpen = null;
@@ -26,8 +23,6 @@ let onSavedCallback = null;
 let activeChallengeId = null;
 /** @type {"missing" | "invalid" | "settings"} */
 let openReason = "missing";
-/** @type {ReturnType<typeof setTimeout> | null} */
-let resendRevealTimer = null;
 
 function getRoot() {
   return document.getElementById("api-key-setup-modal");
@@ -97,38 +92,6 @@ function getChallengeBackButton() {
   return document.getElementById("api-key-setup-challenge-back");
 }
 
-function getChallengeResendButton() {
-  return /** @type {HTMLButtonElement | null} */ (
-    document.getElementById("api-key-setup-challenge-resend")
-  );
-}
-
-function clearResendRevealTimer() {
-  if (resendRevealTimer !== null) {
-    clearTimeout(resendRevealTimer);
-    resendRevealTimer = null;
-  }
-}
-
-function hideChallengeResend() {
-  clearResendRevealTimer();
-  const resend = getChallengeResendButton();
-  if (resend) {
-    resend.hidden = true;
-  }
-}
-
-function scheduleChallengeResendReveal() {
-  hideChallengeResend();
-  resendRevealTimer = setTimeout(() => {
-    resendRevealTimer = null;
-    const resend = getChallengeResendButton();
-    if (resend) {
-      resend.hidden = false;
-    }
-  }, RESEND_VISIBLE_AFTER_MS);
-}
-
 function getPasteBackButton() {
   return document.getElementById("api-key-setup-paste-back");
 }
@@ -185,20 +148,13 @@ function isConnectionRequired() {
 function setSubmitInFlight(inFlight) {
   submitInFlight = inFlight;
   const challengeBack = getChallengeBackButton();
-  const challengeResend = getChallengeResendButton();
   const pasteBack = getPasteBackButton();
   const connect = getConnectButton();
   const pasteInstead = getPasteInsteadButton();
   const keyInput = getKeyInput();
   const codeInput = getCodeInput();
 
-  for (const el of [
-    challengeBack,
-    challengeResend,
-    pasteBack,
-    connect,
-    pasteInstead,
-  ]) {
+  for (const el of [challengeBack, pasteBack, connect, pasteInstead]) {
     if (el instanceof HTMLButtonElement) {
       el.disabled = inFlight;
     }
@@ -317,7 +273,6 @@ export function closeApiKeySetupModal({
   clearError();
   setSubmitInFlight(false);
   activeChallengeId = null;
-  hideChallengeResend();
   showStep("choose");
 
   const keyInput = getKeyInput();
@@ -399,19 +354,12 @@ async function finishSaveSuccess(status) {
   }
 }
 
-/**
- * @param {{ fromRetry?: boolean }} [options]
- */
-async function startChallengeFlow(options = {}) {
+async function startChallengeFlow() {
   if (submitInFlight) {
     return;
   }
 
-  const fromRetry = options.fromRetry === true;
   clearError();
-  if (fromRetry) {
-    hideChallengeResend();
-  }
   setSubmitInFlight(true);
 
   try {
@@ -428,23 +376,13 @@ async function startChallengeFlow(options = {}) {
       codeInput.value = "";
     }
     showStep("challenge");
-    scheduleChallengeResendReveal();
     setSubmitInFlight(false);
     codeInput?.focus({ preventScroll: true });
   } catch (error) {
     console.error("Could not start Anytype challenge:", error);
     showError(describeAuthSaveError(error, { context: "challenge" }));
     setSubmitInFlight(false);
-    if (fromRetry) {
-      // Keep the link visible so the user can try again after a failed request.
-      const resend = getChallengeResendButton();
-      if (resend) {
-        resend.hidden = false;
-      }
-      resend?.focus({ preventScroll: true });
-    } else {
-      getConnectButton()?.focus({ preventScroll: true });
-    }
+    getConnectButton()?.focus({ preventScroll: true });
   }
 }
 
@@ -507,7 +445,6 @@ function goBackToChoose() {
 
   clearError();
   activeChallengeId = null;
-  hideChallengeResend();
   const codeInput = getCodeInput();
   if (codeInput) {
     codeInput.value = "";
@@ -531,7 +468,6 @@ export function initApiKeySetupModal() {
   const connect = getConnectButton();
   const pasteInstead = getPasteInsteadButton();
   const challengeBack = getChallengeBackButton();
-  const challengeResend = getChallengeResendButton();
   const pasteBack = getPasteBackButton();
   if (
     !root ||
@@ -540,7 +476,6 @@ export function initApiKeySetupModal() {
     !connect ||
     !pasteInstead ||
     !challengeBack ||
-    !challengeResend ||
     !pasteBack
   ) {
     return;
@@ -576,10 +511,6 @@ export function initApiKeySetupModal() {
 
   connect.addEventListener("click", () => {
     void startChallengeFlow();
-  });
-
-  challengeResend.addEventListener("click", () => {
-    void startChallengeFlow({ fromRetry: true });
   });
 
   pasteInstead.addEventListener("click", () => {

@@ -15,6 +15,7 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 
 ### Changed
 
+- Drop “Request a new code” from Anytype connect (Deny blocks until restart)
 - Modal primary/secondary text buttons use shared pill styles
 - Disable browser focus rings app-wide
 - Mouse Back exits settings
