@@ -501,6 +501,10 @@ function handleCodeDigitInput(input) {
   if (index >= 0 && index < inputs.length - 1) {
     inputs[index + 1]?.focus({ preventScroll: true });
   }
+
+  if (/^\d{4}$/.test(getChallengeCode())) {
+    void handleChallengeSubmit();
+  }
 }
 
 /**
@@ -548,6 +552,10 @@ function handleCodeDigitPaste(event) {
   const inputs = getCodeDigitInputs();
   const focusIndex = Math.min(digits.length, inputs.length) - 1;
   inputs[Math.max(focusIndex, 0)]?.focus({ preventScroll: true });
+
+  if (/^\d{4}$/.test(getChallengeCode())) {
+    void handleChallengeSubmit();
+  }
 }
 
 export function initApiKeySetupModal() {
