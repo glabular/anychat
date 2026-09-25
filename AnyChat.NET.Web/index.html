@@ -840,18 +840,52 @@
             </ol>
           </div>
           <form id="api-key-setup-challenge-form" class="create-chat-form">
-            <input
-              type="text"
-              id="api-key-setup-code-input"
-              class="create-chat-name"
-              name="challengeCode"
-              inputmode="numeric"
-              autocomplete="one-time-code"
-              spellcheck="false"
-              maxlength="4"
-              placeholder="4-digit code"
+            <div
+              class="api-key-setup-code-digits"
+              role="group"
               aria-label="4-digit code from Anytype"
-            />
+            >
+              <input
+                type="text"
+                class="api-key-setup-code-digit"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                spellcheck="false"
+                maxlength="1"
+                data-digit-index="0"
+                aria-label="Digit 1 of 4"
+              />
+              <input
+                type="text"
+                class="api-key-setup-code-digit"
+                inputmode="numeric"
+                autocomplete="off"
+                spellcheck="false"
+                maxlength="1"
+                data-digit-index="1"
+                aria-label="Digit 2 of 4"
+              />
+              <input
+                type="text"
+                class="api-key-setup-code-digit"
+                inputmode="numeric"
+                autocomplete="off"
+                spellcheck="false"
+                maxlength="1"
+                data-digit-index="2"
+                aria-label="Digit 3 of 4"
+              />
+              <input
+                type="text"
+                class="api-key-setup-code-digit"
+                inputmode="numeric"
+                autocomplete="off"
+                spellcheck="false"
+                maxlength="1"
+                data-digit-index="3"
+                aria-label="Digit 4 of 4"
+              />
+            </div>
             <div class="create-chat-actions">
               <button
                 type="button"
