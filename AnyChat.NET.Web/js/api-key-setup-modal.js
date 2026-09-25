@@ -46,10 +46,43 @@ function getKeyInput() {
   );
 }
 
-function getCodeInput() {
-  return /** @type {HTMLInputElement | null} */ (
-    document.getElementById("api-key-setup-code-input")
-  );
+/**
+ * @returns {HTMLInputElement[]}
+ */
+function getCodeDigitInputs() {
+  return Array.from(
+    document.querySelectorAll(".api-key-setup-code-digit")
+  ).filter((el) => el instanceof HTMLInputElement);
+}
+
+function getChallengeCode() {
+  return getCodeDigitInputs()
+    .map((input) => input.value.replace(/\D/g, "").slice(0, 1))
+    .join("");
+}
+
+/**
+ * @param {string} code
+ */
+function setChallengeCode(code) {
+  const digits = String(code ?? "")
+    .replace(/\D/g, "")
+    .slice(0, 4)
+    .split("");
+  const inputs = getCodeDigitInputs();
+  for (let i = 0; i < inputs.length; i += 1) {
+    inputs[i].value = digits[i] ?? "";
+  }
+}
+
+function focusFirstCodeDigit() {
+  getCodeDigitInputs()[0]?.focus({ preventScroll: true });
+}
+
+function focusFirstEmptyCodeDigit() {
+  const inputs = getCodeDigitInputs();
+  const empty = inputs.find((input) => !input.value);
+  (empty ?? inputs[inputs.length - 1])?.focus({ preventScroll: true });
 }
 
 function getPasteForm() {
@@ -152,7 +185,6 @@ function setSubmitInFlight(inFlight) {
   const connect = getConnectButton();
   const pasteInstead = getPasteInsteadButton();
   const keyInput = getKeyInput();
-  const codeInput = getCodeInput();
 
   for (const el of [challengeBack, pasteBack, connect, pasteInstead]) {
     if (el instanceof HTMLButtonElement) {
@@ -162,8 +194,8 @@ function setSubmitInFlight(inFlight) {
   if (keyInput) {
     keyInput.disabled = inFlight;
   }
-  if (codeInput) {
-    codeInput.disabled = inFlight;
+  for (const digit of getCodeDigitInputs()) {
+    digit.disabled = inFlight;
   }
   syncActionEnabled();
 }
@@ -172,7 +204,6 @@ function syncActionEnabled() {
   const pasteSubmit = getPasteSubmitButton();
   const challengeSubmit = getChallengeSubmitButton();
   const keyInput = getKeyInput();
-  const codeInput = getCodeInput();
 
   if (pasteSubmit) {
     const hasText = Boolean(keyInput?.value?.trim());
@@ -180,8 +211,7 @@ function syncActionEnabled() {
   }
 
   if (challengeSubmit) {
-    const code = codeInput?.value?.trim() ?? "";
-    const codeOk = /^\d{4}$/.test(code);
+    const codeOk = /^\d{4}$/.test(getChallengeCode());
     challengeSubmit.disabled = submitInFlight || !codeOk || !activeChallengeId;
   }
 }
@@ -279,10 +309,7 @@ export function closeApiKeySetupModal({
   if (keyInput) {
     keyInput.value = "";
   }
-  const codeInput = getCodeInput();
-  if (codeInput) {
-    codeInput.value = "";
-  }
+  setChallengeCode("");
   syncActionEnabled();
 
   if (restoreFocus && focusBeforeOpen instanceof HTMLElement) {
@@ -318,10 +345,7 @@ export async function openApiKeySetupModal(options = {}) {
   if (keyInput) {
     keyInput.value = "";
   }
-  const codeInput = getCodeInput();
-  if (codeInput) {
-    codeInput.value = "";
-  }
+  setChallengeCode("");
 
   let configured = false;
   try {
@@ -371,13 +395,10 @@ async function startChallengeFlow() {
     }
 
     activeChallengeId = challengeId;
-    const codeInput = getCodeInput();
-    if (codeInput) {
-      codeInput.value = "";
-    }
+    setChallengeCode("");
     showStep("challenge");
     setSubmitInFlight(false);
-    codeInput?.focus({ preventScroll: true });
+    focusFirstCodeDigit();
   } catch (error) {
     console.error("Could not start Anytype challenge:", error);
     showError(describeAuthSaveError(error, { context: "challenge" }));
@@ -391,11 +412,10 @@ async function handleChallengeSubmit() {
     return;
   }
 
-  const codeInput = getCodeInput();
-  const code = codeInput?.value?.trim() ?? "";
+  const code = getChallengeCode();
   if (!/^\d{4}$/.test(code) || !activeChallengeId) {
     showError("Enter the 4-digit code from Anytype Desktop.");
-    codeInput?.focus({ preventScroll: true });
+    focusFirstEmptyCodeDigit();
     return;
   }
 
@@ -408,7 +428,7 @@ async function handleChallengeSubmit() {
     console.error("Could not complete Anytype challenge:", error);
     showError(describeAuthSaveError(error, { context: "challenge" }));
     setSubmitInFlight(false);
-    codeInput?.focus({ preventScroll: true });
+    focusFirstCodeDigit();
   }
 }
 
@@ -445,16 +465,89 @@ function goBackToChoose() {
 
   clearError();
   activeChallengeId = null;
-  const codeInput = getCodeInput();
-  if (codeInput) {
-    codeInput.value = "";
-  }
+  setChallengeCode("");
   const keyInput = getKeyInput();
   if (keyInput) {
     keyInput.value = "";
   }
   showStep("choose");
   getConnectButton()?.focus({ preventScroll: true });
+}
+
+/**
+ * @param {HTMLInputElement} input
+ */
+function digitIndex(input) {
+  const raw = input.getAttribute("data-digit-index");
+  const index = raw == null ? Number.NaN : Number(raw);
+  return Number.isInteger(index) ? index : -1;
+}
+
+/**
+ * @param {HTMLInputElement} input
+ */
+function handleCodeDigitInput(input) {
+  const digit = input.value.replace(/\D/g, "").slice(-1);
+  input.value = digit;
+  clearError();
+  syncActionEnabled();
+
+  if (!digit) {
+    return;
+  }
+
+  const inputs = getCodeDigitInputs();
+  const index = digitIndex(input);
+  if (index >= 0 && index < inputs.length - 1) {
+    inputs[index + 1]?.focus({ preventScroll: true });
+  }
+}
+
+/**
+ * @param {HTMLInputElement} input
+ * @param {KeyboardEvent} event
+ */
+function handleCodeDigitKeydown(input, event) {
+  if (event.key !== "Backspace") {
+    return;
+  }
+  if (input.value) {
+    return;
+  }
+
+  const inputs = getCodeDigitInputs();
+  const index = digitIndex(input);
+  if (index <= 0) {
+    return;
+  }
+
+  event.preventDefault();
+  const prev = inputs[index - 1];
+  if (prev) {
+    prev.value = "";
+    prev.focus({ preventScroll: true });
+    syncActionEnabled();
+  }
+}
+
+/**
+ * @param {ClipboardEvent} event
+ */
+function handleCodeDigitPaste(event) {
+  event.preventDefault();
+  const pasted = event.clipboardData?.getData("text") ?? "";
+  const digits = pasted.replace(/\D/g, "").slice(0, 4);
+  if (!digits) {
+    return;
+  }
+
+  setChallengeCode(digits);
+  clearError();
+  syncActionEnabled();
+
+  const inputs = getCodeDigitInputs();
+  const focusIndex = Math.min(digits.length, inputs.length) - 1;
+  inputs[Math.max(focusIndex, 0)]?.focus({ preventScroll: true });
 }
 
 export function initApiKeySetupModal() {
@@ -469,6 +562,7 @@ export function initApiKeySetupModal() {
   const pasteInstead = getPasteInsteadButton();
   const challengeBack = getChallengeBackButton();
   const pasteBack = getPasteBackButton();
+  const codeDigits = getCodeDigitInputs();
   if (
     !root ||
     !pasteForm ||
@@ -476,7 +570,8 @@ export function initApiKeySetupModal() {
     !connect ||
     !pasteInstead ||
     !challengeBack ||
-    !pasteBack
+    !pasteBack ||
+    codeDigits.length !== 4
   ) {
     return;
   }
@@ -489,15 +584,17 @@ export function initApiKeySetupModal() {
     syncActionEnabled();
   });
 
-  const codeInput = getCodeInput();
-  codeInput?.addEventListener("input", () => {
-    // Keep digits only for a 4-digit Anytype code.
-    if (codeInput.value) {
-      codeInput.value = codeInput.value.replace(/\D/g, "").slice(0, 4);
-    }
-    clearError();
-    syncActionEnabled();
-  });
+  for (const digit of codeDigits) {
+    digit.addEventListener("input", () => {
+      handleCodeDigitInput(digit);
+    });
+    digit.addEventListener("keydown", (event) => {
+      handleCodeDigitKeydown(digit, event);
+    });
+    digit.addEventListener("paste", (event) => {
+      handleCodeDigitPaste(event);
+    });
+  }
 
   pasteForm.addEventListener("submit", (event) => {
     event.preventDefault();
