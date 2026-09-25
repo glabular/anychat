@@ -79,6 +79,11 @@ function focusFirstCodeDigit() {
   getCodeDigitInputs()[0]?.focus({ preventScroll: true });
 }
 
+function focusLastCodeDigit() {
+  const inputs = getCodeDigitInputs();
+  inputs[inputs.length - 1]?.focus({ preventScroll: true });
+}
+
 function focusFirstEmptyCodeDigit() {
   const inputs = getCodeDigitInputs();
   const empty = inputs.find((input) => !input.value);
@@ -428,7 +433,7 @@ async function handleChallengeSubmit() {
     console.error("Could not complete Anytype challenge:", error);
     showError(describeAuthSaveError(error, { context: "challenge" }));
     setSubmitInFlight(false);
-    focusFirstCodeDigit();
+    focusLastCodeDigit();
   }
 }
 
