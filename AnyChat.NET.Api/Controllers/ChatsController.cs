@@ -183,7 +183,7 @@ public class ChatsController(
                 limit: limit);
             var participantId = await memberResolver.ResolveParticipantIdAsync(spaceId);
             var sourceMessages = response.Messages ?? [];
-            var replyTextById = await BuildReplyTextLookupAsync(
+            var replyPreviewById = await BuildReplyPreviewLookupAsync(
                 client.Chats,
                 spaceId,
                 chatId,
@@ -192,7 +192,7 @@ public class ChatsController(
                 .Select(message => MapMessage(
                     message,
                     participantId,
-                    LookupReplyToText(message, replyTextById)))
+                    LookupReplyPreview(message, replyPreviewById)))
                 .ToList();
 
             return Ok(messages);
@@ -494,7 +494,7 @@ public class ChatsController(
             ChatMessageDto? message = null;
             if (payload?.Message is not null)
             {
-                var replyTextById = await BuildReplyTextLookupAsync(
+                var replyPreviewById = await BuildReplyPreviewLookupAsync(
                     chats,
                     spaceId,
                     chatId,
@@ -503,7 +503,7 @@ public class ChatsController(
                 message = MapMessage(
                     payload.Message,
                     participantId,
-                    LookupReplyToText(payload.Message, replyTextById));
+                    LookupReplyPreview(payload.Message, replyPreviewById));
             }
 
             return new ChatMessageStreamEventDto
@@ -520,26 +520,28 @@ public class ChatsController(
         };
     }
 
+    private readonly record struct ReplyPreview(string? Text, string? AuthorName);
+
     /// <summary>
-    /// Parent-message id → trimmed text. Uses texts already present in
+    /// Parent-message id → text + author name. Uses data already present in
     /// <paramref name="messages"/>, then <c>GetMessageAsync</c> for missing reply targets.
     /// Failed fetches are omitted (soft-fail).
     /// </summary>
-    private static async Task<Dictionary<string, string?>> BuildReplyTextLookupAsync(
+    private static async Task<Dictionary<string, ReplyPreview>> BuildReplyPreviewLookupAsync(
         IChatsApi chats,
         string spaceId,
         string chatId,
         IEnumerable<ChatMessage> messages,
         CancellationToken cancellationToken = default)
     {
-        var textById = new Dictionary<string, string?>(StringComparer.Ordinal);
+        var previewById = new Dictionary<string, ReplyPreview>(StringComparer.Ordinal);
         var replyIds = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var message in messages)
         {
             if (!string.IsNullOrWhiteSpace(message.Id))
             {
-                textById[message.Id] = NormalizeMessageText(message.Content?.Text);
+                previewById[message.Id] = ToReplyPreview(message);
             }
 
             if (!string.IsNullOrWhiteSpace(message.ReplyToMessageId))
@@ -550,7 +552,7 @@ public class ChatsController(
 
         foreach (var replyId in replyIds)
         {
-            if (textById.ContainsKey(replyId))
+            if (previewById.ContainsKey(replyId))
             {
                 continue;
             }
@@ -559,7 +561,7 @@ public class ChatsController(
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var parent = await chats.GetMessageAsync(spaceId, chatId, replyId);
-                textById[replyId] = NormalizeMessageText(parent.Content?.Text);
+                previewById[replyId] = ToReplyPreview(parent);
             }
             catch (OperationCanceledException)
             {
@@ -567,23 +569,32 @@ public class ChatsController(
             }
             catch (Exception)
             {
-                // Soft-fail: leave missing so ReplyToText stays null.
+                // Soft-fail: leave missing so reply quote fields stay null.
             }
         }
 
-        return textById;
+        return previewById;
     }
 
-    private static string? LookupReplyToText(
+    private static ReplyPreview? LookupReplyPreview(
         ChatMessage message,
-        IReadOnlyDictionary<string, string?> textById)
+        IReadOnlyDictionary<string, ReplyPreview> previewById)
     {
         if (string.IsNullOrWhiteSpace(message.ReplyToMessageId))
         {
             return null;
         }
 
-        return textById.TryGetValue(message.ReplyToMessageId, out var text) ? text : null;
+        return previewById.TryGetValue(message.ReplyToMessageId, out var preview)
+            ? preview
+            : null;
+    }
+
+    private static ReplyPreview ToReplyPreview(ChatMessage message)
+    {
+        return new ReplyPreview(
+            NormalizeMessageText(message.Content?.Text),
+            NormalizeAuthorName(message.CreatorName));
     }
 
     private static string? NormalizeMessageText(string? text)
@@ -596,10 +607,20 @@ public class ChatsController(
         return text.Trim();
     }
 
+    private static string? NormalizeAuthorName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        return name.Trim();
+    }
+
     private static ChatMessageDto MapMessage(
         ChatMessage message,
         string? participantId,
-        string? replyToText = null)
+        ReplyPreview? replyPreview = null)
     {
         bool? isMine = null;
         if (participantId is not null)
@@ -622,7 +643,8 @@ public class ChatsController(
                 Text = message.Content?.Text,
             },
             ReplyToMessageId = replyToMessageId,
-            ReplyToText = replyToMessageId is null ? null : replyToText,
+            ReplyToText = replyToMessageId is null ? null : replyPreview?.Text,
+            ReplyToAuthorName = replyToMessageId is null ? null : replyPreview?.AuthorName,
             CreatedAt = message.CreatedAt,
             IsMine = isMine,
         };

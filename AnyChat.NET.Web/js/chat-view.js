@@ -997,7 +997,7 @@ function createAuthorAvatarButton(author) {
 }
 
 /**
- * One-line quote of the parent message inside a reply bubble.
+ * Quote of the parent message inside a reply bubble (author + one-line text).
  * @param {object} message
  * @returns {HTMLButtonElement | null}
  */
@@ -1010,6 +1010,10 @@ function createReplyQuote(message) {
     return null;
   }
 
+  const authorName =
+    typeof message.replyToAuthorName === "string"
+      ? message.replyToAuthorName.trim()
+      : "";
   const replyToText =
     typeof message.replyToText === "string" ? message.replyToText.trim() : "";
 
@@ -1017,8 +1021,23 @@ function createReplyQuote(message) {
   quote.type = "button";
   quote.className = "message-reply-quote";
   quote.dataset.replyToMessageId = replyToMessageId;
-  quote.setAttribute("aria-label", "Go to replied message");
-  quote.textContent = replyToText || "…";
+  quote.setAttribute(
+    "aria-label",
+    authorName
+      ? `Go to message from ${authorName}`
+      : "Go to replied message"
+  );
+
+  const authorEl = document.createElement("span");
+  authorEl.className = "message-reply-quote-author";
+  authorEl.textContent = authorName || "Unknown";
+  quote.appendChild(authorEl);
+
+  const textEl = document.createElement("span");
+  textEl.className = "message-reply-quote-text";
+  textEl.textContent = replyToText || "…";
+  quote.appendChild(textEl);
+
   return quote;
 }
 

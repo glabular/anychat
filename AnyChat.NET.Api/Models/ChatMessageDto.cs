@@ -28,6 +28,12 @@ public sealed class ChatMessageDto
     public string? ReplyToText { get; init; }
 
     /// <summary>
+    /// Display name of the parent message author for quote UI.
+    /// Null when not a reply or parent could not be resolved.
+    /// </summary>
+    public string? ReplyToAuthorName { get; init; }
+
+    /// <summary>
     /// Unix timestamp in seconds when the message was created in Anytype.
     /// Null when the upstream message has no creation time.
     /// </summary>
