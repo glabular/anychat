@@ -494,6 +494,10 @@ public class ChatsController(
             isMine = string.Equals(message.Creator, participantId, StringComparison.Ordinal);
         }
 
+        var replyToMessageId = string.IsNullOrWhiteSpace(message.ReplyToMessageId)
+            ? null
+            : message.ReplyToMessageId;
+
         return new ChatMessageDto
         {
             Id = message.Id,
@@ -504,6 +508,7 @@ public class ChatsController(
             {
                 Text = message.Content?.Text,
             },
+            ReplyToMessageId = replyToMessageId,
             CreatedAt = message.CreatedAt,
             IsMine = isMine,
         };

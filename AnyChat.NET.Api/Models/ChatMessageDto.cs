@@ -16,6 +16,12 @@ public sealed class ChatMessageDto
     public ChatMessageContentDto? Content { get; init; }
 
     /// <summary>
+    /// Id of the message this one replies to, from Anytype <c>reply_to_message_id</c>.
+    /// Null when the message is standalone (not a reply).
+    /// </summary>
+    public string? ReplyToMessageId { get; init; }
+
+    /// <summary>
     /// Unix timestamp in seconds when the message was created in Anytype.
     /// Null when the upstream message has no creation time.
     /// </summary>
