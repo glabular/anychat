@@ -182,7 +182,18 @@ public class ChatsController(
                 afterOrderId: string.Empty,
                 limit: limit);
             var participantId = await memberResolver.ResolveParticipantIdAsync(spaceId);
-            var messages = (response.Messages ?? []).Select(message => MapMessage(message, participantId));
+            var sourceMessages = response.Messages ?? [];
+            var replyTextById = await BuildReplyTextLookupAsync(
+                client.Chats,
+                spaceId,
+                chatId,
+                sourceMessages);
+            var messages = sourceMessages
+                .Select(message => MapMessage(
+                    message,
+                    participantId,
+                    LookupReplyToText(message, replyTextById)))
+                .ToList();
 
             return Ok(messages);
         }
@@ -240,7 +251,13 @@ public class ChatsController(
                 StreamHeartbeatSeconds,
                 streamToken))
             {
-                var dto = MapStreamEvent(streamEvent, participantId);
+                var dto = await MapStreamEventAsync(
+                    client.Chats,
+                    spaceId,
+                    chatId,
+                    streamEvent,
+                    participantId,
+                    streamToken);
                 var json = JsonSerializer.Serialize(dto, StreamJsonOptions);
                 await Response.WriteAsync($"data: {json}\n\n", streamToken);
                 await Response.Body.FlushAsync(CancellationToken.None);
@@ -460,9 +477,13 @@ public class ChatsController(
         return limit;
     }
 
-    private static ChatMessageStreamEventDto MapStreamEvent(
+    private static async Task<ChatMessageStreamEventDto> MapStreamEventAsync(
+        IChatsApi chats,
+        string spaceId,
+        string chatId,
         ChatStreamEvent streamEvent,
-        string? participantId)
+        string? participantId,
+        CancellationToken cancellationToken)
     {
         var type = streamEvent.Type ?? string.Empty;
         var payload = streamEvent.Payload;
@@ -470,12 +491,25 @@ public class ChatsController(
         if (string.Equals(type, "message_added", StringComparison.Ordinal)
             || string.Equals(type, "message_updated", StringComparison.Ordinal))
         {
+            ChatMessageDto? message = null;
+            if (payload?.Message is not null)
+            {
+                var replyTextById = await BuildReplyTextLookupAsync(
+                    chats,
+                    spaceId,
+                    chatId,
+                    [payload.Message],
+                    cancellationToken);
+                message = MapMessage(
+                    payload.Message,
+                    participantId,
+                    LookupReplyToText(payload.Message, replyTextById));
+            }
+
             return new ChatMessageStreamEventDto
             {
                 Type = type,
-                Message = payload?.Message is null
-                    ? null
-                    : MapMessage(payload.Message, participantId),
+                Message = message,
             };
         }
 
@@ -486,7 +520,86 @@ public class ChatsController(
         };
     }
 
-    private static ChatMessageDto MapMessage(ChatMessage message, string? participantId)
+    /// <summary>
+    /// Parent-message id → trimmed text. Uses texts already present in
+    /// <paramref name="messages"/>, then <c>GetMessageAsync</c> for missing reply targets.
+    /// Failed fetches are omitted (soft-fail).
+    /// </summary>
+    private static async Task<Dictionary<string, string?>> BuildReplyTextLookupAsync(
+        IChatsApi chats,
+        string spaceId,
+        string chatId,
+        IEnumerable<ChatMessage> messages,
+        CancellationToken cancellationToken = default)
+    {
+        var textById = new Dictionary<string, string?>(StringComparer.Ordinal);
+        var replyIds = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var message in messages)
+        {
+            if (!string.IsNullOrWhiteSpace(message.Id))
+            {
+                textById[message.Id] = NormalizeMessageText(message.Content?.Text);
+            }
+
+            if (!string.IsNullOrWhiteSpace(message.ReplyToMessageId))
+            {
+                replyIds.Add(message.ReplyToMessageId);
+            }
+        }
+
+        foreach (var replyId in replyIds)
+        {
+            if (textById.ContainsKey(replyId))
+            {
+                continue;
+            }
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var parent = await chats.GetMessageAsync(spaceId, chatId, replyId);
+                textById[replyId] = NormalizeMessageText(parent.Content?.Text);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                // Soft-fail: leave missing so ReplyToText stays null.
+            }
+        }
+
+        return textById;
+    }
+
+    private static string? LookupReplyToText(
+        ChatMessage message,
+        IReadOnlyDictionary<string, string?> textById)
+    {
+        if (string.IsNullOrWhiteSpace(message.ReplyToMessageId))
+        {
+            return null;
+        }
+
+        return textById.TryGetValue(message.ReplyToMessageId, out var text) ? text : null;
+    }
+
+    private static string? NormalizeMessageText(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        return text.Trim();
+    }
+
+    private static ChatMessageDto MapMessage(
+        ChatMessage message,
+        string? participantId,
+        string? replyToText = null)
     {
         bool? isMine = null;
         if (participantId is not null)
@@ -509,6 +622,7 @@ public class ChatsController(
                 Text = message.Content?.Text,
             },
             ReplyToMessageId = replyToMessageId,
+            ReplyToText = replyToMessageId is null ? null : replyToText,
             CreatedAt = message.CreatedAt,
             IsMine = isMine,
         };

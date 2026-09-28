@@ -22,6 +22,12 @@ public sealed class ChatMessageDto
     public string? ReplyToMessageId { get; init; }
 
     /// <summary>
+    /// Trimmed text of the parent message for quote UI.
+    /// Null when not a reply, parent text is empty, or parent could not be resolved.
+    /// </summary>
+    public string? ReplyToText { get; init; }
+
+    /// <summary>
     /// Unix timestamp in seconds when the message was created in Anytype.
     /// Null when the upstream message has no creation time.
     /// </summary>
