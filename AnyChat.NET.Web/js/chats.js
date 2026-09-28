@@ -9,7 +9,11 @@ import {
   noteAnytypeUnavailableFromResponse,
   showAnytypeConnectionNotice,
 } from "./anytype-connection-notice.js";
-import { peekChatScroll, takeChatScroll } from "./chat-scroll-memory.js";
+import {
+  peekChatScroll,
+  rememberChatScroll,
+  takeChatScroll,
+} from "./chat-scroll-memory.js";
 import { formatChatListTimestamp } from "./date-format.js";
 import { createSendStatusElement, resolveOutgoingSendStatus } from "./message-send-status.js";
 import { initChatMessagesScroll, setOnChatScrolledToLatest } from "./chat-messages-scroll.js";
@@ -1123,11 +1127,12 @@ export function markOptimisticMessageFailed(spaceId, chatId, clientTempId) {
 }
 
 /**
+ * Merge an older API page into history state without touching the DOM.
  * @param {ChatHistoryState} state
  * @param {unknown} olderMessages
- * @returns {number} newly inserted row count
+ * @returns {object[]} newly inserted messages (oldest → newest among new)
  */
-function applyOlderPage(state, olderMessages) {
+function mergeOlderPageIntoState(state, olderMessages) {
   const page = Array.isArray(olderMessages) ? olderMessages : [];
 
   if (page.length < MESSAGE_PAGE_SIZE) {
@@ -1136,7 +1141,7 @@ function applyOlderPage(state, olderMessages) {
 
   if (page.length === 0) {
     state.mayHaveMore = false;
-    return 0;
+    return [];
   }
 
   const pageOldestOrderId = oldestOrderIdFromPage(page);
@@ -1146,12 +1151,26 @@ function applyOlderPage(state, olderMessages) {
 
   const newMessages = dedupeOlderMessages(state, page);
   if (newMessages.length === 0) {
-    return 0;
+    return [];
   }
 
   state.messages = [...newMessages, ...state.messages];
   for (const message of newMessages) {
     state.messageIds.add(message.id);
+  }
+
+  return newMessages;
+}
+
+/**
+ * @param {ChatHistoryState} state
+ * @param {unknown} olderMessages
+ * @returns {number} newly inserted row count
+ */
+function applyOlderPage(state, olderMessages) {
+  const newMessages = mergeOlderPageIntoState(state, olderMessages);
+  if (newMessages.length === 0) {
+    return 0;
   }
 
   prependOlderChatMessages(newMessages);
@@ -1968,34 +1987,139 @@ async function reloadMessagesAfterSend(spaceId, chatId) {
   }
 }
 
+/** Max older API pages to fetch while hunting a deep scroll anchor. */
+const SCROLL_ANCHOR_SEEK_PAGE_CAP = 20;
+
 /**
- * Decide whether to consume session scroll memory on this open.
- * Deep anchors missing from the first page stay in memory for later seek.
+ * Load older pages into history state (no DOM) until `messageId` is present,
+ * history ends, the page cap is hit, or the open is cancelled.
+ * @param {ChatHistoryState} state
+ * @param {string} messageId
+ * @param {number} token
+ * @param {{ profilesEnabled: boolean }} options
+ * @returns {Promise<boolean>} false when the open is no longer current
+ */
+async function seekOlderPagesForMessageId(
+  state,
+  messageId,
+  token,
+  { profilesEnabled }
+) {
+  let pagesFetched = 0;
+
+  while (
+    !state.messageIds.has(messageId)
+    && state.mayHaveMore
+    && state.oldestOrderId
+    && pagesFetched < SCROLL_ANCHOR_SEEK_PAGE_CAP
+  ) {
+    const previousOldestOrderId = state.oldestOrderId;
+    pagesFetched += 1;
+
+    let olderMessages;
+    try {
+      olderMessages = await fetchChatMessages(
+        state.spaceId,
+        state.chatId,
+        MESSAGE_PAGE_SIZE,
+        previousOldestOrderId
+      );
+    } catch (error) {
+      console.error(
+        `Could not seek older messages for scroll restore in chat ${state.chatId}:`,
+        error
+      );
+      return isOpenChatMessagesCurrent(token) && chatHistoryState === state;
+    }
+
+    if (!isOpenChatMessagesCurrent(token) || chatHistoryState !== state) {
+      return false;
+    }
+
+    if (profilesEnabled && Array.isArray(olderMessages)) {
+      try {
+        await ensureMembersForParticipantIds(
+          state.spaceId,
+          olderMessages.map((message) => message?.creator)
+        );
+      } catch (error) {
+        console.error(
+          `Could not resolve author profiles while seeking scroll in chat ${state.chatId}:`,
+          error
+        );
+      }
+      if (!isOpenChatMessagesCurrent(token) || chatHistoryState !== state) {
+        return false;
+      }
+    }
+
+    mergeOlderPageIntoState(state, olderMessages);
+
+    if (
+      Array.isArray(olderMessages)
+      && olderMessages.length > 0
+      && state.oldestOrderId === previousOldestOrderId
+    ) {
+      state.mayHaveMore = false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Consume session scroll memory for this open, seeking older pages when needed.
  * @param {string} spaceId
  * @param {string} chatId
  * @param {ChatHistoryState} state
- * @returns {import("./chat-scroll-memory.js").ChatScrollAnchor | null}
+ * @param {number} token
+ * @param {{ profilesEnabled: boolean }} options
+ * @returns {Promise<
+ *   | { ok: false }
+ *   | { ok: true, scrollAnchor: import("./chat-scroll-memory.js").ChatScrollAnchor | null }
+ * >}
  */
-function takeScrollAnchorForOpen(spaceId, chatId, state) {
+async function resolveScrollAnchorForOpen(
+  spaceId,
+  chatId,
+  state,
+  token,
+  { profilesEnabled }
+) {
   const saved = peekChatScroll(spaceId, chatId);
   if (!saved) {
-    return null;
+    return { ok: true, scrollAnchor: null };
   }
 
   if (saved.atLatest === true) {
-    return takeChatScroll(spaceId, chatId);
+    return { ok: true, scrollAnchor: takeChatScroll(spaceId, chatId) };
   }
 
-  if (
-    typeof saved.messageId === "string"
-    && saved.messageId.length > 0
-    && state.messageIds.has(saved.messageId)
-  ) {
-    return takeChatScroll(spaceId, chatId);
+  if (typeof saved.messageId !== "string" || saved.messageId.length === 0) {
+    takeChatScroll(spaceId, chatId);
+    return { ok: true, scrollAnchor: null };
   }
 
-  // Anchor is above the first page — leave memory for Step 4 seek.
-  return null;
+  if (!state.messageIds.has(saved.messageId)) {
+    const stillCurrent = await seekOlderPagesForMessageId(
+      state,
+      saved.messageId,
+      token,
+      { profilesEnabled }
+    );
+    if (!stillCurrent) {
+      return { ok: false };
+    }
+  }
+
+  if (state.messageIds.has(saved.messageId)) {
+    return { ok: true, scrollAnchor: takeChatScroll(spaceId, chatId) };
+  }
+
+  // Deleted, beyond cap, or otherwise missing — pin latest so we do not reseek.
+  takeChatScroll(spaceId, chatId);
+  rememberChatScroll(spaceId, chatId, { atLatest: true });
+  return { ok: true, scrollAnchor: null };
 }
 
 async function openChatMessages(chatId) {
@@ -2052,24 +2176,45 @@ async function openChatMessages(chatId) {
       }
     }
 
+    if (!isOpenChatMessagesCurrent(token)) {
+      return;
+    }
+
+    if (chatHistoryState?.token !== token) {
+      if (!await finishOpenChatMessagesLoad(token)) {
+        return;
+      }
+      renderOpenChatMessages(messages);
+      return;
+    }
+
+    applyInitialPage(chatHistoryState, messages);
+    const resolved = await resolveScrollAnchorForOpen(
+      spaceId,
+      chatId,
+      chatHistoryState,
+      token,
+      { profilesEnabled }
+    );
+    if (
+      !resolved.ok
+      || !isOpenChatMessagesCurrent(token)
+      || chatHistoryState?.token !== token
+    ) {
+      return;
+    }
+
     if (!await finishOpenChatMessagesLoad(token)) {
       return;
     }
-    if (chatHistoryState?.token === token) {
-      applyInitialPage(chatHistoryState, messages);
-      const scrollAnchor = takeScrollAnchorForOpen(
-        spaceId,
-        chatId,
-        chatHistoryState
-      );
-      renderOpenChatMessages(chatHistoryState.messages, { scrollAnchor });
-      updateHistoryStatus(chatHistoryState);
-      startChatMessageStream(spaceId, chatId, token);
-      await ensureHistoryFillsViewport();
-      maybeLoadOlderMessages();
-    } else {
-      renderOpenChatMessages(messages);
-    }
+
+    renderOpenChatMessages(chatHistoryState.messages, {
+      scrollAnchor: resolved.scrollAnchor,
+    });
+    updateHistoryStatus(chatHistoryState);
+    startChatMessageStream(spaceId, chatId, token);
+    await ensureHistoryFillsViewport();
+    maybeLoadOlderMessages();
   } catch (error) {
     console.error(`Could not load messages for chat ${chatId}:`, error);
     if (!isOpenChatMessagesCurrent(token)) {
