@@ -1130,12 +1130,17 @@ export function markOptimisticMessageFailed(spaceId, chatId, clientTempId) {
  * Merge an older API page into history state without touching the DOM.
  * @param {ChatHistoryState} state
  * @param {unknown} olderMessages
+ * @param {number} [pageSize] request limit; a short page means history ended
  * @returns {object[]} newly inserted messages (oldest → newest among new)
  */
-function mergeOlderPageIntoState(state, olderMessages) {
+function mergeOlderPageIntoState(
+  state,
+  olderMessages,
+  pageSize = MESSAGE_PAGE_SIZE
+) {
   const page = Array.isArray(olderMessages) ? olderMessages : [];
 
-  if (page.length < MESSAGE_PAGE_SIZE) {
+  if (page.length < pageSize) {
     state.mayHaveMore = false;
   }
 
@@ -1987,7 +1992,13 @@ async function reloadMessagesAfterSend(spaceId, chatId) {
   }
 }
 
-/** Max older API pages to fetch while hunting a deep scroll anchor. */
+/**
+ * Deep reopen walks backward from the latest page. Normal history uses 50;
+ * seek uses the API max so a long community thread is reachable in few hops.
+ * 20 × 1000 = 20k messages (the previous 20 × 50 cap stopped at 1k and then
+ * opened at the bottom even though those pages were already rendered).
+ */
+const SCROLL_ANCHOR_SEEK_PAGE_SIZE = 1000;
 const SCROLL_ANCHOR_SEEK_PAGE_CAP = 20;
 
 /**
@@ -2021,7 +2032,7 @@ async function seekOlderPagesForMessageId(
       olderMessages = await fetchChatMessages(
         state.spaceId,
         state.chatId,
-        MESSAGE_PAGE_SIZE,
+        SCROLL_ANCHOR_SEEK_PAGE_SIZE,
         previousOldestOrderId
       );
     } catch (error) {
@@ -2053,7 +2064,11 @@ async function seekOlderPagesForMessageId(
       }
     }
 
-    mergeOlderPageIntoState(state, olderMessages);
+    mergeOlderPageIntoState(
+      state,
+      olderMessages,
+      SCROLL_ANCHOR_SEEK_PAGE_SIZE
+    );
 
     if (
       Array.isArray(olderMessages)

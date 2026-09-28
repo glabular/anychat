@@ -193,16 +193,37 @@ export function restoreChatScrollAnchor(container, anchor) {
     return false;
   }
 
-  void container.offsetHeight;
-
-  const currentOffset =
-    row.getBoundingClientRect().top
-    - container.getBoundingClientRect().top;
   const offsetPx =
     typeof anchor.offsetPx === "number" && Number.isFinite(anchor.offsetPx)
       ? anchor.offsetPx
       : 0;
 
-  container.scrollTop += currentOffset - offsetPx;
+  // A just-built long list can clamp scrollTop until layout finishes, which
+  // leaves the viewport on the latest messages. Apply now and once more
+  // after the next frame.
+  applyChatScrollAnchorOffset(container, row, offsetPx);
+  requestAnimationFrame(() => {
+    if (!row.isConnected || container.scrollHeight <= 0) {
+      return;
+    }
+    applyChatScrollAnchorOffset(container, row, offsetPx);
+  });
   return true;
+}
+
+/**
+ * @param {HTMLElement} container
+ * @param {HTMLElement} row
+ * @param {number} offsetPx
+ */
+function applyChatScrollAnchorOffset(container, row, offsetPx) {
+  const previousAnchor = container.style.overflowAnchor;
+  container.style.overflowAnchor = "none";
+  void container.offsetHeight;
+
+  const currentOffset =
+    row.getBoundingClientRect().top
+    - container.getBoundingClientRect().top;
+  container.scrollTop += currentOffset - offsetPx;
+  container.style.overflowAnchor = previousAnchor;
 }
