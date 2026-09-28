@@ -9,6 +9,7 @@ import {
   noteAnytypeUnavailableFromResponse,
   showAnytypeConnectionNotice,
 } from "./anytype-connection-notice.js";
+import { peekChatScroll, takeChatScroll } from "./chat-scroll-memory.js";
 import { formatChatListTimestamp } from "./date-format.js";
 import { createSendStatusElement, resolveOutgoingSendStatus } from "./message-send-status.js";
 import { initChatMessagesScroll, setOnChatScrolledToLatest } from "./chat-messages-scroll.js";
@@ -1967,6 +1968,36 @@ async function reloadMessagesAfterSend(spaceId, chatId) {
   }
 }
 
+/**
+ * Decide whether to consume session scroll memory on this open.
+ * Deep anchors missing from the first page stay in memory for later seek.
+ * @param {string} spaceId
+ * @param {string} chatId
+ * @param {ChatHistoryState} state
+ * @returns {import("./chat-scroll-memory.js").ChatScrollAnchor | null}
+ */
+function takeScrollAnchorForOpen(spaceId, chatId, state) {
+  const saved = peekChatScroll(spaceId, chatId);
+  if (!saved) {
+    return null;
+  }
+
+  if (saved.atLatest === true) {
+    return takeChatScroll(spaceId, chatId);
+  }
+
+  if (
+    typeof saved.messageId === "string"
+    && saved.messageId.length > 0
+    && state.messageIds.has(saved.messageId)
+  ) {
+    return takeChatScroll(spaceId, chatId);
+  }
+
+  // Anchor is above the first page — leave memory for Step 4 seek.
+  return null;
+}
+
 async function openChatMessages(chatId) {
   const selectedSpaceInput = document.querySelector(
     'input[name="space"]:checked'
@@ -2026,7 +2057,12 @@ async function openChatMessages(chatId) {
     }
     if (chatHistoryState?.token === token) {
       applyInitialPage(chatHistoryState, messages);
-      renderOpenChatMessages(chatHistoryState.messages);
+      const scrollAnchor = takeScrollAnchorForOpen(
+        spaceId,
+        chatId,
+        chatHistoryState
+      );
+      renderOpenChatMessages(chatHistoryState.messages, { scrollAnchor });
       updateHistoryStatus(chatHistoryState);
       startChatMessageStream(spaceId, chatId, token);
       await ensureHistoryFillsViewport();

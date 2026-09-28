@@ -13,7 +13,7 @@ import {
   scrollChatToLatest,
   syncScrollToLatestButton,
 } from "./chat-messages-scroll.js";
-import { captureAndRememberChatScroll, rememberChatScroll } from "./chat-scroll-memory.js";
+import { captureAndRememberChatScroll, rememberChatScroll, restoreChatScrollAnchor } from "./chat-scroll-memory.js";
 import {
   getSpaceMember,
 } from "./space-members.js";
@@ -1183,8 +1183,14 @@ function setMessagesPreparing(container, preparing) {
   container.classList.toggle("chat-messages--preparing", preparing);
 }
 
-/** Clear the list, render the latest page, and scroll to the bottom. */
-export function renderOpenChatMessages(messages) {
+/**
+ * Clear the list, render messages, then restore a scroll anchor or jump to latest.
+ * Stays under `chat-messages--preparing` until scroll is applied.
+ * @param {unknown} messages
+ * @param {{ scrollAnchor?: import("./chat-scroll-memory.js").ChatScrollAnchor | null }} [options]
+ */
+export function renderOpenChatMessages(messages, options = {}) {
+  const scrollAnchor = options.scrollAnchor ?? null;
   const list = getChatMessageList();
   const container = document.getElementById("chat-messages");
   if (!list || !container) {
@@ -1213,7 +1219,9 @@ export function renderOpenChatMessages(messages) {
   }
 
   list.appendChild(fragment);
-  scrollChatToLatest();
+  if (!restoreChatScrollAnchor(container, scrollAnchor)) {
+    scrollChatToLatest();
+  }
   setMessagesPreparing(container, false);
   syncScrollToLatestButton();
 }
