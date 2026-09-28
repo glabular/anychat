@@ -10,6 +10,16 @@ let chatMessagesScrollBound = false;
 let pendingHideTransitionEnd = null;
 /** @type {ReturnType<typeof setTimeout> | null} */
 let pendingHideTimeoutId = null;
+/** @type {(() => void) | null} */
+let onScrolledToLatest = null;
+
+/**
+ * Fired after the user clicks the scroll-to-latest control (not programmatic jumps).
+ * @param {(() => void) | null} callback
+ */
+export function setOnChatScrolledToLatest(callback) {
+  onScrolledToLatest = callback;
+}
 
 function getChatMessagesContainer() {
   return document.getElementById("chat-messages");
@@ -248,6 +258,7 @@ function scrollChatToLatestFromButton() {
   if (prefersReducedMotion()) {
     container.scrollTop = container.scrollHeight;
     syncScrollToLatestButton();
+    onScrolledToLatest?.();
     return;
   }
 
@@ -266,4 +277,5 @@ function scrollChatToLatestFromButton() {
 
   container.scrollTo({ top: maxScrollTop, behavior: "smooth" });
   syncScrollToLatestButton();
+  onScrolledToLatest?.();
 }

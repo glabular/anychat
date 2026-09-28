@@ -127,6 +127,21 @@ export function rememberChatScroll(spaceId, chatId, anchor) {
 }
 
 /**
+ * Capture the current viewport and store it for this chat.
+ * @param {string} spaceId
+ * @param {string} chatId
+ * @param {HTMLElement | null | undefined} container
+ */
+export function captureAndRememberChatScroll(spaceId, chatId, container) {
+  const anchor = captureChatScrollAnchor(container);
+  if (!anchor) {
+    return;
+  }
+
+  rememberChatScroll(spaceId, chatId, anchor);
+}
+
+/**
  * Read and remove the saved anchor for this chat.
  * @param {string} spaceId
  * @param {string} chatId

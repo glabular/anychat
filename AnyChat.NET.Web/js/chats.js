@@ -11,7 +11,7 @@ import {
 } from "./anytype-connection-notice.js";
 import { formatChatListTimestamp } from "./date-format.js";
 import { createSendStatusElement, resolveOutgoingSendStatus } from "./message-send-status.js";
-import { initChatMessagesScroll } from "./chat-messages-scroll.js";
+import { initChatMessagesScroll, setOnChatScrolledToLatest } from "./chat-messages-scroll.js";
 import {
   hideChatsScrollToTopButton,
   syncChatsScrollToTopButton,
@@ -30,9 +30,11 @@ import {
   appendNewerChatMessages,
   closeOpenChat,
   getOpenChat,
+  rememberOpenChatScrollAtLatest,
   renderOpenChatMessages,
   renderOpenChatMessagesError,
   rerenderOpenChatMessagesPreservingViewport,
+  scheduleRememberOpenChatScrollPosition,
   updateMessageRowSendStatus,
   clearInitialLoadError,
   resetChatHistoryStatus,
@@ -1259,6 +1261,7 @@ function isContainerOverflowing(container) {
 
 function onChatMessagesScroll() {
   maybeLoadOlderMessages();
+  scheduleRememberOpenChatScrollPosition();
 }
 
 function maybeLoadOlderMessages() {
@@ -2076,6 +2079,7 @@ setOnOutgoingPreviewChanged((target, parts) => {
 });
 
 initChatMessagesScroll(onChatMessagesScroll);
+setOnChatScrolledToLatest(rememberOpenChatScrollAtLatest);
 initChatHistoryRetry(() => {
   void loadOlderMessages({ retry: true });
 });

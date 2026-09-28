@@ -13,6 +13,7 @@ import {
   scrollChatToLatest,
   syncScrollToLatestButton,
 } from "./chat-messages-scroll.js";
+import { captureAndRememberChatScroll, rememberChatScroll } from "./chat-scroll-memory.js";
 import {
   getSpaceMember,
 } from "./space-members.js";
@@ -358,6 +359,59 @@ export function showChatHeader(name) {
   main?.classList.add("main--chat-open");
 }
 
+/** Debounce scroll captures so leave always sees a settled anchor. */
+const SCROLL_REMEMBER_DEBOUNCE_MS = 120;
+/** @type {ReturnType<typeof setTimeout> | null} */
+let scrollRememberTimer = null;
+
+function cancelScheduledScrollRemember() {
+  if (scrollRememberTimer !== null) {
+    clearTimeout(scrollRememberTimer);
+    scrollRememberTimer = null;
+  }
+}
+
+function captureOpenChatScrollNow() {
+  if (!openChat) {
+    return;
+  }
+
+  captureAndRememberChatScroll(
+    openChat.spaceId,
+    openChat.chatId,
+    document.getElementById("chat-messages")
+  );
+}
+
+/**
+ * Snapshot the open chat's message-feed scroll into session memory.
+ * Cancels any pending debounced capture first.
+ * Call before clearing the DOM or switching `openChat`.
+ */
+export function rememberOpenChatScrollPosition() {
+  cancelScheduledScrollRemember();
+  captureOpenChatScrollNow();
+}
+
+/** Debounced capture while the user scrolls the open feed. */
+export function scheduleRememberOpenChatScrollPosition() {
+  cancelScheduledScrollRemember();
+  scrollRememberTimer = setTimeout(() => {
+    scrollRememberTimer = null;
+    captureOpenChatScrollNow();
+  }, SCROLL_REMEMBER_DEBOUNCE_MS);
+}
+
+/** Mark the open chat as pinned to latest (scroll-to-latest control). */
+export function rememberOpenChatScrollAtLatest() {
+  cancelScheduledScrollRemember();
+  if (!openChat) {
+    return;
+  }
+
+  rememberChatScroll(openChat.spaceId, openChat.chatId, { atLatest: true });
+}
+
 /** Hide the chat panel and clear the title (e.g. when the space changes). */
 export function hideChatPanel(options = {}) {
   const { markListDraft = false } = options;
@@ -366,6 +420,7 @@ export function hideChatPanel(options = {}) {
   const title = document.getElementById("chat-panel-title");
   const placeholder = document.getElementById("main-placeholder");
 
+  rememberOpenChatScrollPosition();
   persistOutgoingDraft(openChat, { markInList: markListDraft });
   const input = getChatMessageInput();
   if (input) {
@@ -577,6 +632,12 @@ export function beginOpenChatMessages() {
 
 export function setOpenChat(spaceId, chatId) {
   const outgoing = openChat;
+  if (
+    outgoing
+    && (outgoing.spaceId !== spaceId || outgoing.chatId !== chatId)
+  ) {
+    rememberOpenChatScrollPosition();
+  }
   persistOutgoingDraft(outgoing, { markInList: true });
   openChat = { spaceId, chatId };
   restoreComposerDraftToInput(openChat);
