@@ -997,6 +997,32 @@ function createAuthorAvatarButton(author) {
 }
 
 /**
+ * One-line quote of the parent message inside a reply bubble.
+ * @param {object} message
+ * @returns {HTMLButtonElement | null}
+ */
+function createReplyQuote(message) {
+  const replyToMessageId =
+    typeof message.replyToMessageId === "string"
+      ? message.replyToMessageId.trim()
+      : "";
+  if (!replyToMessageId) {
+    return null;
+  }
+
+  const replyToText =
+    typeof message.replyToText === "string" ? message.replyToText.trim() : "";
+
+  const quote = document.createElement("button");
+  quote.type = "button";
+  quote.className = "message-reply-quote";
+  quote.dataset.replyToMessageId = replyToMessageId;
+  quote.setAttribute("aria-label", "Go to replied message");
+  quote.textContent = replyToText || "…";
+  return quote;
+}
+
+/**
  * @param {object} message
  * @returns {HTMLDivElement | null}
  */
@@ -1031,6 +1057,11 @@ function createMessageRow(message) {
     nameEl.className = "message-author-name";
     nameEl.textContent = author.displayName;
     bubble.appendChild(nameEl);
+  }
+
+  const quote = createReplyQuote(message);
+  if (quote) {
+    bubble.appendChild(quote);
   }
 
   const textEl = document.createElement("div");
