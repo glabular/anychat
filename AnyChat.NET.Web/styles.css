@@ -1029,6 +1029,11 @@ body.is-chats-sidebar-resizing * {
   cursor: pointer;
 }
 
+/* Match name→body gap used by plain text (quote box has a hard top edge). */
+.message-author-name + .message-reply-quote {
+  margin-top: 0.25rem;
+}
+
 .message-reply-quote-author,
 .message-reply-quote-text {
   display: block;
