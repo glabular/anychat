@@ -396,8 +396,9 @@ function scheduleReplyTargetFlash(container, row, { immediate = false } = {}) {
 }
 
 /**
- * Scroll `#chat-messages` so `messageId` sits at `offsetPx` from the top.
- * On success, soft-pulses the target row once (reply-quote jump feedback).
+ * Scroll `#chat-messages` so `messageId` sits near the top third of the viewport
+ * (or at `offsetPx` from the top when provided).
+ * On success, soft-pulses the target bubble once (reply-quote jump feedback).
  * @param {HTMLElement | null | undefined} container
  * @param {string} messageId
  * @param {{ offsetPx?: number }} [options]
@@ -418,7 +419,7 @@ export function scrollChatToMessage(container, messageId, options = {}) {
   const offsetPx =
     typeof options.offsetPx === "number" && Number.isFinite(options.offsetPx)
       ? options.offsetPx
-      : 0;
+      : container.clientHeight / 3;
 
   void container.offsetHeight;
 

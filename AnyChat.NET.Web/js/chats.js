@@ -2183,7 +2183,7 @@ async function jumpToRepliedMessage(messageId, quoteButton = null) {
   }
 
   const scrollToParent = () => {
-    const applied = scrollChatToMessage(container, trimmedId, { offsetPx: 0 });
+    const applied = scrollChatToMessage(container, trimmedId);
     if (applied) {
       scheduleRememberOpenChatScrollPosition();
     }
