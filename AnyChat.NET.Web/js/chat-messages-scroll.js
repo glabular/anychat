@@ -287,8 +287,117 @@ function scrollChatToLatestFromButton() {
  */
 const SCROLL_TO_MESSAGE_SMOOTH_MAX_PAGES = 3;
 
+/** Fallback if `scrollend` never fires after a smooth quote jump. */
+const REPLY_TARGET_FLASH_FALLBACK_MS = 500;
+
+const REPLY_TARGET_CLASS = "message-bubble--reply-target";
+
+/** @type {HTMLElement | null} */
+let pendingReplyFlashContainer = null;
+/** @type {((event: Event) => void) | null} */
+let pendingReplyFlashScrollEnd = null;
+/** @type {ReturnType<typeof setTimeout> | null} */
+let pendingReplyFlashTimeoutId = null;
+/** @type {HTMLElement | null} */
+let activeReplyFlashBubble = null;
+/** @type {((event: AnimationEvent) => void) | null} */
+let activeReplyFlashAnimationEnd = null;
+
+function cancelPendingReplyTargetFlash() {
+  if (pendingReplyFlashContainer && pendingReplyFlashScrollEnd) {
+    pendingReplyFlashContainer.removeEventListener(
+      "scrollend",
+      pendingReplyFlashScrollEnd
+    );
+  }
+  pendingReplyFlashContainer = null;
+  pendingReplyFlashScrollEnd = null;
+
+  if (pendingReplyFlashTimeoutId !== null) {
+    clearTimeout(pendingReplyFlashTimeoutId);
+    pendingReplyFlashTimeoutId = null;
+  }
+}
+
+/**
+ * One soft breath on the landed message bubble after a quote jump.
+ * @param {HTMLElement} row
+ */
+function flashReplyTargetRow(row) {
+  cancelPendingReplyTargetFlash();
+
+  const bubble = row.querySelector(".message-bubble");
+  if (!(bubble instanceof HTMLElement)) {
+    return;
+  }
+
+  if (activeReplyFlashBubble && activeReplyFlashAnimationEnd) {
+    activeReplyFlashBubble.removeEventListener(
+      "animationend",
+      activeReplyFlashAnimationEnd
+    );
+    activeReplyFlashBubble.classList.remove(REPLY_TARGET_CLASS);
+  }
+
+  activeReplyFlashBubble = bubble;
+  bubble.classList.remove(REPLY_TARGET_CLASS);
+  // Restart the animation if this bubble was already flashing.
+  void bubble.offsetWidth;
+  bubble.classList.add(REPLY_TARGET_CLASS);
+
+  activeReplyFlashAnimationEnd = (event) => {
+    if (
+      event.target !== bubble
+      || event.animationName !== "message-bubble-reply-breath"
+    ) {
+      return;
+    }
+    bubble.classList.remove(REPLY_TARGET_CLASS);
+    if (activeReplyFlashBubble === bubble) {
+      activeReplyFlashBubble = null;
+      activeReplyFlashAnimationEnd = null;
+    }
+  };
+  bubble.addEventListener("animationend", activeReplyFlashAnimationEnd);
+}
+
+/**
+ * @param {HTMLElement} container
+ * @param {HTMLElement} row
+ * @param {{ immediate?: boolean }} [options]
+ */
+function scheduleReplyTargetFlash(container, row, { immediate = false } = {}) {
+  cancelPendingReplyTargetFlash();
+
+  if (immediate || prefersReducedMotion()) {
+    flashReplyTargetRow(row);
+    return;
+  }
+
+  const runFlash = () => {
+    cancelPendingReplyTargetFlash();
+    if (!row.isConnected) {
+      return;
+    }
+    flashReplyTargetRow(row);
+  };
+
+  pendingReplyFlashContainer = container;
+  pendingReplyFlashScrollEnd = () => {
+    runFlash();
+  };
+  container.addEventListener("scrollend", pendingReplyFlashScrollEnd, {
+    once: true,
+  });
+
+  pendingReplyFlashTimeoutId = setTimeout(() => {
+    runFlash();
+  }, REPLY_TARGET_FLASH_FALLBACK_MS);
+}
+
 /**
  * Scroll `#chat-messages` so `messageId` sits at `offsetPx` from the top.
+ * On success, soft-pulses the target row once (reply-quote jump feedback).
  * @param {HTMLElement | null | undefined} container
  * @param {string} messageId
  * @param {{ offsetPx?: number }} [options]
@@ -328,11 +437,20 @@ export function scrollChatToMessage(container, messageId, options = {}) {
   if (prefersReducedMotion()) {
     container.scrollTop = targetScrollTop;
     syncScrollToLatestButton();
+    scheduleReplyTargetFlash(container, row, { immediate: true });
     return true;
   }
 
   const page = Math.max(1, container.clientHeight);
   const distance = Math.abs(targetScrollTop - container.scrollTop);
+
+  if (distance <= 1) {
+    // Already on target — flash without waiting for a no-op smooth scroll.
+    container.scrollTop = targetScrollTop;
+    syncScrollToLatestButton();
+    scheduleReplyTargetFlash(container, row, { immediate: true });
+    return true;
+  }
 
   if (distance > page * SCROLL_TO_MESSAGE_SMOOTH_MAX_PAGES) {
     const direction = targetScrollTop >= container.scrollTop ? 1 : -1;
@@ -346,5 +464,6 @@ export function scrollChatToMessage(container, messageId, options = {}) {
 
   container.scrollTo({ top: targetScrollTop, behavior: "smooth" });
   syncScrollToLatestButton();
+  scheduleReplyTargetFlash(container, row);
   return true;
 }

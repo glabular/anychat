@@ -1007,6 +1007,28 @@ body.is-chats-sidebar-resizing * {
   color: var(--color-text);
 }
 
+/* Soft wash over the bubble fill after a successful reply-quote jump. */
+.message-bubble--reply-target {
+  animation: message-bubble-reply-breath 0.9s ease-in-out 1;
+}
+
+@keyframes message-bubble-reply-breath {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 999px transparent;
+  }
+
+  40% {
+    box-shadow: inset 0 0 0 999px var(--color-selection);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-bubble--reply-target {
+    animation-duration: 0.35s;
+  }
+}
+
 .message-reply-quote {
   position: relative;
   display: flex;
