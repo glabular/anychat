@@ -11,7 +11,7 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 ### Added
 
 - About pane: author, GitHub repo link, and invite to the anychat public space
-- Reply messages show a quote (author + one-line parent text); click jumps to the parent within a small older-page seek budget 
+- Reply messages show a quote (author + one-line parent text); click jumps to the parent within a small older-page seek budget; empty parent text shows as Attachment 
 
 ### Changed
 
@@ -23,6 +23,7 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 
 ### Fixed
 
+- Quote click on replies to attachment-only (hidden) parents no longer jumps to latest; tip says the message cannot be opened
 - Open chat reflects Anytype Desktop message edits and deletes over the
   existing SSE stream (no reopen)
 - Spaces and chats lists soft-refresh while the window is visible so remote

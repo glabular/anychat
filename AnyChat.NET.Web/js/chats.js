@@ -372,6 +372,7 @@ function resetChatHistoryState() {
   stopChatMessageStream();
   clearHistorySpinnerTimers();
   historySpinnerShownAt = null;
+  clearReplyJumpUnavailableTip();
   chatHistoryState = null;
   resetChatHistoryStatus();
 }
@@ -386,6 +387,7 @@ function beginChatHistoryState(spaceId, chatId, token) {
   stopChatMessageStream();
   clearHistorySpinnerTimers();
   historySpinnerShownAt = null;
+  clearReplyJumpUnavailableTip();
   resetChatHistoryStatus();
   chatHistoryState = {
     spaceId,
@@ -2004,8 +2006,58 @@ const SCROLL_ANCHOR_DEEP_PAGE_CAP = 20;
 /** Reply-quote jump: small older-page budget only (no deep 1000-page seek). */
 const REPLY_JUMP_PAGE_CAP = 5;
 
+/** How long the “Can’t open this message” tip stays visible. */
+const REPLY_JUMP_TIP_MS = 2000;
+
 /** True while a quote click is seeking/scrolling to a parent message. */
 let replyJumpInProgress = false;
+
+/** @type {ReturnType<typeof setTimeout> | null} */
+let replyJumpTipHideTimer = null;
+
+/**
+ * @param {HTMLElement} container
+ * @param {string} messageId
+ * @returns {Element | null}
+ */
+function findMessageRow(container, messageId) {
+  return container.querySelector(
+    `.message-row[data-message-id="${CSS.escape(messageId)}"]`
+  );
+}
+
+function clearReplyJumpUnavailableTip() {
+  if (replyJumpTipHideTimer !== null) {
+    clearTimeout(replyJumpTipHideTimer);
+    replyJumpTipHideTimer = null;
+  }
+
+  document
+    .querySelectorAll(".message-reply-jump-tip")
+    .forEach((el) => el.remove());
+}
+
+/**
+ * Short tip anchored to the quote. Replaces any existing tip.
+ * @param {HTMLElement | null | undefined} quoteButton
+ */
+function showReplyJumpUnavailableTip(quoteButton) {
+  clearReplyJumpUnavailableTip();
+  if (!(quoteButton instanceof HTMLElement)) {
+    return;
+  }
+
+  const tip = document.createElement("div");
+  tip.className = "message-reply-jump-tip";
+  tip.setAttribute("role", "status");
+  tip.textContent = "Can't open this message";
+  quoteButton.appendChild(tip);
+
+  replyJumpTipHideTimer = setTimeout(() => {
+    replyJumpTipHideTimer = null;
+    tip.remove();
+  }, REPLY_JUMP_TIP_MS);
+}
 
 /**
  * Load older pages into history state until `messageId` is present,
@@ -2112,7 +2164,8 @@ async function seekOlderPagesForMessageId(
 
 /**
  * Scroll to a replied-to message, seeking a few older pages when needed.
- * Missing / deleted / beyond-budget parents: quiet no-op (no toasts).
+ * Unreachable parents (attachment-only / deleted / beyond budget): stay put
+ * and show a short tip on the quote — never fall through to latest.
  * @param {string} messageId
  * @param {HTMLButtonElement | null} [quoteButton]
  */
@@ -2141,19 +2194,15 @@ async function jumpToRepliedMessage(messageId, quoteButton = null) {
     return;
   }
 
-  // In state but not painted (should be rare) — rebuild, then smooth-scroll.
+  // In state but not painted (e.g. attachment-only) — do not rebuild the list
+  // (that used to miss the row and fall through to scrollChatToLatest).
   if (state.messageIds.has(trimmedId)) {
-    renderOpenChatMessages(state.messages, {
-      scrollAnchor: { messageId: trimmedId, offsetPx: 0 },
-    });
-    // Instant restore lands on the row; a follow-up smooth is unnecessary and
-    // would fight the just-applied anchor. Memory still updates.
-    scheduleRememberOpenChatScrollPosition();
+    showReplyJumpUnavailableTip(quoteButton);
     return;
   }
 
   if (!state.mayHaveMore || !state.oldestOrderId) {
-    // Parent deleted, never loaded, or history already exhausted — stay put.
+    showReplyJumpUnavailableTip(quoteButton);
     return;
   }
 
@@ -2195,12 +2244,18 @@ async function jumpToRepliedMessage(messageId, quoteButton = null) {
       return;
     }
 
-    // Deleted / outside the 5×50 budget / not in history → no jump, no toast.
-    if (!state.messageIds.has(trimmedId)) {
+    // Deleted / beyond budget / non-text (in state but no row) → tip, stay put.
+    if (
+      !state.messageIds.has(trimmedId)
+      || !findMessageRow(container, trimmedId)
+    ) {
+      showReplyJumpUnavailableTip(quoteButton);
       return;
     }
 
-    scrollToParent();
+    if (!scrollToParent()) {
+      showReplyJumpUnavailableTip(quoteButton);
+    }
   } finally {
     if (chatHistoryState === state) {
       state.isLoadingOlder = false;

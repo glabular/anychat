@@ -1035,7 +1035,7 @@ function createReplyQuote(message) {
 
   const textEl = document.createElement("span");
   textEl.className = "message-reply-quote-text";
-  textEl.textContent = replyToText || "…";
+  textEl.textContent = replyToText || "Attachment";
   quote.appendChild(textEl);
 
   return quote;
