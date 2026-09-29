@@ -1,6 +1,7 @@
 import { deleteApiKey, fetchAppVersion } from "./api.js";
 import { noteAboutClick } from "./about-confetti.js";
 import { openApiKeySetupModal } from "./api-key-setup-modal.js";
+import { ensureFaqMounted } from "./settings-faq.js";
 import {
   clearComposerSessionState,
   hideChatPanel,
@@ -244,6 +245,10 @@ function selectSetting(settingId) {
 
   if (settingId === "about") {
     void loadAboutVersion();
+  }
+
+  if (settingId === "faq") {
+    ensureFaqMounted();
   }
 }
 
