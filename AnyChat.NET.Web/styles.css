@@ -1056,9 +1056,9 @@ body.is-chats-sidebar-resizing * {
   opacity: 0.75;
 }
 
+.message-reply-quote:focus,
 .message-reply-quote:focus-visible {
-  outline: 2px solid var(--color-ice);
-  outline-offset: 1px;
+  outline: none;
 }
 
 .message-row--mine .message-reply-quote {
