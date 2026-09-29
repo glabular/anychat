@@ -10,6 +10,7 @@
   --color-accent-active: #232323;
   --color-surface-hover: #313131;
   --color-accent: #377aff;
+  --color-mine-bubble: #2865de;
 
   --color-red: #f55522;
   --color-orange: #ffb522;
@@ -1003,7 +1004,7 @@ body.is-chats-sidebar-resizing * {
 
 .message-row--mine .message-bubble {
   min-height: 2.25rem;
-  background-color: var(--color-accent);
+  background-color: var(--color-mine-bubble);
   color: var(--color-text);
 }
 
