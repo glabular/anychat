@@ -1993,13 +1993,13 @@ async function reloadMessagesAfterSend(spaceId, chatId) {
 }
 
 /**
- * Deep reopen walks backward from the latest page. Normal history uses 50;
- * seek uses the API max so a long community thread is reachable in few hops.
- * 20 × 1000 = 20k messages (the previous 20 × 50 cap stopped at 1k and then
- * opened at the bottom even though those pages were already rendered).
+ * Restore nearby anchors with normal history pages so a shallow reopen does
+ * not pull 1,000 messages. Escalate only when the anchor is genuinely deep.
+ * The large-page fallback still reaches up to 20k older messages.
  */
-const SCROLL_ANCHOR_SEEK_PAGE_SIZE = 1000;
-const SCROLL_ANCHOR_SEEK_PAGE_CAP = 20;
+const SCROLL_ANCHOR_NORMAL_PAGE_CAP = 5;
+const SCROLL_ANCHOR_DEEP_PAGE_SIZE = 1000;
+const SCROLL_ANCHOR_DEEP_PAGE_CAP = 20;
 
 /**
  * Load older pages into history state (no DOM) until `messageId` is present,
@@ -2016,23 +2016,35 @@ async function seekOlderPagesForMessageId(
   token,
   { profilesEnabled }
 ) {
-  let pagesFetched = 0;
+  let normalPagesFetched = 0;
+  let deepPagesFetched = 0;
 
   while (
     !state.messageIds.has(messageId)
     && state.mayHaveMore
     && state.oldestOrderId
-    && pagesFetched < SCROLL_ANCHOR_SEEK_PAGE_CAP
+    && (
+      normalPagesFetched < SCROLL_ANCHOR_NORMAL_PAGE_CAP
+      || deepPagesFetched < SCROLL_ANCHOR_DEEP_PAGE_CAP
+    )
   ) {
     const previousOldestOrderId = state.oldestOrderId;
-    pagesFetched += 1;
+    const pageSize =
+      normalPagesFetched < SCROLL_ANCHOR_NORMAL_PAGE_CAP
+        ? MESSAGE_PAGE_SIZE
+        : SCROLL_ANCHOR_DEEP_PAGE_SIZE;
+    if (pageSize === MESSAGE_PAGE_SIZE) {
+      normalPagesFetched += 1;
+    } else {
+      deepPagesFetched += 1;
+    }
 
     let olderMessages;
     try {
       olderMessages = await fetchChatMessages(
         state.spaceId,
         state.chatId,
-        SCROLL_ANCHOR_SEEK_PAGE_SIZE,
+        pageSize,
         previousOldestOrderId
       );
     } catch (error) {
@@ -2067,7 +2079,7 @@ async function seekOlderPagesForMessageId(
     mergeOlderPageIntoState(
       state,
       olderMessages,
-      SCROLL_ANCHOR_SEEK_PAGE_SIZE
+      pageSize
     );
 
     if (
