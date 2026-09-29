@@ -11,7 +11,7 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 ### Added
 
 - About pane: author, GitHub repo link, and invite to the anychat public space
-- Easter egg 
+- Reply messages show a quote (author + one-line parent text); click jumps to the parent within a small older-page seek budget 
 
 ### Changed
 
