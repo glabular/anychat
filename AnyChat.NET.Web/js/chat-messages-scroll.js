@@ -290,7 +290,8 @@ const SCROLL_TO_MESSAGE_SMOOTH_MAX_PAGES = 3;
 /** Fallback if `scrollend` never fires after a smooth quote jump. */
 const REPLY_TARGET_FLASH_FALLBACK_MS = 500;
 
-const REPLY_TARGET_CLASS = "message-bubble--reply-target";
+const REPLY_TARGET_CLASS_OTHER = "message-bubble--reply-target";
+const REPLY_TARGET_CLASS_MINE = "message-bubble--reply-target-mine";
 
 /** @type {HTMLElement | null} */
 let pendingReplyFlashContainer = null;
@@ -300,6 +301,8 @@ let pendingReplyFlashScrollEnd = null;
 let pendingReplyFlashTimeoutId = null;
 /** @type {HTMLElement | null} */
 let activeReplyFlashBubble = null;
+/** @type {string | null} */
+let activeReplyFlashClass = null;
 /** @type {((event: AnimationEvent) => void) | null} */
 let activeReplyFlashAnimationEnd = null;
 
@@ -320,6 +323,26 @@ function cancelPendingReplyTargetFlash() {
 }
 
 /**
+ * @param {HTMLElement} row
+ * @returns {string}
+ */
+function replyTargetClassForRow(row) {
+  return row.classList.contains("message-row--mine")
+    ? REPLY_TARGET_CLASS_MINE
+    : REPLY_TARGET_CLASS_OTHER;
+}
+
+/**
+ * @param {string} className
+ * @returns {string}
+ */
+function replyTargetAnimationName(className) {
+  return className === REPLY_TARGET_CLASS_MINE
+    ? "message-bubble-reply-breath-mine"
+    : "message-bubble-reply-breath";
+}
+
+/**
  * One soft breath on the landed message bubble after a quote jump.
  * @param {HTMLElement} row
  */
@@ -331,30 +354,34 @@ function flashReplyTargetRow(row) {
     return;
   }
 
+  const targetClass = replyTargetClassForRow(row);
+
   if (activeReplyFlashBubble && activeReplyFlashAnimationEnd) {
     activeReplyFlashBubble.removeEventListener(
       "animationend",
       activeReplyFlashAnimationEnd
     );
-    activeReplyFlashBubble.classList.remove(REPLY_TARGET_CLASS);
+    if (activeReplyFlashClass) {
+      activeReplyFlashBubble.classList.remove(activeReplyFlashClass);
+    }
   }
 
   activeReplyFlashBubble = bubble;
-  bubble.classList.remove(REPLY_TARGET_CLASS);
+  activeReplyFlashClass = targetClass;
+  bubble.classList.remove(REPLY_TARGET_CLASS_OTHER, REPLY_TARGET_CLASS_MINE);
   // Restart the animation if this bubble was already flashing.
   void bubble.offsetWidth;
-  bubble.classList.add(REPLY_TARGET_CLASS);
+  bubble.classList.add(targetClass);
 
+  const expectedAnimation = replyTargetAnimationName(targetClass);
   activeReplyFlashAnimationEnd = (event) => {
-    if (
-      event.target !== bubble
-      || event.animationName !== "message-bubble-reply-breath"
-    ) {
+    if (event.target !== bubble || event.animationName !== expectedAnimation) {
       return;
     }
-    bubble.classList.remove(REPLY_TARGET_CLASS);
+    bubble.classList.remove(targetClass);
     if (activeReplyFlashBubble === bubble) {
       activeReplyFlashBubble = null;
+      activeReplyFlashClass = null;
       activeReplyFlashAnimationEnd = null;
     }
   };
