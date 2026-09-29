@@ -1052,6 +1052,11 @@ body.is-chats-sidebar-resizing * {
   color: var(--color-text-muted);
 }
 
+.message-reply-quote-text--placeholder {
+  font-weight: 600;
+  color: var(--color-ice);
+}
+
 .message-reply-quote:disabled {
   cursor: wait;
   opacity: 0.75;
@@ -1073,6 +1078,10 @@ body.is-chats-sidebar-resizing * {
 
 .message-row--mine .message-reply-quote-text {
   color: rgba(248, 248, 248, 0.78);
+}
+
+.message-row--mine .message-reply-quote-text--placeholder {
+  color: rgba(248, 248, 248, 0.95);
 }
 
 .message-reply-jump-tip {

@@ -1035,7 +1035,12 @@ function createReplyQuote(message) {
 
   const textEl = document.createElement("span");
   textEl.className = "message-reply-quote-text";
-  textEl.textContent = replyToText || "Attachment";
+  if (replyToText) {
+    textEl.textContent = replyToText;
+  } else {
+    textEl.classList.add("message-reply-quote-text--placeholder");
+    textEl.textContent = "Attachment";
+  }
   quote.appendChild(textEl);
 
   return quote;
