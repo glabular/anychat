@@ -279,3 +279,72 @@ function scrollChatToLatestFromButton() {
   syncScrollToLatestButton();
   onScrolledToLatest?.();
 }
+
+/**
+ * Within this many viewport heights, quote-jump uses a full smooth scroll.
+ * Farther targets hop to one page away, then smooth the last screen
+ * (same idea as scroll-to-latest; avoids long teleport animations).
+ */
+const SCROLL_TO_MESSAGE_SMOOTH_MAX_PAGES = 3;
+
+/**
+ * Scroll `#chat-messages` so `messageId` sits at `offsetPx` from the top.
+ * @param {HTMLElement | null | undefined} container
+ * @param {string} messageId
+ * @param {{ offsetPx?: number }} [options]
+ * @returns {boolean} true when the row existed and scroll was applied
+ */
+export function scrollChatToMessage(container, messageId, options = {}) {
+  if (!container || typeof messageId !== "string" || messageId.length === 0) {
+    return false;
+  }
+
+  const row = container.querySelector(
+    `.message-row[data-message-id="${CSS.escape(messageId)}"]`
+  );
+  if (!(row instanceof HTMLElement)) {
+    return false;
+  }
+
+  const offsetPx =
+    typeof options.offsetPx === "number" && Number.isFinite(options.offsetPx)
+      ? options.offsetPx
+      : 0;
+
+  void container.offsetHeight;
+
+  const maxScrollTop = Math.max(
+    0,
+    container.scrollHeight - container.clientHeight
+  );
+  const currentOffset =
+    row.getBoundingClientRect().top
+    - container.getBoundingClientRect().top;
+  const targetScrollTop = Math.max(
+    0,
+    Math.min(maxScrollTop, container.scrollTop + currentOffset - offsetPx)
+  );
+
+  if (prefersReducedMotion()) {
+    container.scrollTop = targetScrollTop;
+    syncScrollToLatestButton();
+    return true;
+  }
+
+  const page = Math.max(1, container.clientHeight);
+  const distance = Math.abs(targetScrollTop - container.scrollTop);
+
+  if (distance > page * SCROLL_TO_MESSAGE_SMOOTH_MAX_PAGES) {
+    const direction = targetScrollTop >= container.scrollTop ? 1 : -1;
+    const hopTop = Math.max(
+      0,
+      Math.min(maxScrollTop, targetScrollTop - direction * page)
+    );
+    container.scrollTop = hopTop;
+    void container.offsetHeight;
+  }
+
+  container.scrollTo({ top: targetScrollTop, behavior: "smooth" });
+  syncScrollToLatestButton();
+  return true;
+}

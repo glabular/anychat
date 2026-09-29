@@ -9,15 +9,14 @@ import {
   noteAnytypeUnavailableFromResponse,
   showAnytypeConnectionNotice,
 } from "./anytype-connection-notice.js";
+import { initChatMessagesScroll, scrollChatToMessage, setOnChatScrolledToLatest } from "./chat-messages-scroll.js";
 import {
   peekChatScroll,
   rememberChatScroll,
-  restoreChatScrollAnchor,
   takeChatScroll,
 } from "./chat-scroll-memory.js";
 import { formatChatListTimestamp } from "./date-format.js";
 import { createSendStatusElement, resolveOutgoingSendStatus } from "./message-send-status.js";
-import { initChatMessagesScroll, setOnChatScrolledToLatest } from "./chat-messages-scroll.js";
 import {
   hideChatsScrollToTopButton,
   syncChatsScrollToTopButton,
@@ -2131,10 +2130,7 @@ async function jumpToRepliedMessage(messageId, quoteButton = null) {
   }
 
   const scrollToParent = () => {
-    const applied = restoreChatScrollAnchor(container, {
-      messageId: trimmedId,
-      offsetPx: 0,
-    });
+    const applied = scrollChatToMessage(container, trimmedId, { offsetPx: 0 });
     if (applied) {
       scheduleRememberOpenChatScrollPosition();
     }
@@ -2145,11 +2141,13 @@ async function jumpToRepliedMessage(messageId, quoteButton = null) {
     return;
   }
 
-  // In state but not painted (should be rare) — rebuild then restore.
+  // In state but not painted (should be rare) — rebuild, then smooth-scroll.
   if (state.messageIds.has(trimmedId)) {
     renderOpenChatMessages(state.messages, {
       scrollAnchor: { messageId: trimmedId, offsetPx: 0 },
     });
+    // Instant restore lands on the row; a follow-up smooth is unnecessary and
+    // would fight the just-applied anchor. Memory still updates.
     scheduleRememberOpenChatScrollPosition();
     return;
   }
