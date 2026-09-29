@@ -12,6 +12,7 @@ import {
 import {
   peekChatScroll,
   rememberChatScroll,
+  restoreChatScrollAnchor,
   takeChatScroll,
 } from "./chat-scroll-memory.js";
 import { formatChatListTimestamp } from "./date-format.js";
@@ -2001,36 +2002,49 @@ const SCROLL_ANCHOR_NORMAL_PAGE_CAP = 5;
 const SCROLL_ANCHOR_DEEP_PAGE_SIZE = 1000;
 const SCROLL_ANCHOR_DEEP_PAGE_CAP = 20;
 
+/** Reply-quote jump: small older-page budget only (no deep 1000-page seek). */
+const REPLY_JUMP_PAGE_CAP = 5;
+
+/** True while a quote click is seeking/scrolling to a parent message. */
+let replyJumpInProgress = false;
+
 /**
- * Load older pages into history state (no DOM) until `messageId` is present,
+ * Load older pages into history state until `messageId` is present,
  * history ends, the page cap is hit, or the open is cancelled.
  * @param {ChatHistoryState} state
  * @param {string} messageId
  * @param {number} token
- * @param {{ profilesEnabled: boolean }} options
+ * @param {{
+ *   profilesEnabled: boolean,
+ *   mode?: "scrollRestore" | "replyJump",
+ *   onOlderPage?: (newMessages: object[]) => void,
+ * }} options
  * @returns {Promise<boolean>} false when the open is no longer current
  */
 async function seekOlderPagesForMessageId(
   state,
   messageId,
   token,
-  { profilesEnabled }
+  { profilesEnabled, mode = "scrollRestore", onOlderPage }
 ) {
   let normalPagesFetched = 0;
   let deepPagesFetched = 0;
+  const allowDeep = mode !== "replyJump";
+  const normalPageCap =
+    mode === "replyJump" ? REPLY_JUMP_PAGE_CAP : SCROLL_ANCHOR_NORMAL_PAGE_CAP;
 
   while (
     !state.messageIds.has(messageId)
     && state.mayHaveMore
     && state.oldestOrderId
     && (
-      normalPagesFetched < SCROLL_ANCHOR_NORMAL_PAGE_CAP
-      || deepPagesFetched < SCROLL_ANCHOR_DEEP_PAGE_CAP
+      normalPagesFetched < normalPageCap
+      || (allowDeep && deepPagesFetched < SCROLL_ANCHOR_DEEP_PAGE_CAP)
     )
   ) {
     const previousOldestOrderId = state.oldestOrderId;
     const pageSize =
-      normalPagesFetched < SCROLL_ANCHOR_NORMAL_PAGE_CAP
+      normalPagesFetched < normalPageCap
         ? MESSAGE_PAGE_SIZE
         : SCROLL_ANCHOR_DEEP_PAGE_SIZE;
     if (pageSize === MESSAGE_PAGE_SIZE) {
@@ -2076,11 +2090,14 @@ async function seekOlderPagesForMessageId(
       }
     }
 
-    mergeOlderPageIntoState(
+    const newMessages = mergeOlderPageIntoState(
       state,
       olderMessages,
       pageSize
     );
+    if (typeof onOlderPage === "function" && newMessages.length > 0) {
+      onOlderPage(newMessages);
+    }
 
     if (
       Array.isArray(olderMessages)
@@ -2092,6 +2109,133 @@ async function seekOlderPagesForMessageId(
   }
 
   return true;
+}
+
+/**
+ * Scroll to a replied-to message, seeking a few older pages when needed.
+ * Missing / deleted / beyond-budget parents: quiet no-op (no toasts).
+ * @param {string} messageId
+ * @param {HTMLButtonElement | null} [quoteButton]
+ */
+async function jumpToRepliedMessage(messageId, quoteButton = null) {
+  const trimmedId =
+    typeof messageId === "string" ? messageId.trim() : "";
+  if (!trimmedId || replyJumpInProgress) {
+    return;
+  }
+
+  const state = chatHistoryState;
+  const container = getChatMessagesContainer();
+  if (!state || !container || state.isLoadingOlder) {
+    return;
+  }
+
+  const scrollToParent = () => {
+    const applied = restoreChatScrollAnchor(container, {
+      messageId: trimmedId,
+      offsetPx: 0,
+    });
+    if (applied) {
+      scheduleRememberOpenChatScrollPosition();
+    }
+    return applied;
+  };
+
+  if (scrollToParent()) {
+    return;
+  }
+
+  // In state but not painted (should be rare) — rebuild then restore.
+  if (state.messageIds.has(trimmedId)) {
+    renderOpenChatMessages(state.messages, {
+      scrollAnchor: { messageId: trimmedId, offsetPx: 0 },
+    });
+    scheduleRememberOpenChatScrollPosition();
+    return;
+  }
+
+  if (!state.mayHaveMore || !state.oldestOrderId) {
+    // Parent deleted, never loaded, or history already exhausted — stay put.
+    return;
+  }
+
+  const selectedSpaceInput = document.querySelector(
+    'input[name="space"]:checked'
+  );
+  const profilesEnabled = Boolean(
+    selectedSpaceInput
+    && isRegularSpaceObject(selectedSpaceInput.dataset.spaceObject ?? "")
+  );
+
+  replyJumpInProgress = true;
+  state.isLoadingOlder = true;
+  updateHistoryStatus(state);
+  if (quoteButton) {
+    quoteButton.disabled = true;
+    quoteButton.setAttribute("aria-busy", "true");
+  }
+
+  try {
+    const stillCurrent = await seekOlderPagesForMessageId(
+      state,
+      trimmedId,
+      state.token,
+      {
+        profilesEnabled,
+        mode: "replyJump",
+        onOlderPage: (newMessages) => {
+          prependOlderChatMessages(newMessages);
+        },
+      }
+    );
+
+    if (
+      !stillCurrent
+      || chatHistoryState !== state
+      || !isOpenChatMessagesCurrent(state.token)
+    ) {
+      return;
+    }
+
+    // Deleted / outside the 5×50 budget / not in history → no jump, no toast.
+    if (!state.messageIds.has(trimmedId)) {
+      return;
+    }
+
+    scrollToParent();
+  } finally {
+    if (chatHistoryState === state) {
+      state.isLoadingOlder = false;
+      updateHistoryStatus(state);
+    }
+    if (quoteButton) {
+      quoteButton.disabled = false;
+      quoteButton.removeAttribute("aria-busy");
+    }
+    replyJumpInProgress = false;
+  }
+}
+
+function initReplyQuoteJump() {
+  const list = document.getElementById("chat-message-list");
+  if (!list) {
+    return;
+  }
+
+  list.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const quote = target.closest(".message-reply-quote");
+    if (!(quote instanceof HTMLButtonElement) || !list.contains(quote)) {
+      return;
+    }
+
+    event.preventDefault();
+    void jumpToRepliedMessage(quote.dataset.replyToMessageId ?? "", quote);
+  });
 }
 
 /**
@@ -2287,6 +2431,7 @@ setOnOutgoingPreviewChanged((target, parts) => {
 });
 
 initChatMessagesScroll(onChatMessagesScroll);
+initReplyQuoteJump();
 setOnChatScrolledToLatest(rememberOpenChatScrollAtLatest);
 initChatHistoryRetry(() => {
   void loadOlderMessages({ retry: true });

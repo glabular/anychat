@@ -1051,6 +1051,11 @@ body.is-chats-sidebar-resizing * {
   color: var(--color-text-muted);
 }
 
+.message-reply-quote:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
 .message-reply-quote:focus-visible {
   outline: 2px solid var(--color-ice);
   outline-offset: 1px;
