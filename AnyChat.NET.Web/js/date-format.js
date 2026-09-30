@@ -85,6 +85,35 @@ export function formatChatListTimestamp(
 }
 
 /**
+ * Edit-time tip stamp: today → `HH:mm`, otherwise → `DD.MM.YYYY HH:mm`.
+ * @param {unknown} unixSeconds
+ * @param {unknown} [nowUnixSeconds=Date.now() / 1000]
+ * @returns {string | null}
+ */
+export function formatEditedAtStamp(
+  unixSeconds,
+  nowUnixSeconds = Date.now() / 1000
+) {
+  const time = formatTimeHhMm(unixSeconds);
+  if (time === null) {
+    return null;
+  }
+
+  const messageDay = localDayKey(unixSeconds);
+  const todayDay = localDayKey(nowUnixSeconds);
+  if (messageDay === null || todayDay === null) {
+    return null;
+  }
+
+  if (messageDay === todayDay) {
+    return time;
+  }
+
+  const date = formatDateDdMmYyyy(unixSeconds);
+  return date === null ? null : `${date} ${time}`;
+}
+
+/**
  * True when Anytype reports a last-modified time after creation
  * (`modifiedAt > createdAt`, Unix seconds).
  * @param {{ createdAt?: unknown, modifiedAt?: unknown } | null | undefined} message
