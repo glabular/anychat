@@ -34,10 +34,16 @@ public sealed class ChatMessageDto
     public string? ReplyToAuthorName { get; init; }
 
     /// <summary>
-    /// Unix timestamp in seconds when the message was created in Anytype.
+    /// Unix timestamp in seconds when the message was created.
     /// Null when the upstream message has no creation time.
     /// </summary>
     public long? CreatedAt { get; init; }
+
+    /// <summary>
+    /// Unix timestamp in seconds when the message was last modified.
+    /// Null when the upstream message has no modification time.
+    /// </summary>
+    public long? ModifiedAt { get; init; }
 
     /// <summary>
     /// True when the message is from the learned current user, false when it is

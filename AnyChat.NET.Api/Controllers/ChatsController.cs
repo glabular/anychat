@@ -646,6 +646,7 @@ public class ChatsController(
             ReplyToText = replyToMessageId is null ? null : replyPreview?.Text,
             ReplyToAuthorName = replyToMessageId is null ? null : replyPreview?.AuthorName,
             CreatedAt = message.CreatedAt,
+            ModifiedAt = message.ModifiedAt,
             IsMine = isMine,
         };
     }
