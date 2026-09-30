@@ -791,6 +791,9 @@ function hydrateMessageFromServer(target, incoming) {
   if (typeof incoming.createdAt === "number") {
     target.createdAt = incoming.createdAt;
   }
+  if (typeof incoming.modifiedAt === "number") {
+    target.modifiedAt = incoming.modifiedAt;
+  }
   if (incoming.content && typeof incoming.content === "object") {
     target.content = {
       ...target.content,

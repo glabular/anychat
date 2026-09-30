@@ -83,3 +83,19 @@ export function formatChatListTimestamp(
 
   return formatDateDdMmYyyy(unixSeconds);
 }
+
+/**
+ * True when Anytype reports a last-modified time after creation
+ * (`modifiedAt > createdAt`, Unix seconds).
+ * @param {{ createdAt?: unknown, modifiedAt?: unknown } | null | undefined} message
+ * @returns {boolean}
+ */
+export function isMessageEdited(message) {
+  const createdAt = readUnixSeconds(message?.createdAt);
+  const modifiedAt = readUnixSeconds(message?.modifiedAt);
+  if (createdAt === null || modifiedAt === null) {
+    return false;
+  }
+
+  return modifiedAt > createdAt;
+}
