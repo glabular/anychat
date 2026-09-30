@@ -1,4 +1,5 @@
 import {
+  formatChatListTimestamp,
   formatDateDdMmYyyy,
   formatTimeHhMm,
   isMessageEdited,
@@ -1113,6 +1114,12 @@ function createMessageRow(message) {
       const editedEl = document.createElement("span");
       editedEl.className = "message-bubble-edited";
       editedEl.textContent = "edited";
+      const editStamp = formatChatListTimestamp(message.modifiedAt);
+      if (editStamp) {
+        const editTip = `Edited · ${editStamp}`;
+        editedEl.title = editTip;
+        editedEl.setAttribute("aria-label", editTip);
+      }
       meta.appendChild(editedEl);
     }
 

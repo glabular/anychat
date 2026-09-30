@@ -1198,6 +1198,7 @@ body.is-chats-sidebar-resizing * {
 
 .message-bubble-edited {
   font-style: italic;
+  pointer-events: auto;
 }
 
 .message-row--mine .message-bubble-edited,
