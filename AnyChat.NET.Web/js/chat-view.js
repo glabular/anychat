@@ -1,6 +1,7 @@
 import {
   formatDateDdMmYyyy,
   formatTimeHhMm,
+  isMessageEdited,
   localDayKey,
 } from "./date-format.js";
 import {
@@ -1094,9 +1095,10 @@ function createMessageRow(message) {
   bubble.appendChild(textEl);
 
   const timeLabel = formatTimeHhMm(message.createdAt);
+  const edited = isMessageEdited(message);
   const sendStatus = resolveOutgoingSendStatus(message);
 
-  if (timeLabel || sendStatus) {
+  if (timeLabel || edited || sendStatus) {
     // Invisible end-of-text reserve so absolute meta can sit on the last line.
     const spacer = document.createElement("span");
     spacer.className = "message-bubble-meta-spacer";
@@ -1105,6 +1107,14 @@ function createMessageRow(message) {
 
     const meta = document.createElement("div");
     meta.className = "message-bubble-meta";
+
+    if (edited) {
+      bubble.classList.add("message-bubble--edited");
+      const editedEl = document.createElement("span");
+      editedEl.className = "message-bubble-edited";
+      editedEl.textContent = "edited";
+      meta.appendChild(editedEl);
+    }
 
     if (timeLabel) {
       const timeEl = document.createElement("time");

@@ -98,6 +98,7 @@ textarea,
 
 .selectable .message-bubble-meta,
 .selectable .message-bubble-meta-spacer,
+.selectable .message-bubble-edited,
 .selectable .message-bubble-time,
 .selectable .message-bubble-status,
 .selectable .message-send-status,
@@ -1166,6 +1167,14 @@ body.is-chats-sidebar-resizing * {
   width: 4rem;
 }
 
+.message-bubble--edited .message-bubble-meta-spacer {
+  width: 5.5rem;
+}
+
+.message-bubble--edited.message-bubble--has-status .message-bubble-meta-spacer {
+  width: 6.75rem;
+}
+
 .message-bubble-meta {
   position: absolute;
   right: 0.8rem;
@@ -1180,12 +1189,18 @@ body.is-chats-sidebar-resizing * {
   -webkit-user-select: none;
 }
 
+.message-bubble-edited,
 .message-bubble-time {
   font-size: 0.7rem;
   line-height: 1;
   color: var(--color-text-muted);
 }
 
+.message-bubble-edited {
+  font-style: italic;
+}
+
+.message-row--mine .message-bubble-edited,
 .message-row--mine .message-bubble-time {
   color: rgba(248, 248, 248, 0.78);
 }
