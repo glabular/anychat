@@ -1117,8 +1117,12 @@ function createMessageRow(message) {
       const editStamp = formatEditedAtStamp(message.modifiedAt);
       if (editStamp) {
         const editTip = `Edited · ${editStamp}`;
-        editedEl.title = editTip;
         editedEl.setAttribute("aria-label", editTip);
+        const tipEl = document.createElement("span");
+        tipEl.className = "message-bubble-edited-tooltip";
+        tipEl.textContent = editTip;
+        tipEl.setAttribute("aria-hidden", "true");
+        editedEl.appendChild(tipEl);
       }
       meta.appendChild(editedEl);
     }

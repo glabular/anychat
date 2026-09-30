@@ -99,6 +99,7 @@ textarea,
 .selectable .message-bubble-meta,
 .selectable .message-bubble-meta-spacer,
 .selectable .message-bubble-edited,
+.selectable .message-bubble-edited-tooltip,
 .selectable .message-bubble-time,
 .selectable .message-bubble-status,
 .selectable .message-send-status,
@@ -1197,8 +1198,50 @@ body.is-chats-sidebar-resizing * {
 }
 
 .message-bubble-edited {
+  position: relative;
   font-style: italic;
   pointer-events: auto;
+}
+
+.message-bubble-edited-tooltip {
+  box-sizing: border-box;
+  display: block;
+  background-color: var(--color-light-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+  padding: 0.45rem 0.85rem;
+  border-radius: 50px;
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: normal;
+  line-height: 1.25;
+  position: absolute;
+  bottom: calc(100% + 0.55rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease;
+}
+
+.message-bubble-edited-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--color-light-bg);
+  filter: drop-shadow(0 1px 0 var(--color-border));
+}
+
+.message-bubble-edited:hover .message-bubble-edited-tooltip {
+  opacity: 1;
+  visibility: visible;
 }
 
 .message-row--mine .message-bubble-edited,
