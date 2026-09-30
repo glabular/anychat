@@ -9,7 +9,7 @@ import {
   noteAnytypeUnavailableFromResponse,
   showAnytypeConnectionNotice,
 } from "./anytype-connection-notice.js";
-import { initChatMessagesScroll, scrollChatToMessage, setOnChatScrolledToLatest } from "./chat-messages-scroll.js";
+import { initChatMessagesScroll, scrollChatToMessage, setOnChatScrolledToLatest, flashEditedMessageById } from "./chat-messages-scroll.js";
 import {
   peekChatScroll,
   rememberChatScroll,
@@ -596,6 +596,13 @@ function handleChatMessageStreamPayload(sub, raw) {
     // Updates change bubble text; confirm-without-reorder only patches send status.
     refreshContent: parsed.type === "message_updated",
   });
+  if (
+    parsed.type === "message_updated"
+    && result.kind !== "noop"
+    && typeof message.id === "string"
+  ) {
+    flashEditedMessageById(message.id);
+  }
   if (result.kind === "insert") {
     maybeResolveIncomingAuthor(sub, state, message);
   }

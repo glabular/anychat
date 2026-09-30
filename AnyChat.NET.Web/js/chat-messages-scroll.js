@@ -388,6 +388,80 @@ function flashReplyTargetRow(row) {
   bubble.addEventListener("animationend", activeReplyFlashAnimationEnd);
 }
 
+const EDITED_LABEL_FLASH_CLASS = "message-bubble-edited--flash";
+
+/** @type {HTMLElement | null} */
+let activeEditedFlashLabel = null;
+/** @type {((event: AnimationEvent) => void) | null} */
+let activeEditedFlashAnimationEnd = null;
+
+/**
+ * @param {HTMLElement} row
+ * @returns {string}
+ */
+function editedLabelFlashAnimationName(row) {
+  return row.classList.contains("message-row--mine")
+    ? "message-bubble-edited-label-flash-mine"
+    : "message-bubble-edited-label-flash";
+}
+
+/**
+ * Soft breath on the edited label after a live message_updated remount.
+ * @param {HTMLElement} row
+ */
+function flashEditedMessageRow(row) {
+  const label = row.querySelector(".message-bubble-edited");
+  if (!(label instanceof HTMLElement)) {
+    return;
+  }
+
+  if (activeEditedFlashLabel && activeEditedFlashAnimationEnd) {
+    activeEditedFlashLabel.removeEventListener(
+      "animationend",
+      activeEditedFlashAnimationEnd
+    );
+    activeEditedFlashLabel.classList.remove(EDITED_LABEL_FLASH_CLASS);
+  }
+
+  activeEditedFlashLabel = label;
+  label.classList.remove(EDITED_LABEL_FLASH_CLASS);
+  void label.offsetWidth;
+  label.classList.add(EDITED_LABEL_FLASH_CLASS);
+
+  const expectedAnimation = editedLabelFlashAnimationName(row);
+  activeEditedFlashAnimationEnd = (event) => {
+    if (event.target !== label || event.animationName !== expectedAnimation) {
+      return;
+    }
+    label.classList.remove(EDITED_LABEL_FLASH_CLASS);
+    if (activeEditedFlashLabel === label) {
+      activeEditedFlashLabel = null;
+      activeEditedFlashAnimationEnd = null;
+    }
+  };
+  label.addEventListener("animationend", activeEditedFlashAnimationEnd);
+}
+
+/**
+ * Soft-flash the open-chat edited label for `messageId` after a live remount.
+ * @param {string} messageId
+ */
+export function flashEditedMessageById(messageId) {
+  if (typeof messageId !== "string" || messageId.length === 0) {
+    return;
+  }
+
+  const container = getChatMessagesContainer();
+  const row = container?.querySelector(
+    `[data-message-id="${CSS.escape(messageId)}"]`
+  );
+  if (!(row instanceof HTMLElement)) {
+    return;
+  }
+
+  flashEditedMessageRow(row);
+}
+
 /**
  * @param {HTMLElement} container
  * @param {HTMLElement} row

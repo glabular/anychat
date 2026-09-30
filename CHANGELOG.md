@@ -12,7 +12,8 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 
 - About pane: author, GitHub repo link, and invite to the anychat public space
 - FAQ pane
-- Reply messages show a quote (author + one-line parent text); click jumps to the parent within a small older-page seek budget; empty parent text shows as Attachment 
+- Reply messages show a quote (author + one-line parent text); click jumps to the parent within a small older-page seek budget; empty parent text shows as Attachment
+- Edited messages show a quiet edited mark; hover shows when it was last changed
 
 ### Changed
 
@@ -22,6 +23,7 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 - Disable browser focus rings app-wide
 - Mouse Back exits settings
 - Quote jump softly highlights others’ bubbles and darkens own bubbles once
+- Message edits softly highlight the edited label
 
 ### Fixed
 

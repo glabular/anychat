@@ -1050,6 +1050,53 @@ body.is-chats-sidebar-resizing * {
   }
 }
 
+.message-bubble-edited--flash {
+  border-radius: 0.25rem;
+  animation: message-bubble-edited-label-flash 2.4s ease-in-out 1;
+}
+
+@keyframes message-bubble-edited-label-flash {
+  0%,
+  100% {
+    color: var(--color-text-muted);
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  20%,
+  55% {
+    color: var(--color-text);
+    background-color: var(--color-selection);
+    box-shadow: 0 0 0 0.2rem var(--color-selection);
+  }
+}
+
+.message-row--mine .message-bubble-edited--flash {
+  animation-name: message-bubble-edited-label-flash-mine;
+}
+
+@keyframes message-bubble-edited-label-flash-mine {
+  0%,
+  100% {
+    color: rgba(248, 248, 248, 0.78);
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  20%,
+  55% {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.28);
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.28);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-bubble-edited--flash {
+    animation-duration: 0.9s;
+  }
+}
+
 .message-reply-quote {
   position: relative;
   display: flex;
