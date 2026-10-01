@@ -1,0 +1,92 @@
+/* Message bubble context menu (shell; actions disabled until features ship). */
+
+.message-context-menu {
+  position: fixed;
+  z-index: 40;
+  box-sizing: border-box;
+  min-width: 12.5rem;
+  padding: 0.35rem 0;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background-color: var(--color-bg);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  color: var(--color-text);
+}
+
+.message-context-menu[hidden] {
+  display: none;
+}
+
+.message-context-menu-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.message-context-menu-separator {
+  height: 1px;
+  margin: 0.35rem 0.65rem;
+  border: none;
+  background-color: var(--color-border);
+}
+
+.message-context-menu-item {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.85rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.92rem;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+
+.message-context-menu-item:hover:not(:disabled):not([aria-disabled="true"]) {
+  background-color: var(--color-surface-hover);
+}
+
+.message-context-menu-item:focus,
+.message-context-menu-item:focus-visible {
+  outline: none;
+}
+
+.message-context-menu-item:disabled,
+.message-context-menu-item[aria-disabled="true"] {
+  color: var(--color-text-placeholder);
+  cursor: not-allowed;
+}
+
+.message-context-menu-icon {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  display: block;
+  color: currentColor;
+}
+
+.message-context-menu-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.message-context-menu-item--danger {
+  color: var(--color-red);
+}
+
+.message-context-menu-item--danger:hover:not(:disabled):not([aria-disabled="true"]) {
+  background-color: var(--color-surface-hover);
+  color: var(--color-red);
+}
+
+.message-context-menu-item--danger:disabled,
+.message-context-menu-item--danger[aria-disabled="true"] {
+  color: color-mix(in srgb, var(--color-red) 45%, var(--color-text-placeholder));
+  cursor: not-allowed;
+}

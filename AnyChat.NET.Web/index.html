@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="chatslist.css" />
     <link rel="stylesheet" href="settings.css" />
     <link rel="stylesheet" href="create-chat-modal.css" />
+    <link rel="stylesheet" href="message-context-menu.css" />
   </head>
   <body>
     <div class="layout">
@@ -955,6 +956,162 @@
           </form>
         </div>
       </div>
+    </div>
+    <div
+      id="message-context-menu"
+      class="message-context-menu"
+      role="menu"
+      aria-label="Message actions"
+      hidden
+    >
+      <ul class="message-context-menu-list">
+        <li role="none">
+          <button
+            type="button"
+            id="message-context-menu-reply"
+            class="message-context-menu-item"
+            role="menuitem"
+            disabled
+          >
+            <svg
+              class="message-context-menu-icon"
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path
+                fill="currentColor"
+                d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"
+              />
+            </svg>
+            <span class="message-context-menu-label">Reply</span>
+          </button>
+        </li>
+        <li role="none">
+          <button
+            type="button"
+            id="message-context-menu-copy-text"
+            class="message-context-menu-item"
+            role="menuitem"
+            disabled
+          >
+            <svg
+              class="message-context-menu-icon"
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path
+                fill="currentColor"
+                d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"
+              />
+            </svg>
+            <span class="message-context-menu-label">Copy Text</span>
+          </button>
+        </li>
+        <li role="none">
+          <button
+            type="button"
+            id="message-context-menu-pin"
+            class="message-context-menu-item"
+            role="menuitem"
+            disabled
+          >
+            <svg
+              class="message-context-menu-icon"
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path
+                fill="currentColor"
+                d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"
+              />
+            </svg>
+            <span class="message-context-menu-label">Pin</span>
+          </button>
+        </li>
+        <li role="separator" class="message-context-menu-separator"></li>
+        <li role="none">
+          <button
+            type="button"
+            id="message-context-menu-edit"
+            class="message-context-menu-item"
+            role="menuitem"
+            disabled
+          >
+            <svg
+              class="message-context-menu-icon"
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path
+                fill="currentColor"
+                d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+              />
+            </svg>
+            <span class="message-context-menu-label">Edit</span>
+          </button>
+        </li>
+        <li role="separator" class="message-context-menu-separator"></li>
+        <li role="none">
+          <button
+            type="button"
+            id="message-context-menu-copy-link"
+            class="message-context-menu-item"
+            role="menuitem"
+            disabled
+          >
+            <svg
+              class="message-context-menu-icon"
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path
+                fill="currentColor"
+                d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"
+              />
+            </svg>
+            <span class="message-context-menu-label">Copy message link</span>
+          </button>
+        </li>
+        <li role="none">
+          <button
+            type="button"
+            id="message-context-menu-delete"
+            class="message-context-menu-item message-context-menu-item--danger"
+            role="menuitem"
+            disabled
+          >
+            <svg
+              class="message-context-menu-icon"
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path
+                fill="currentColor"
+                d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+              />
+            </svg>
+            <span class="message-context-menu-label">Delete</span>
+          </button>
+        </li>
+      </ul>
     </div>
     <script type="module" src="js/main.js"></script>
   </body>
