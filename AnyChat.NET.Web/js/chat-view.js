@@ -38,6 +38,10 @@ import {
   isChatPanelMenuOpen,
 } from "./chat-panel-menu.js";
 import {
+  closeMessageContextMenu,
+  isMessageContextMenuOpen,
+} from "./message-context-menu.js";
+import {
   closeDeleteChatConfirm,
   isDeleteChatConfirmOpen,
 } from "./delete-chat-confirm.js";
@@ -435,6 +439,7 @@ export function hideChatPanel(options = {}) {
   clearMessageProfilesContext();
   cancelChatRename({ restoreFocus: false });
   closeChatPanelMenu();
+  closeMessageContextMenu();
   closeDeleteChatConfirm({ restoreFocus: false });
   closeLogoutConfirm({ restoreFocus: false });
   closeMemberProfilePanel({ restoreFocus: false });
@@ -519,6 +524,11 @@ export function initChatViewCloseBindings() {
       return;
     }
 
+    if (closeMessageContextMenu()) {
+      event.preventDefault();
+      return;
+    }
+
     if (closeMemberProfilePanel({ restoreFocus: true })) {
       event.preventDefault();
       return;
@@ -571,6 +581,12 @@ export function initChatViewCloseBindings() {
       return;
     }
 
+    if (isMessageContextMenuOpen()) {
+      event.preventDefault();
+      closeMessageContextMenu();
+      return;
+    }
+
     if (isMemberProfilePanelOpen()) {
       event.preventDefault();
       closeMemberProfilePanel({ restoreFocus: true });
@@ -592,6 +608,7 @@ export function initChatViewCloseBindings() {
  */
 export function beginOpenChatMessages() {
   closeMemberProfilePanel({ restoreFocus: false });
+  closeMessageContextMenu();
   const loadingEl = document.getElementById("chat-messages-loading");
   const wasLoadingVisible = Boolean(loadingEl && !loadingEl.hidden);
   const emptyEl = document.getElementById("chat-messages-empty");

@@ -120,4 +120,41 @@ export function initMessageContextMenu() {
     event.stopPropagation();
     openMessageContextMenu(event, bubble);
   });
+
+  document.addEventListener("mousedown", (event) => {
+    if (!isMessageContextMenuOpen()) {
+      return;
+    }
+    if (event.target instanceof Node && menu.contains(event.target)) {
+      return;
+    }
+    closeMessageContextMenu();
+  });
+
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      if (!closeMessageContextMenu()) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    true
+  );
+
+  list.addEventListener(
+    "scroll",
+    () => {
+      closeMessageContextMenu();
+    },
+    { passive: true }
+  );
+
+  window.addEventListener("resize", () => {
+    closeMessageContextMenu();
+  });
 }
