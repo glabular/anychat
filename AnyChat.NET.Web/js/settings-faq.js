@@ -20,6 +20,12 @@ const FAQ_ENTRIES = [
       "A **space** in Anytype is a complete workspace — chats plus pages, files, and other objects. Because deleting a space can affect more than what anychat shows, space deletion stays in Anytype. You can still delete individual chats in anychat.",
     ],
   },
+  {
+    question: "Why doesn’t anychat show unread message counts?",
+    answers: [
+      "Unread counts are not in anychat yet. They may arrive in a future update once there is a solid way to keep those numbers accurate with your chats in Anytype.",
+    ],
+  },
 ];
 
 let mounted = false;
