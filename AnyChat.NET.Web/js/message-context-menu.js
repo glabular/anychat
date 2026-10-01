@@ -36,6 +36,46 @@ export function closeMessageContextMenu() {
 }
 
 /**
+ * Place the fixed menu at the cursor, flipping and clamping to the viewport.
+ * Prefer open to the right and below; flip left/above when near an edge.
+ *
+ * @param {HTMLElement} menu
+ * @param {number} clientX
+ * @param {number} clientY
+ */
+function positionMenuAtCursor(menu, clientX, clientY) {
+  const margin = 8;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  // Must be visible to measure; start at cursor then adjust.
+  menu.style.left = `${clientX}px`;
+  menu.style.top = `${clientY}px`;
+
+  const rect = menu.getBoundingClientRect();
+  const width = rect.width;
+  const height = rect.height;
+
+  let left = clientX;
+  if (clientX + width > viewportWidth - margin) {
+    left = clientX - width;
+  }
+
+  let top = clientY;
+  if (clientY + height > viewportHeight - margin) {
+    top = clientY - height;
+  }
+
+  const maxLeft = Math.max(margin, viewportWidth - width - margin);
+  const maxTop = Math.max(margin, viewportHeight - height - margin);
+  left = Math.min(Math.max(left, margin), maxLeft);
+  top = Math.min(Math.max(top, margin), maxTop);
+
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+}
+
+/**
  * @param {MouseEvent} event
  * @param {HTMLElement} bubble
  */
@@ -49,8 +89,7 @@ function openMessageContextMenu(event, bubble) {
   targetMessageId = row?.dataset.messageId ?? null;
 
   menu.hidden = false;
-  menu.style.left = `${event.clientX}px`;
-  menu.style.top = `${event.clientY}px`;
+  positionMenuAtCursor(menu, event.clientX, event.clientY);
 }
 
 export function initMessageContextMenu() {
