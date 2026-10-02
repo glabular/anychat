@@ -43,6 +43,7 @@ import {
 } from "./message-context-menu.js";
 import {
   cancelMessageEdit,
+  getMessageEditSession,
   isMessageEditOpen,
 } from "./message-edit.js";
 import {
@@ -113,11 +114,25 @@ function setEmptyMessagesVisible(visible) {
   }
 }
 
-function setSendErrorVisible(visible) {
+const DEFAULT_SEND_ERROR_TEXT = "Could not send message. Try again.";
+const DEFAULT_EDIT_ERROR_TEXT = "Could not edit message. Try again.";
+const EMPTY_EDIT_ERROR_TEXT = "Message text is required.";
+
+/**
+ * @param {boolean} visible
+ * @param {string} [text] when visible, optional override for the alert copy
+ */
+function setSendErrorVisible(visible, text) {
   const error = document.getElementById("chat-send-error");
-  if (error) {
-    error.hidden = !visible;
+  if (!error) {
+    return;
   }
+  if (visible && typeof text === "string" && text.length > 0) {
+    error.textContent = text;
+  } else if (!visible) {
+    error.textContent = DEFAULT_SEND_ERROR_TEXT;
+  }
+  error.hidden = !visible;
 }
 
 function composerDraftKey(spaceId, chatId) {
@@ -233,10 +248,12 @@ function syncComposerUi() {
   }
 
   const canSend = hasDraftContent(input.value);
+  const editing = isMessageEditOpen();
   sendButton.classList.toggle("chat-send-button--ready", canSend);
   sendButton.disabled = !canSend || sendPending;
   sendButton.tabIndex = canSend ? 0 : -1;
   sendButton.setAttribute("aria-hidden", canSend ? "false" : "true");
+  sendButton.setAttribute("aria-label", editing ? "Save" : "Send");
 
   const messages = document.getElementById("chat-messages");
   const pinLatest = isChatMessagesAtLatest(messages);
@@ -1482,7 +1499,9 @@ export function initChatComposer(
   postChatMessage,
   pushOptimisticMessage,
   markOptimisticMessageSent,
-  markOptimisticMessageFailed
+  markOptimisticMessageFailed,
+  editChatMessage,
+  applyEditedChatMessage
 ) {
   const composer = document.getElementById("chat-composer");
   const input = document.getElementById("chat-message-input");
@@ -1511,8 +1530,59 @@ export function initChatComposer(
   composer.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    // Save-while-editing is wired in a later step; do not send a new message.
     if (isMessageEditOpen()) {
+      const session = getMessageEditSession();
+      const text = input.value.trim();
+      if (!session || sendPending) {
+        return;
+      }
+
+      if (!text) {
+        setSendErrorVisible(true, EMPTY_EDIT_ERROR_TEXT);
+        return;
+      }
+
+      if (text === session.originalText.trim()) {
+        setSendErrorVisible(false);
+        cancelMessageEdit({ restoreFocus: true });
+        return;
+      }
+
+      setSendErrorVisible(false);
+      sendPending = true;
+      input.disabled = true;
+      sendButton.disabled = true;
+
+      try {
+        const updated = await editChatMessage?.(
+          session.spaceId,
+          session.chatId,
+          session.messageId,
+          text
+        );
+        if (
+          openChat?.spaceId === session.spaceId
+          && openChat?.chatId === session.chatId
+          && updated
+        ) {
+          applyEditedChatMessage?.(updated);
+        }
+        cancelMessageEdit({ restoreFocus: true });
+      } catch (error) {
+        console.error("Could not edit message:", error);
+        setSendErrorVisible(true, DEFAULT_EDIT_ERROR_TEXT);
+      } finally {
+        sendPending = false;
+        input.disabled = false;
+        sendButton.disabled = false;
+        syncComposerUi();
+        if (
+          openChat?.spaceId === session.spaceId
+          && openChat?.chatId === session.chatId
+        ) {
+          input.focus();
+        }
+      }
       return;
     }
 

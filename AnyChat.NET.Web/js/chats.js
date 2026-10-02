@@ -1,5 +1,6 @@
 import {
   chatMessagesStreamUrl,
+  editChatMessage,
   fetchChats,
   postChatMessage,
   spacesUrl,
@@ -951,6 +952,31 @@ function applyMergeResultToDom(state, result, options = {}) {
 
   rerenderOpenChatMessagesPreservingViewport(state.messages);
   return 1;
+}
+
+/**
+ * Apply a PATCH edit response to the open chat (state + bubble remount).
+ * @param {object} message ChatMessageDto from edit API
+ * @returns {boolean} true if the open chat accepted the update
+ */
+export function applyEditedChatMessage(message) {
+  const state = chatHistoryState;
+  if (!state || !message || typeof message !== "object") {
+    return false;
+  }
+  if (typeof message.id !== "string" || message.id.length === 0) {
+    return false;
+  }
+
+  const result = mergeIncomingMessageIntoState(state, message);
+  applyMergeResultToDom(state, result, {
+    scrollMode: "ifAtLatest",
+    refreshContent: true,
+  });
+  if (result.kind !== "noop") {
+    flashEditedMessageById(message.id);
+  }
+  return result.kind !== "noop";
 }
 
 /**
@@ -2528,7 +2554,9 @@ initChatComposer(
   postChatMessage,
   pushOptimisticMessage,
   markOptimisticMessageSent,
-  markOptimisticMessageFailed
+  markOptimisticMessageFailed,
+  editChatMessage,
+  applyEditedChatMessage
 );
 
 export function populateChatsList(chats) {

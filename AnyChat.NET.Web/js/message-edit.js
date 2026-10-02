@@ -1,6 +1,6 @@
 /**
  * Edit-mode session for correcting an own message in the composer.
- * Save (PATCH) is wired in a later step; submit is ignored while editing.
+ * Save uses PATCH via the composer submit path in chat-view.
  */
 
 /** @type {{
