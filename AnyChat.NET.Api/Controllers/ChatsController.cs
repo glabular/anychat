@@ -399,6 +399,63 @@ public class ChatsController(
         }
     }
 
+    [HttpPatch("{chatId}/messages/{messageId}")]
+    public async Task<IActionResult> EditMessage(
+        string spaceId,
+        string chatId,
+        string messageId,
+        [FromBody] EditSpaceChatMessageRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(messageId))
+        {
+            return BadRequest(new { error = "Message id is required." });
+        }
+
+        var text = request.Text?.Trim();
+
+        if (string.IsNullOrEmpty(text))
+        {
+            return BadRequest(new { error = "Message text is required." });
+        }
+
+        var client = session.TryGetClient();
+
+        if (client is null)
+        {
+            return AnytypeAuthExceptionFilter.CreateMissingResult();
+        }
+
+        try
+        {
+            await client.Chats.EditMessageAsync(
+                spaceId,
+                chatId,
+                messageId,
+                new EditChatMessageRequest { Text = text });
+
+            var message = await client.Chats.GetMessageAsync(spaceId, chatId, messageId);
+            var participantId = await memberResolver.ResolveParticipantIdAsync(spaceId);
+            var replyPreviewById = await BuildReplyPreviewLookupAsync(
+                client.Chats,
+                spaceId,
+                chatId,
+                [message]);
+
+            return Ok(MapMessage(
+                message,
+                participantId,
+                LookupReplyPreview(message, replyPreviewById)));
+        }
+        catch (Exception ex) when (AnytypeAuthExceptionFilter.IsAnytypeAuthFailure(ex))
+        {
+            return AnytypeAuthExceptionFilter.CreateInvalidResult();
+        }
+        catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
+        {
+            return AnytypeUnavailableExceptionFilter.CreateResult();
+        }
+    }
+
     private async Task<bool> TryLearnIdentityAsync(string spaceId, string chatId, string messageId)
     {
         var client = session.TryGetClient();
