@@ -7,8 +7,58 @@ let menuBound = false;
 /** @type {string | null} */
 let targetMessageId = null;
 
+/**
+ * Per-action enablement. Flip `enabled` (or call setMessageContextMenuActionEnabled)
+ * when that feature ships; syncMessageContextMenuActions applies disabled UI.
+ * @type {Record<string, { enabled: boolean }>}
+ */
+const MESSAGE_CONTEXT_MENU_ACTIONS = {
+  reply: { enabled: false },
+  copyText: { enabled: false },
+  pin: { enabled: false },
+  edit: { enabled: false },
+  copyLink: { enabled: false },
+  delete: { enabled: false },
+};
+
 function getMenu() {
   return document.getElementById("message-context-menu");
+}
+
+/**
+ * Apply MESSAGE_CONTEXT_MENU_ACTIONS to each [data-action] item.
+ */
+function syncMessageContextMenuActions() {
+  const menu = getMenu();
+  if (!menu) {
+    return;
+  }
+
+  for (const button of menu.querySelectorAll("[data-action]")) {
+    if (!(button instanceof HTMLButtonElement)) {
+      continue;
+    }
+    const actionId = button.dataset.action;
+    const enabled = Boolean(
+      actionId && MESSAGE_CONTEXT_MENU_ACTIONS[actionId]?.enabled
+    );
+    button.disabled = !enabled;
+    button.setAttribute("aria-disabled", enabled ? "false" : "true");
+  }
+}
+
+/**
+ * Turn a menu action on or off and refresh the shell.
+ * @param {string} actionId
+ * @param {boolean} enabled
+ */
+export function setMessageContextMenuActionEnabled(actionId, enabled) {
+  const entry = MESSAGE_CONTEXT_MENU_ACTIONS[actionId];
+  if (!entry) {
+    return;
+  }
+  entry.enabled = Boolean(enabled);
+  syncMessageContextMenuActions();
 }
 
 export function isMessageContextMenuOpen() {
@@ -88,6 +138,7 @@ function openMessageContextMenu(event, bubble) {
   const row = bubble.closest(".message-row");
   targetMessageId = row?.dataset.messageId ?? null;
 
+  syncMessageContextMenuActions();
   menu.hidden = false;
   positionMenuAtCursor(menu, event.clientX, event.clientY);
 }
@@ -104,6 +155,7 @@ export function initMessageContextMenu() {
   }
 
   menuBound = true;
+  syncMessageContextMenuActions();
 
   list.addEventListener("contextmenu", (event) => {
     const target = event.target;
