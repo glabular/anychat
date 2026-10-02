@@ -1008,6 +1008,18 @@ export function applyEditedChatMessage(message) {
   if (result.kind !== "noop") {
     flashEditedMessageById(message.id);
   }
+  // Same tip-preview refresh as SSE message_updated — do not wait on the stream.
+  if (
+    (result.kind === "insert" || result.kind === "confirm")
+    && isOpenChatTipMessage(state, message.id)
+  ) {
+    const previewSource = result.message ?? message;
+    updateChatListPreview(
+      state.spaceId,
+      state.chatId,
+      formatMessagePreview(previewSource, { isOneToOne: isOneToOneSpace() })
+    );
+  }
   return result.kind !== "noop";
 }
 
