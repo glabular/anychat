@@ -955,6 +955,38 @@ function applyMergeResultToDom(state, result, options = {}) {
 }
 
 /**
+ * Own, server-accepted message eligible for edit in the open chat.
+ * @param {string | null | undefined} messageId
+ * @returns {{ message: object, spaceId: string, chatId: string } | null}
+ */
+export function getOpenChatEditableMessage(messageId) {
+  const state = chatHistoryState;
+  if (!state || typeof messageId !== "string" || messageId.length === 0) {
+    return null;
+  }
+
+  const message = state.messages.find((entry) => entry?.id === messageId);
+  if (!message || message.isMine !== true) {
+    return null;
+  }
+  if (
+    message.clientSendStatus === "sending"
+    || message.clientSendStatus === "failed"
+  ) {
+    return null;
+  }
+  if (typeof message.content?.text !== "string") {
+    return null;
+  }
+
+  return {
+    message,
+    spaceId: state.spaceId,
+    chatId: state.chatId,
+  };
+}
+
+/**
  * Apply a PATCH edit response to the open chat (state + bubble remount).
  * @param {object} message ChatMessageDto from edit API
  * @returns {boolean} true if the open chat accepted the update

@@ -1,6 +1,8 @@
 /**
- * Message bubble context menu (shell open; actions stay disabled until later).
+ * Message bubble context menu (shell; actions enabled per feature).
  */
+
+import { enterMessageEdit } from "./message-edit.js";
 
 let menuBound = false;
 
@@ -8,8 +10,8 @@ let menuBound = false;
 let targetMessageId = null;
 
 /**
- * Per-action enablement. Flip `enabled` (or call setMessageContextMenuActionEnabled)
- * when that feature ships; syncMessageContextMenuActions applies disabled UI.
+ * Per-action enablement. Most stay false until their feature ships.
+ * `edit` is set dynamically when the menu opens for an eligible message.
  * @type {Record<string, { enabled: boolean }>}
  */
 const MESSAGE_CONTEXT_MENU_ACTIONS = {
@@ -126,10 +128,19 @@ function positionMenuAtCursor(menu, clientX, clientY) {
 }
 
 /**
+ * @param {string | null} messageId
+ * @returns {Promise<{ message: object, spaceId: string, chatId: string } | null>}
+ */
+async function loadEditableMessage(messageId) {
+  const { getOpenChatEditableMessage } = await import("./chats.js");
+  return getOpenChatEditableMessage(messageId);
+}
+
+/**
  * @param {MouseEvent} event
  * @param {HTMLElement} bubble
  */
-function openMessageContextMenu(event, bubble) {
+async function openMessageContextMenu(event, bubble) {
   const menu = getMenu();
   if (!menu) {
     return;
@@ -137,10 +148,41 @@ function openMessageContextMenu(event, bubble) {
 
   const row = bubble.closest(".message-row");
   targetMessageId = row?.dataset.messageId ?? null;
+  const requestMessageId = targetMessageId;
+
+  const editable = await loadEditableMessage(requestMessageId);
+  // Dismissed or another bubble opened while the lookup was in flight.
+  if (targetMessageId !== requestMessageId) {
+    return;
+  }
+  MESSAGE_CONTEXT_MENU_ACTIONS.edit.enabled = Boolean(editable);
 
   syncMessageContextMenuActions();
   menu.hidden = false;
   positionMenuAtCursor(menu, event.clientX, event.clientY);
+}
+
+async function handleEditAction(event) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (!MESSAGE_CONTEXT_MENU_ACTIONS.edit.enabled) {
+    return;
+  }
+
+  const messageId = targetMessageId;
+  const editable = await loadEditableMessage(messageId);
+  closeMessageContextMenu();
+  if (!editable) {
+    return;
+  }
+
+  enterMessageEdit({
+    messageId: editable.message.id,
+    text: editable.message.content.text,
+    spaceId: editable.spaceId,
+    chatId: editable.chatId,
+  });
 }
 
 export function initMessageContextMenu() {
@@ -150,6 +192,7 @@ export function initMessageContextMenu() {
 
   const list = document.getElementById("chat-messages");
   const menu = getMenu();
+  const editItem = document.getElementById("message-context-menu-edit");
   if (!list || !menu) {
     return;
   }
@@ -170,7 +213,11 @@ export function initMessageContextMenu() {
 
     event.preventDefault();
     event.stopPropagation();
-    openMessageContextMenu(event, bubble);
+    void openMessageContextMenu(event, bubble);
+  });
+
+  editItem?.addEventListener("click", (event) => {
+    void handleEditAction(event);
   });
 
   document.addEventListener("mousedown", (event) => {
