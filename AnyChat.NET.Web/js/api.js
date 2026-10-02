@@ -413,6 +413,28 @@ export async function postChatMessage(spaceId, chatId, text) {
 }
 
 /**
+ * Edit text of an existing chat message (Anytype EditMessageAsync via API).
+ * @param {string} spaceId
+ * @param {string} chatId
+ * @param {string} messageId
+ * @param {string} text
+ * @returns {Promise<object>} updated ChatMessageDto
+ */
+export async function editChatMessage(spaceId, chatId, messageId, text) {
+  const response = await fetch(
+    `${spacesUrl()}/${encodeURIComponent(spaceId)}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    }
+  );
+
+  await throwIfNotOk(response, `Response status: ${response.status}`);
+  return await response.json();
+}
+
+/**
  * SSE URL for live messages in one chat (proxied by the API).
  * @param {string} spaceId
  * @param {string} chatId
