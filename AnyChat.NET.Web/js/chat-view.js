@@ -43,8 +43,12 @@ import {
 } from "./message-context-menu.js";
 import {
   cancelMessageEdit,
+  clearAllParkedMessageEdits,
+  enterMessageEdit,
   getMessageEditSession,
   isMessageEditOpen,
+  parkActiveMessageEdit,
+  restoreParkedMessageEdit,
 } from "./message-edit.js";
 import {
   closeDeleteChatConfirm,
@@ -448,8 +452,9 @@ export function hideChatPanel(options = {}) {
   const placeholder = document.getElementById("main-placeholder");
 
   rememberOpenChatScrollPosition();
-  // Restore pre-edit draft before persisting so edit text is not saved as a draft.
-  cancelMessageEdit({ restoreFocus: false });
+  // Park edit (with in-progress text) and put compose draft back so persist
+  // does not store edit text or show a list Draft indicator for it.
+  parkActiveMessageEdit();
   persistOutgoingDraft(openChat, { markInList: markListDraft });
   const input = getChatMessageInput();
   if (input) {
@@ -643,7 +648,8 @@ export function initChatViewCloseBindings() {
 export function beginOpenChatMessages() {
   closeMemberProfilePanel({ restoreFocus: false });
   closeMessageContextMenu();
-  cancelMessageEdit({ restoreFocus: false });
+  // Do not cancel/park edit here — setOpenChat already parks the previous chat
+  // and restores a parked edit for the chat being opened.
   const loadingEl = document.getElementById("chat-messages-loading");
   const wasLoadingVisible = Boolean(loadingEl && !loadingEl.hidden);
   const emptyEl = document.getElementById("chat-messages-empty");
@@ -692,11 +698,12 @@ export function setOpenChat(spaceId, chatId) {
   ) {
     rememberOpenChatScrollPosition();
   }
-  // Restore pre-edit draft before persisting so edit text is not saved as a draft.
-  cancelMessageEdit({ restoreFocus: false });
+  // Park edit text separately; persist only the real compose draft.
+  parkActiveMessageEdit();
   persistOutgoingDraft(outgoing, { markInList: true });
   openChat = { spaceId, chatId };
   restoreComposerDraftToInput(openChat);
+  restoreParkedMessageEdit(spaceId, chatId);
   setSendErrorVisible(false);
 }
 
@@ -737,6 +744,8 @@ export function clearMessageProfilesContext() {
 
 /** Drop in-memory drafts after logout so text does not survive a new session. */
 export function clearComposerSessionState() {
+  cancelMessageEdit({ restoreFocus: false });
+  clearAllParkedMessageEdits();
   composerDrafts.clear();
   listDraftIndicators.clear();
 }
@@ -1507,7 +1516,8 @@ export function initChatComposer(
   markOptimisticMessageSent,
   markOptimisticMessageFailed,
   editChatMessage,
-  applyEditedChatMessage
+  applyEditedChatMessage,
+  getLatestOpenChatEditableMessage
 ) {
   const composer = document.getElementById("chat-composer");
   const input = document.getElementById("chat-message-input");
@@ -1525,6 +1535,38 @@ export function initChatComposer(
   });
 
   input.addEventListener("keydown", (event) => {
+    if (
+      event.key === "ArrowUp"
+      && !event.isComposing
+      && !event.altKey
+      && !event.ctrlKey
+      && !event.metaKey
+      && !event.shiftKey
+    ) {
+      // While editing, keep normal caret navigation in the composer text.
+      if (isMessageEditOpen()) {
+        return;
+      }
+      // Non-empty draft: ArrowUp moves the caret; do not enter edit mode.
+      if (input.value.trim().length > 0) {
+        return;
+      }
+
+      const editable = getLatestOpenChatEditableMessage?.() ?? null;
+      if (!editable) {
+        return;
+      }
+
+      event.preventDefault();
+      enterMessageEdit({
+        messageId: editable.message.id,
+        text: editable.message.content.text,
+        spaceId: editable.spaceId,
+        chatId: editable.chatId,
+      });
+      return;
+    }
+
     if (event.key !== "Enter" || event.shiftKey || event.isComposing) {
       return;
     }

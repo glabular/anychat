@@ -987,6 +987,31 @@ export function getOpenChatEditableMessage(messageId) {
 }
 
 /**
+ * Newest eligible own message in the loaded open-chat window (no history seek).
+ * @returns {{ message: object, spaceId: string, chatId: string } | null}
+ */
+export function getLatestOpenChatEditableMessage() {
+  const state = chatHistoryState;
+  if (!state?.messages?.length) {
+    return null;
+  }
+
+  for (let index = state.messages.length - 1; index >= 0; index -= 1) {
+    const message = state.messages[index];
+    const id = message?.id;
+    if (typeof id !== "string" || id.length === 0) {
+      continue;
+    }
+    const editable = getOpenChatEditableMessage(id);
+    if (editable) {
+      return editable;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Apply a PATCH edit response to the open chat (state + bubble remount).
  * @param {object} message ChatMessageDto from edit API
  * @returns {boolean} true if the open chat accepted the update
@@ -2600,7 +2625,8 @@ initChatComposer(
   markOptimisticMessageSent,
   markOptimisticMessageFailed,
   editChatMessage,
-  applyEditedChatMessage
+  applyEditedChatMessage,
+  getLatestOpenChatEditableMessage
 );
 
 export function populateChatsList(chats) {
