@@ -42,6 +42,10 @@ import {
   isMessageContextMenuOpen,
 } from "./message-context-menu.js";
 import {
+  cancelMessageEdit,
+  isMessageEditOpen,
+} from "./message-edit.js";
+import {
   closeDeleteChatConfirm,
   isDeleteChatConfirmOpen,
 } from "./delete-chat-confirm.js";
@@ -427,6 +431,8 @@ export function hideChatPanel(options = {}) {
   const placeholder = document.getElementById("main-placeholder");
 
   rememberOpenChatScrollPosition();
+  // Restore pre-edit draft before persisting so edit text is not saved as a draft.
+  cancelMessageEdit({ restoreFocus: false });
   persistOutgoingDraft(openChat, { markInList: markListDraft });
   const input = getChatMessageInput();
   if (input) {
@@ -487,7 +493,7 @@ export function closeOpenChat() {
   return true;
 }
 
-/** Escape: rename → delete confirm → logout confirm → create-space → create-chat → header menu → member profile → open chat. */
+/** Escape: rename → delete confirm → logout confirm → create-space → create-chat → header menu → message menu → message edit → member profile → open chat. */
 export function initChatViewCloseBindings() {
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") {
@@ -525,6 +531,11 @@ export function initChatViewCloseBindings() {
     }
 
     if (closeMessageContextMenu()) {
+      event.preventDefault();
+      return;
+    }
+
+    if (cancelMessageEdit({ restoreFocus: true })) {
       event.preventDefault();
       return;
     }
@@ -587,6 +598,12 @@ export function initChatViewCloseBindings() {
       return;
     }
 
+    if (isMessageEditOpen()) {
+      event.preventDefault();
+      cancelMessageEdit({ restoreFocus: true });
+      return;
+    }
+
     if (isMemberProfilePanelOpen()) {
       event.preventDefault();
       closeMemberProfilePanel({ restoreFocus: true });
@@ -609,6 +626,7 @@ export function initChatViewCloseBindings() {
 export function beginOpenChatMessages() {
   closeMemberProfilePanel({ restoreFocus: false });
   closeMessageContextMenu();
+  cancelMessageEdit({ restoreFocus: false });
   const loadingEl = document.getElementById("chat-messages-loading");
   const wasLoadingVisible = Boolean(loadingEl && !loadingEl.hidden);
   const emptyEl = document.getElementById("chat-messages-empty");
@@ -657,6 +675,8 @@ export function setOpenChat(spaceId, chatId) {
   ) {
     rememberOpenChatScrollPosition();
   }
+  // Restore pre-edit draft before persisting so edit text is not saved as a draft.
+  cancelMessageEdit({ restoreFocus: false });
   persistOutgoingDraft(outgoing, { markInList: true });
   openChat = { spaceId, chatId };
   restoreComposerDraftToInput(openChat);
@@ -1490,6 +1510,11 @@ export function initChatComposer(
 
   composer.addEventListener("submit", async (event) => {
     event.preventDefault();
+
+    // Save-while-editing is wired in a later step; do not send a new message.
+    if (isMessageEditOpen()) {
+      return;
+    }
 
     const text = input.value.trim();
     const target = openChat;
