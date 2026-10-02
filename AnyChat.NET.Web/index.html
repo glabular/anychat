@@ -443,6 +443,20 @@
             Could not send message. Try again.
           </div>
           <form id="chat-composer" class="chat-composer">
+            <div
+              id="message-edit-banner"
+              class="message-edit-banner"
+              hidden
+            >
+              <span class="message-edit-banner-label">Editing message</span>
+              <button
+                type="button"
+                id="message-edit-cancel"
+                class="message-edit-banner-cancel"
+              >
+                Cancel
+              </button>
+            </div>
             <div class="chat-composer-pill">
               <textarea
                 id="chat-message-input"

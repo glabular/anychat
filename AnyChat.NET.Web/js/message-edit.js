@@ -12,6 +12,8 @@
  * } | null} */
 let session = null;
 
+let cancelButtonBound = false;
+
 function getChatMessageInput() {
   const input = document.getElementById("chat-message-input");
   return input instanceof HTMLTextAreaElement ? input : null;
@@ -21,8 +23,19 @@ function getComposer() {
   return document.getElementById("chat-composer");
 }
 
+function getEditBanner() {
+  return document.getElementById("message-edit-banner");
+}
+
 function setComposerEditingClass(editing) {
   getComposer()?.classList.toggle("chat-composer--editing", editing);
+}
+
+function setEditBannerVisible(visible) {
+  const banner = getEditBanner();
+  if (banner) {
+    banner.hidden = !visible;
+  }
 }
 
 function syncInputAfterProgrammaticChange() {
@@ -31,6 +44,35 @@ function syncInputAfterProgrammaticChange() {
     return;
   }
   input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+/**
+ * @param {string | null | undefined} messageId
+ * @param {boolean} editing
+ */
+function setMessageBubbleEditing(messageId, editing) {
+  if (typeof messageId !== "string" || !messageId) {
+    return;
+  }
+
+  const list = document.getElementById("chat-message-list");
+  const row = list?.querySelector(
+    `.message-row[data-message-id="${CSS.escape(messageId)}"]`
+  );
+  const bubble = row?.querySelector(".message-bubble");
+  bubble?.classList.toggle("message-bubble--editing", editing);
+}
+
+function clearEditingUi(previousMessageId) {
+  setComposerEditingClass(false);
+  setEditBannerVisible(false);
+  setMessageBubbleEditing(previousMessageId, false);
+}
+
+function showEditingUi(messageId) {
+  setComposerEditingClass(true);
+  setEditBannerVisible(true);
+  setMessageBubbleEditing(messageId, true);
 }
 
 export function isMessageEditOpen() {
@@ -70,6 +112,8 @@ export function enterMessageEdit({ messageId, text, spaceId, chatId }) {
     return false;
   }
 
+  const previousMessageId = session?.messageId ?? null;
+
   if (!session) {
     session = {
       messageId,
@@ -88,10 +132,14 @@ export function enterMessageEdit({ messageId, text, spaceId, chatId }) {
     };
   }
 
+  if (previousMessageId && previousMessageId !== messageId) {
+    setMessageBubbleEditing(previousMessageId, false);
+  }
+
   input.value = text;
   const end = text.length;
   input.setSelectionRange(end, end);
-  setComposerEditingClass(true);
+  showEditingUi(messageId);
   syncInputAfterProgrammaticChange();
   input.focus({ preventScroll: true });
   return true;
@@ -107,9 +155,9 @@ export function cancelMessageEdit({ restoreFocus = false } = {}) {
     return false;
   }
 
-  const { preEditDraft } = session;
+  const { preEditDraft, messageId } = session;
   session = null;
-  setComposerEditingClass(false);
+  clearEditingUi(messageId);
 
   const input = getChatMessageInput();
   if (input) {
@@ -121,4 +169,21 @@ export function cancelMessageEdit({ restoreFocus = false } = {}) {
   }
 
   return true;
+}
+
+/** Wire the banner Cancel control once. */
+export function initMessageEditUi() {
+  if (cancelButtonBound) {
+    return;
+  }
+
+  const cancelButton = document.getElementById("message-edit-cancel");
+  if (!(cancelButton instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  cancelButtonBound = true;
+  cancelButton.addEventListener("click", () => {
+    cancelMessageEdit({ restoreFocus: true });
+  });
 }

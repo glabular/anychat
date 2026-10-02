@@ -1127,6 +1127,12 @@ function createMessageRow(message) {
 
   const bubble = document.createElement("div");
   bubble.className = "message-bubble";
+  if (
+    typeof message.id === "string"
+    && getMessageEditSession()?.messageId === message.id
+  ) {
+    bubble.classList.add("message-bubble--editing");
+  }
 
   const author = resolveMessageAuthor(message);
   if (author) {
