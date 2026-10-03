@@ -14,6 +14,8 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 - FAQ pane
 - Reply messages show a quote (author + one-line parent text); click jumps to the parent within a small older-page seek budget; empty parent text shows as Attachment
 - Edited messages show a quiet edited mark; hover shows when it was last changed
+- Message bubble context menu (right-click); Edit enabled for own sent messages
+- Edit your own messages: context menu or empty-composer ArrowUp, Save in the composer, park in-progress edits across chat switches
 
 ### Changed
 

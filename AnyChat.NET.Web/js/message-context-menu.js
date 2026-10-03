@@ -50,6 +50,23 @@ function syncMessageContextMenuActions() {
 }
 
 /**
+ * Show Edit only for own bubbles (with a server message id). Others never see it.
+ * @param {boolean} visible
+ */
+function setEditMenuItemVisible(visible) {
+  const editItem = document.getElementById("message-context-menu-edit-item");
+  const editSeparator = document.getElementById(
+    "message-context-menu-edit-separator"
+  );
+  if (editItem) {
+    editItem.hidden = !visible;
+  }
+  if (editSeparator) {
+    editSeparator.hidden = !visible;
+  }
+}
+
+/**
  * Turn a menu action on or off and refresh the shell.
  * @param {string} actionId
  * @param {boolean} enabled
@@ -150,7 +167,17 @@ async function openMessageContextMenu(event, bubble) {
   targetMessageId = row?.dataset.messageId ?? null;
   const requestMessageId = targetMessageId;
 
-  const editable = await loadEditableMessage(requestMessageId);
+  // Own rows only (never show Edit on others’ bubbles).
+  const isOwnBubble =
+    Boolean(row?.classList.contains("message-row--mine"))
+    && typeof requestMessageId === "string"
+    && requestMessageId.length > 0;
+
+  setEditMenuItemVisible(isOwnBubble);
+
+  const editable = isOwnBubble
+    ? await loadEditableMessage(requestMessageId)
+    : null;
   // Dismissed or another bubble opened while the lookup was in flight.
   if (targetMessageId !== requestMessageId) {
     return;

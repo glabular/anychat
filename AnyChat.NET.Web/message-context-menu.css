@@ -30,6 +30,10 @@
   background-color: var(--color-border);
 }
 
+.message-context-menu-list > [hidden] {
+  display: none;
+}
+
 .message-context-menu-item {
   box-sizing: border-box;
   display: flex;

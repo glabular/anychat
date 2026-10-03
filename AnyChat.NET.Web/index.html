@@ -1054,8 +1054,13 @@
             <span class="message-context-menu-label">Pin</span>
           </button>
         </li>
-        <li role="separator" class="message-context-menu-separator"></li>
-        <li role="none">
+        <li
+          id="message-context-menu-edit-separator"
+          role="separator"
+          class="message-context-menu-separator"
+          hidden
+        ></li>
+        <li id="message-context-menu-edit-item" role="none" hidden>
           <button
             type="button"
             id="message-context-menu-edit"
