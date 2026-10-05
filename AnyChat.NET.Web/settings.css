@@ -382,15 +382,15 @@ body.is-settings .main {
 
 .settings-sort-spaces-mark {
   flex: 0 0 auto;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 8px;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: var(--color-surface-hover);
   color: var(--color-text);
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 600;
   line-height: 1;
 }
