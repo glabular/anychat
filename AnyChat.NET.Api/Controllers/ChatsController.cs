@@ -684,10 +684,13 @@ public class ChatsController(
             {
                 throw;
             }
+            catch (AnytypeApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {                
+                previewById[replyId] = new ReplyPreview(null, null, Deleted: true);
+            }
             catch (Exception)
             {
-                // Parent missing (usually deleted): mark so quotes do not look like attachments.
-                previewById[replyId] = new ReplyPreview(null, null, Deleted: true);
+                // Soft-fail other errors: leave missing (quote stays unresolved).
             }
         }
 
@@ -761,18 +764,14 @@ public class ChatsController(
                 Text = message.Content?.Text,
             },
             ReplyToMessageId = replyToMessageId,
-            ReplyToText = replyToMessageId is null
-                || replyPreview is null
-                || replyPreview.Value.Deleted
+            ReplyToText = replyToMessageId is null || replyPreview?.Deleted == true
                 ? null
-                : replyPreview.Value.Text,
-            ReplyToAuthorName = replyToMessageId is null
-                || replyPreview is null
-                || replyPreview.Value.Deleted
+                : replyPreview?.Text,
+            ReplyToAuthorName = replyToMessageId is null || replyPreview?.Deleted == true
                 ? null
-                : replyPreview.Value.AuthorName,
+                : replyPreview?.AuthorName,
             ReplyToMessageDeleted = replyToMessageId is not null
-                && (replyPreview is null || replyPreview.Value.Deleted),
+                && replyPreview?.Deleted == true,
             CreatedAt = message.CreatedAt,
             ModifiedAt = message.ModifiedAt,
             IsMine = isMine,

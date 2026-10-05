@@ -1112,17 +1112,24 @@ function createReplyQuote(message) {
       : "Go to replied message"
   );
 
+  if (parentDeleted) {
+    // One quiet line — do not repeat "deleted" as author + body.
+    const deletedEl = document.createElement("span");
+    deletedEl.className =
+      "message-reply-quote-text message-reply-quote-text--placeholder";
+    deletedEl.textContent = "Deleted message";
+    quote.appendChild(deletedEl);
+    return quote;
+  }
+
   const authorEl = document.createElement("span");
   authorEl.className = "message-reply-quote-author";
-  authorEl.textContent = parentDeleted ? "Deleted message" : authorName || "Unknown";
+  authorEl.textContent = authorName || "Unknown";
   quote.appendChild(authorEl);
 
   const textEl = document.createElement("span");
   textEl.className = "message-reply-quote-text";
-  if (parentDeleted) {
-    textEl.classList.add("message-reply-quote-text--placeholder");
-    textEl.textContent = "This message was deleted";
-  } else if (replyToText) {
+  if (replyToText) {
     textEl.textContent = replyToText;
   } else {
     textEl.classList.add("message-reply-quote-text--placeholder");

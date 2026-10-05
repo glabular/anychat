@@ -34,9 +34,7 @@ public sealed class ChatMessageDto
     public string? ReplyToAuthorName { get; init; }
 
     /// <summary>
-    /// True when this is a reply and the parent message could not be resolved
-    /// (typically deleted). Quote UI should show a deleted placeholder instead of
-    /// Attachment / Unknown.
+    /// True when this is a reply and the parent message was not found (deleted).
     /// </summary>
     public bool ReplyToMessageDeleted { get; init; }
 
