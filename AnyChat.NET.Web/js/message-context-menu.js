@@ -9,9 +9,12 @@ let menuBound = false;
 /** @type {string | null} */
 let targetMessageId = null;
 
+/** @type {string | null} Plain text to copy for the open menu target. */
+let targetCopyText = null;
+
 /**
  * Per-action enablement. Most stay false until their feature ships.
- * `edit` is set dynamically when the menu opens for an eligible message.
+ * `edit` / `copyText` are set dynamically when the menu opens.
  * @type {Record<string, { enabled: boolean }>}
  */
 const MESSAGE_CONTEXT_MENU_ACTIONS = {
@@ -101,7 +104,50 @@ export function closeMessageContextMenu() {
 
   menu.hidden = true;
   targetMessageId = null;
+  targetCopyText = null;
   return true;
+}
+
+/**
+ * Visible bubble body text suitable for Copy text (not reply-quote lines).
+ * @param {HTMLElement} bubble
+ * @returns {string | null}
+ */
+function getCopyableTextFromBubble(bubble) {
+  const textEl = bubble.querySelector(":scope > .message-bubble-text");
+  const text = textEl?.textContent ?? "";
+  if (typeof text !== "string" || text.trim().length === 0) {
+    return null;
+  }
+  return text;
+}
+
+/**
+ * @param {string} text
+ * @returns {Promise<boolean>}
+ */
+async function copyTextToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Fall through to execCommand for older WebView2 cases.
+  }
+
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return Boolean(ok);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -166,6 +212,8 @@ async function openMessageContextMenu(event, bubble) {
   const row = bubble.closest(".message-row");
   targetMessageId = row?.dataset.messageId ?? null;
   const requestMessageId = targetMessageId;
+  targetCopyText = getCopyableTextFromBubble(bubble);
+  MESSAGE_CONTEXT_MENU_ACTIONS.copyText.enabled = targetCopyText !== null;
 
   // Own rows only (never show Edit on others’ bubbles).
   const isOwnBubble =
@@ -187,6 +235,19 @@ async function openMessageContextMenu(event, bubble) {
   syncMessageContextMenuActions();
   menu.hidden = false;
   positionMenuAtCursor(menu, event.clientX, event.clientY);
+}
+
+async function handleCopyTextAction(event) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (!MESSAGE_CONTEXT_MENU_ACTIONS.copyText.enabled || targetCopyText === null) {
+    return;
+  }
+
+  const text = targetCopyText;
+  closeMessageContextMenu();
+  await copyTextToClipboard(text);
 }
 
 async function handleEditAction(event) {
@@ -220,6 +281,7 @@ export function initMessageContextMenu() {
   const list = document.getElementById("chat-messages");
   const menu = getMenu();
   const editItem = document.getElementById("message-context-menu-edit");
+  const copyTextItem = document.getElementById("message-context-menu-copy-text");
   if (!list || !menu) {
     return;
   }
@@ -241,6 +303,10 @@ export function initMessageContextMenu() {
     event.preventDefault();
     event.stopPropagation();
     void openMessageContextMenu(event, bubble);
+  });
+
+  copyTextItem?.addEventListener("click", (event) => {
+    void handleCopyTextAction(event);
   });
 
   editItem?.addEventListener("click", (event) => {
