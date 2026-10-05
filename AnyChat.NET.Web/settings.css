@@ -342,7 +342,6 @@ body.is-settings .main {
 
 .settings-sort-spaces {
   padding: 2rem 2.5rem;
-  max-width: 36rem;
   overflow-y: auto;
 }
 
