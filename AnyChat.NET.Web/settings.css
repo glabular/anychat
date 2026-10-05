@@ -376,7 +376,13 @@ body.is-settings .main {
   align-items: center;
   gap: 0.75rem;
   min-height: 2.75rem;
-  padding: 0.7rem 0.15rem;
+  padding: 0.7rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+
+.settings-sort-spaces-row:hover {
+  border-color: color-mix(in srgb, var(--color-text) 14%, transparent);
 }
 
 .settings-sort-spaces-mark {
