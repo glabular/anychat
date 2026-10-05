@@ -371,7 +371,7 @@ function renderSpaces(spaces) {
       down.disabled = true;
       rename.disabled = true;
     }
-    actions.append(up, down, renameWrap);
+    actions.append(renameWrap, up, down);
 
     if (nameIsAmbiguous(spaces, space) && space.object) {
       const kind = document.createElement("span");
