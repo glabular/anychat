@@ -453,7 +453,6 @@ body.is-settings .main {
   flex: 0 0 auto;
   display: flex;
   gap: 0.25rem;
-  margin-left: auto;
   align-items: center;
 }
 
