@@ -18,6 +18,7 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 - Edit your own messages: context menu or empty-composer ArrowUp, Save in the composer, park in-progress edits across chat switches
 - Context menu Copy text for message bubbles (own and others’)
 - Delete your own messages from the context menu
+- Context menu Copy message link
 
 ### Changed
 

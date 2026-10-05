@@ -13,9 +13,12 @@ let targetMessageId = null;
 /** @type {string | null} Plain text to copy for the open menu target. */
 let targetCopyText = null;
 
+/** @type {string | null} Deep-link URL for Copy message link. */
+let targetCopyLink = null;
+
 /**
  * Per-action enablement. Most stay false until their feature ships.
- * `edit` / `copyText` / `delete` are set dynamically when the menu opens.
+ * `edit` / `copyText` / `copyLink` / `delete` are set dynamically when the menu opens.
  * @type {Record<string, { enabled: boolean }>}
  */
 const MESSAGE_CONTEXT_MENU_ACTIONS = {
@@ -111,7 +114,25 @@ export function closeMessageContextMenu() {
   menu.hidden = true;
   targetMessageId = null;
   targetCopyText = null;
+  targetCopyLink = null;
   return true;
+}
+
+/**
+ * Anytype-compatible message deep link (same shape as the official client).
+ * `anytype://object?objectId={chatId}&spaceId={spaceId}&messageId={messageId}`
+ * @param {string} spaceId
+ * @param {string} chatId
+ * @param {string} messageId
+ * @returns {string}
+ */
+export function buildMessageDeepLink(spaceId, chatId, messageId) {
+  const params = new URLSearchParams();
+  // Parameter order matches Anytype Desktop’s “Copy link”.
+  params.set("objectId", chatId);
+  params.set("spaceId", spaceId);
+  params.set("messageId", messageId);
+  return `anytype://object?${params.toString()}`;
 }
 
 /**
@@ -230,6 +251,31 @@ async function openMessageContextMenu(event, bubble) {
   targetCopyText = getCopyableTextFromBubble(bubble);
   MESSAGE_CONTEXT_MENU_ACTIONS.copyText.enabled = targetCopyText !== null;
 
+  targetCopyLink = null;
+  MESSAGE_CONTEXT_MENU_ACTIONS.copyLink.enabled = false;
+  if (
+    typeof requestMessageId === "string"
+    && requestMessageId.length > 0
+  ) {
+    const { getOpenChat } = await import("./chat-view.js");
+    // Dismissed or another bubble opened while the lookup was in flight.
+    if (targetMessageId !== requestMessageId) {
+      return;
+    }
+    const open = getOpenChat();
+    if (
+      open?.spaceId
+      && open?.chatId
+    ) {
+      targetCopyLink = buildMessageDeepLink(
+        open.spaceId,
+        open.chatId,
+        requestMessageId
+      );
+      MESSAGE_CONTEXT_MENU_ACTIONS.copyLink.enabled = true;
+    }
+  }
+
   // Own rows only (never show Edit / Delete on others’ bubbles).
   const isOwnBubble =
     Boolean(row?.classList.contains("message-row--mine"))
@@ -264,6 +310,19 @@ async function handleCopyTextAction(event) {
   const text = targetCopyText;
   closeMessageContextMenu();
   await copyTextToClipboard(text);
+}
+
+async function handleCopyLinkAction(event) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (!MESSAGE_CONTEXT_MENU_ACTIONS.copyLink.enabled || targetCopyLink === null) {
+    return;
+  }
+
+  const link = targetCopyLink;
+  closeMessageContextMenu();
+  await copyTextToClipboard(link);
 }
 
 async function handleEditAction(event) {
@@ -320,6 +379,7 @@ export function initMessageContextMenu() {
   const menu = getMenu();
   const editItem = document.getElementById("message-context-menu-edit");
   const copyTextItem = document.getElementById("message-context-menu-copy-text");
+  const copyLinkItem = document.getElementById("message-context-menu-copy-link");
   const deleteItem = document.getElementById("message-context-menu-delete");
   if (!list || !menu) {
     return;
@@ -346,6 +406,10 @@ export function initMessageContextMenu() {
 
   copyTextItem?.addEventListener("click", (event) => {
     void handleCopyTextAction(event);
+  });
+
+  copyLinkItem?.addEventListener("click", (event) => {
+    void handleCopyLinkAction(event);
   });
 
   editItem?.addEventListener("click", (event) => {
