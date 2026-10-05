@@ -175,6 +175,20 @@
           </div>
           <div class="settings-nav-scroll idle-scrollbar">
             <section class="settings-category">
+              <h3 class="settings-category-title">Spaces</h3>
+              <ul class="settings-category-list">
+                <li>
+                  <button
+                    type="button"
+                    class="settings-nav-item"
+                    data-setting="sort-spaces"
+                  >
+                    Sort spaces
+                  </button>
+                </li>
+              </ul>
+            </section>
+            <section class="settings-category">
               <h3 class="settings-category-title">Application</h3>
               <ul class="settings-category-list">
                 <li>
@@ -278,6 +292,22 @@
             data-setting="faq"
             hidden
           ></div>
+          <div
+            id="settings-detail-sort-spaces"
+            class="settings-detail settings-sort-spaces idle-scrollbar"
+            data-setting="sort-spaces"
+            hidden
+          >
+            <h1 class="settings-sort-spaces-title">Sort spaces</h1>
+            <p class="settings-sort-spaces-lead">
+              Order is saved on this device. Space names are saved to Anytype.
+            </p>
+            <ul
+              id="settings-sort-spaces-list"
+              class="settings-sort-spaces-list"
+              aria-label="Spaces"
+            ></ul>
+          </div>
         </section>
         <section id="chat-panel" class="chat-panel" hidden>
           <header class="chat-panel-header">
