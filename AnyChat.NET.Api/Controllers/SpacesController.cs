@@ -87,6 +87,48 @@ public class SpacesController(
         }
     }
 
+    [HttpPatch("{spaceId}")]
+    public async Task<IActionResult> Update(
+        string spaceId,
+        [FromBody] UpdateAppSpaceRequest? request)
+    {
+        if (string.IsNullOrWhiteSpace(spaceId))
+        {
+            return BadRequest(new { error = "Space id is required." });
+        }
+
+        var name = request?.Name?.Trim() ?? string.Empty;
+
+        if (name.Length == 0)
+        {
+            return BadRequest(new { error = "Space name is required." });
+        }
+
+        var client = session.TryGetClient();
+        
+        if (client is null)
+        {
+            return AnytypeAuthExceptionFilter.CreateMissingResult();
+        }
+
+        try
+        {
+            var space = await client.Spaces.UpdateAsync(
+                spaceId,
+                new UpdateSpaceRequest { Name = name });
+
+            return Ok(await MapSpaceListItemAsync(space));
+        }
+        catch (Exception ex) when (AnytypeAuthExceptionFilter.IsAnytypeAuthFailure(ex))
+        {
+            return AnytypeAuthExceptionFilter.CreateInvalidResult();
+        }
+        catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
+        {
+            return AnytypeUnavailableExceptionFilter.CreateResult();
+        }
+    }
+
     private async Task<SpaceListItemDto> MapSpaceListItemAsync(Space space)
     {
         var displayName = await displayResolver.ResolveDisplayNameAsync(space);
