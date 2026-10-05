@@ -1,5 +1,9 @@
 import { describeSpacesLoadError, fetchSpaces } from "./api.js";
-import { getSpaceDisplayName } from "./spaces.js";
+import { orderSpaces, writeSpaceOrder } from "./space-order.js";
+import { getSpaceDisplayName, populateSpacesSidebar } from "./spaces.js";
+
+/** @type {Array<{ id: string, object?: string, icon?: unknown, displayName?: string, name?: string }>} */
+let loadedSpaces = [];
 
 function getList() {
   return document.getElementById("settings-sort-spaces-list");
@@ -100,21 +104,102 @@ function renderSpaces(spaces) {
     name.className = "settings-sort-spaces-name";
     name.textContent = getSpaceDisplayName(space);
 
-    item.append(mark, name);
+    const actions = document.createElement("div");
+    actions.className = "settings-sort-spaces-actions";
+
+    const index = spaces.indexOf(space);
+    actions.append(
+      moveButton("up", index, spaces.length),
+      moveButton("down", index, spaces.length),
+    );
 
     if (nameIsAmbiguous(spaces, space) && space.object) {
       const kind = document.createElement("span");
       kind.className = "settings-sort-spaces-kind";
       kind.textContent = space.object;
-      item.append(kind);
+      item.append(mark, name, kind, actions);
+    } else {
+      item.append(mark, name, actions);
     }
 
     list.append(item);
   }
 }
 
+/**
+ * @param {"up" | "down"} direction
+ * @param {number} index
+ * @param {number} count
+ */
+function moveButton(direction, index, count) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "settings-sort-spaces-move";
+  button.dataset.direction = direction;
+  button.dataset.index = String(index);
+  const up = direction === "up";
+  button.textContent = up ? "↑" : "↓";
+  button.setAttribute("aria-label", up ? "Move up" : "Move down");
+  button.disabled = up ? index === 0 : index === count - 1;
+  return button;
+}
+
+/**
+ * @param {number} index
+ * @param {number} delta
+ */
+function moveSpace(index, delta) {
+  const next = index + delta;
+  if (next < 0 || next >= loadedSpaces.length) {
+    return;
+  }
+
+  const spaces = loadedSpaces.slice();
+  const [moved] = spaces.splice(index, 1);
+  spaces.splice(next, 0, moved);
+  loadedSpaces = spaces;
+  writeSpaceOrder(spaces.map((space) => space.id));
+  renderSpaces(spaces);
+  populateSpacesSidebar(spaces);
+
+  const list = getList();
+  const button = list?.querySelector(
+    `.settings-sort-spaces-move[data-direction="${delta < 0 ? "up" : "down"}"][data-index="${next}"]`
+  );
+  if (button instanceof HTMLButtonElement && !button.disabled) {
+    button.focus();
+  }
+}
+
+function bindSortSpacesList() {
+  const list = getList();
+  if (!list || list.dataset.bound === "true") {
+    return;
+  }
+
+  list.dataset.bound = "true";
+  list.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLButtonElement)) {
+      return;
+    }
+    if (!target.classList.contains("settings-sort-spaces-move")) {
+      return;
+    }
+
+    const index = Number(target.dataset.index);
+    const delta = target.dataset.direction === "up" ? -1 : 1;
+    if (!Number.isInteger(index)) {
+      return;
+    }
+
+    moveSpace(index, delta);
+  });
+}
+
 /** Load the current spaces into the Sort spaces pane. */
 export async function loadSortSpacesList() {
+  bindSortSpacesList();
   const list = getList();
   if (list) {
     list.replaceChildren();
@@ -136,7 +221,8 @@ export async function loadSortSpacesList() {
     }
 
     hideStatus();
-    renderSpaces(usable);
+    loadedSpaces = orderSpaces(usable);
+    renderSpaces(loadedSpaces);
   } catch (error) {
     console.error("Could not load spaces for settings:", error);
     showStatus(describeSpacesLoadError(error), { error: true });

@@ -11,6 +11,7 @@ import {
 } from "./chats.js";
 import { setChatsCreateButtonReady } from "./chats-create-button.js";
 import { setSpacesCreateButtonReady } from "./spaces-create-button.js";
+import { orderSpaces } from "./space-order.js";
 import {
   ensureReturnSpaceId,
   exitSettings,
@@ -84,7 +85,8 @@ export function populateSpacesSidebar(spaces, options = {}) {
   const createButton = document.getElementById("spaces-create");
   clearSpaceLabels(spacesSidebar);
 
-  spaces.forEach((space, index) => {
+  const ordered = orderSpaces(spaces);
+  ordered.forEach((space, index) => {
     const spaceButton = getSpaceButton(space, index + 1);
     if (createButton) {
       spacesSidebar.insertBefore(spaceButton, createButton);
@@ -95,12 +97,12 @@ export function populateSpacesSidebar(spaces, options = {}) {
 
   setSpacesCreateButtonReady(true);
 
-  if (spaces.length > 0) {
+  if (ordered.length > 0) {
     const preferredId = options.selectSpaceId;
     const spaceId =
-      preferredId && spaces.some((space) => space.id === preferredId)
+      preferredId && ordered.some((space) => space.id === preferredId)
         ? preferredId
-        : resolveInitialSpaceId(spaces);
+        : resolveInitialSpaceId(ordered);
     if (isSettingsOpen()) {
       // User opened settings before spaces arrived — keep settings UI, remember
       // the space for Back, and do not flash the main chats placeholder.

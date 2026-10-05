@@ -413,9 +413,44 @@ body.is-settings .main {
   white-space: nowrap;
 }
 
+.settings-sort-spaces-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.settings-sort-spaces-move {
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.settings-sort-spaces-move:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.settings-sort-spaces-move:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.settings-sort-spaces-move:focus,
+.settings-sort-spaces-move:focus-visible {
+  outline: none;
+}
+
 .settings-sort-spaces-kind {
   flex: 0 0 auto;
-  margin-left: auto;
   color: var(--color-text-muted);
   font-size: 0.75rem;
 }
