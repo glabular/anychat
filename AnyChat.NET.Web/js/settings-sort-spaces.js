@@ -2,8 +2,17 @@ import { describeSpacesLoadError, fetchSpaces } from "./api.js";
 import { orderSpaces, writeSpaceOrder } from "./space-order.js";
 import { getSpaceDisplayName, populateSpacesSidebar } from "./spaces.js";
 
+/** Wait before showing a loading label. */
+const LOADING_STATUS_DELAY_MS = 10;
+
 /** @type {Array<{ id: string, object?: string, icon?: unknown, displayName?: string, name?: string }>} */
 let loadedSpaces = [];
+
+/** @type {ReturnType<typeof setTimeout> | null} */
+let loadingStatusTimer = null;
+
+/** Bumps when a new load starts so a late fetch cannot overwrite a newer one. */
+let loadGeneration = 0;
 
 function getList() {
   return document.getElementById("settings-sort-spaces-list");
@@ -37,6 +46,20 @@ function hideStatus() {
   status.hidden = true;
   status.textContent = "";
   status.classList.remove("settings-sort-spaces-status--error");
+}
+
+function clearLoadingStatusTimer() {
+  if (loadingStatusTimer !== null) {
+    clearTimeout(loadingStatusTimer);
+    loadingStatusTimer = null;
+  }
+}
+
+/**
+ * @param {boolean} busy
+ */
+function setListBusy(busy) {
+  getList()?.setAttribute("aria-busy", busy ? "true" : "false");
 }
 
 /**
@@ -200,15 +223,31 @@ function bindSortSpacesList() {
 /** Load the current spaces into the Sort spaces pane. */
 export async function loadSortSpacesList() {
   bindSortSpacesList();
-  const list = getList();
-  if (list) {
-    list.replaceChildren();
-  }
 
-  showStatus("Loading spaces…");
+  const generation = ++loadGeneration;
+  clearLoadingStatusTimer();
+  setListBusy(true);
+
+  // Keep any previous rows; only clear when there is nothing to show yet.
+  if (loadedSpaces.length === 0) {
+    getList()?.replaceChildren();
+    hideStatus();
+    loadingStatusTimer = setTimeout(() => {
+      loadingStatusTimer = null;
+      if (generation === loadGeneration) {
+        showStatus("Loading spaces…");
+      }
+    }, LOADING_STATUS_DELAY_MS);
+  }
 
   try {
     const spaces = await fetchSpaces();
+    if (generation !== loadGeneration) {
+      return;
+    }
+
+    clearLoadingStatusTimer();
+
     if (!Array.isArray(spaces)) {
       showStatus("Spaces response was invalid.", { error: true });
       return;
@@ -216,6 +255,8 @@ export async function loadSortSpacesList() {
 
     const usable = spaces.filter((space) => space && typeof space.id === "string");
     if (usable.length === 0) {
+      loadedSpaces = [];
+      getList()?.replaceChildren();
       showStatus("No spaces yet.");
       return;
     }
@@ -224,7 +265,16 @@ export async function loadSortSpacesList() {
     loadedSpaces = orderSpaces(usable);
     renderSpaces(loadedSpaces);
   } catch (error) {
+    if (generation !== loadGeneration) {
+      return;
+    }
+
+    clearLoadingStatusTimer();
     console.error("Could not load spaces for settings:", error);
     showStatus(describeSpacesLoadError(error), { error: true });
+  } finally {
+    if (generation === loadGeneration) {
+      setListBusy(false);
+    }
   }
 }
