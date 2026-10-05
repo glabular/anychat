@@ -346,10 +346,18 @@ body.is-settings .main {
 }
 
 .settings-sort-spaces-title {
-  margin: 0 0 2rem;
+  margin: 0 0 0.5rem;
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--color-text);
+}
+
+.settings-sort-spaces-lead {
+  margin: 0 0 2rem;
+  max-width: 36rem;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
 }
 
 .settings-sort-spaces-status {
