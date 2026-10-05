@@ -2,6 +2,7 @@ import { deleteApiKey, fetchAppVersion } from "./api.js";
 import { noteAboutClick } from "./about-confetti.js";
 import { openApiKeySetupModal } from "./api-key-setup-modal.js";
 import { ensureFaqMounted } from "./settings-faq.js";
+import { loadSortSpacesList } from "./settings-sort-spaces.js";
 import {
   clearComposerSessionState,
   hideChatPanel,
@@ -249,6 +250,10 @@ function selectSetting(settingId) {
 
   if (settingId === "faq") {
     ensureFaqMounted();
+  }
+
+  if (settingId === "sort-spaces") {
+    void loadSortSpacesList();
   }
 }
 
