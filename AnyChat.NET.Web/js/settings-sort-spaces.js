@@ -1,9 +1,21 @@
-import { describeSpacesLoadError, fetchSpaces } from "./api.js";
+import {
+  describeSpacesLoadError,
+  fetchSpaces,
+  renameSpace,
+} from "./api.js";
+import { isOneToOneSpaceObject } from "./space-members.js";
 import { orderSpaces, writeSpaceOrder } from "./space-order.js";
-import { getSpaceDisplayName, populateSpacesSidebar } from "./spaces.js";
+import {
+  getSpaceDisplayName,
+  populateSpacesSidebar,
+  updateSpaceLabel,
+} from "./spaces.js";
 
 /** Wait before showing a loading label. */
 const LOADING_STATUS_DELAY_MS = 10;
+
+const ONE_TO_ONE_RENAME_TOOLTIP =
+  "You can’t rename a personal one-to-one space.";
 
 /** @type {Array<{ id: string, object?: string, icon?: unknown, displayName?: string, name?: string }>} */
 let loadedSpaces = [];
@@ -13,6 +25,13 @@ let loadingStatusTimer = null;
 
 /** Bumps when a new load starts so a late fetch cannot overwrite a newer one. */
 let loadGeneration = 0;
+
+/** @type {string | null} */
+let editingSpaceId = null;
+/** @type {string} */
+let renameInitialValue = "";
+let renameSaveInFlight = false;
+let renameSaveToken = 0;
 
 function getList() {
   return document.getElementById("settings-sort-spaces-list");
@@ -99,6 +118,197 @@ function nameIsAmbiguous(spaces, space) {
 }
 
 /**
+ * @param {unknown} error
+ */
+function describeRenameError(error) {
+  const status = error && typeof error === "object" ? error.status : undefined;
+
+  if (status === 503) {
+    return "Lost connection to Anytype. Open the official Anytype app and try again.";
+  }
+
+  if (status === 400) {
+    return "Space name is required.";
+  }
+
+  if (typeof status === "number") {
+    return `Could not rename space (HTTP ${status}).`;
+  }
+
+  if (error instanceof TypeError) {
+    return "Cannot reach the API.";
+  }
+
+  return "Could not rename space.";
+}
+
+/**
+ * @param {HTMLElement} row
+ * @param {string} message
+ */
+function showRowError(row, message) {
+  let errorEl = row.querySelector(".settings-sort-spaces-error");
+  if (!(errorEl instanceof HTMLElement)) {
+    errorEl = document.createElement("p");
+    errorEl.className = "settings-sort-spaces-error";
+    errorEl.setAttribute("role", "alert");
+    row.append(errorEl);
+  }
+  errorEl.hidden = false;
+  errorEl.textContent = message;
+}
+
+/**
+ * @param {HTMLElement} row
+ */
+function clearRowError(row) {
+  const errorEl = row.querySelector(".settings-sort-spaces-error");
+  if (errorEl instanceof HTMLElement) {
+    errorEl.hidden = true;
+    errorEl.textContent = "";
+  }
+}
+
+/**
+ * @param {string} spaceId
+ */
+function getRow(spaceId) {
+  return /** @type {HTMLElement | null} */ (
+    getList()?.querySelector(
+      `.settings-sort-spaces-row[data-space-id="${CSS.escape(spaceId)}"]`
+    )
+  );
+}
+
+function cancelRename({ restoreFocus = true } = {}) {
+  const spaceId = editingSpaceId;
+  editingSpaceId = null;
+  renameSaveInFlight = false;
+  renameSaveToken += 1;
+  renameInitialValue = "";
+
+  if (!spaceId) {
+    return;
+  }
+
+  renderSpaces(loadedSpaces);
+
+  if (restoreFocus) {
+    const button = getRow(spaceId)?.querySelector(
+      ".settings-sort-spaces-rename"
+    );
+    if (button instanceof HTMLButtonElement) {
+      button.focus();
+    }
+  }
+}
+
+/**
+ * @param {string} spaceId
+ */
+function beginRename(spaceId) {
+  if (renameSaveInFlight) {
+    return;
+  }
+
+  const space = loadedSpaces.find((item) => item.id === spaceId);
+  if (!space || isOneToOneSpaceObject(space.object)) {
+    return;
+  }
+
+  if (editingSpaceId && editingSpaceId !== spaceId) {
+    cancelRename({ restoreFocus: false });
+  }
+
+  editingSpaceId = spaceId;
+  renameInitialValue =
+    typeof space.name === "string" ? space.name.trim() : "";
+
+  renderSpaces(loadedSpaces);
+
+  const row = getRow(spaceId);
+  const input = row?.querySelector(".settings-sort-spaces-name-input");
+  if (input instanceof HTMLInputElement) {
+    input.focus();
+    input.select();
+  }
+}
+
+/**
+ * @param {string} spaceId
+ */
+async function saveRename(spaceId) {
+  if (editingSpaceId !== spaceId || renameSaveInFlight) {
+    return;
+  }
+
+  const row = getRow(spaceId);
+  const input = row?.querySelector(".settings-sort-spaces-name-input");
+  if (!(row instanceof HTMLElement) || !(input instanceof HTMLInputElement)) {
+    cancelRename({ restoreFocus: false });
+    return;
+  }
+
+  const nextRaw = input.value;
+  const trimmed = nextRaw.trim();
+
+  if (trimmed === renameInitialValue.trim()) {
+    cancelRename({ restoreFocus: true });
+    return;
+  }
+
+  if (trimmed.length === 0) {
+    showRowError(row, "Space name is required.");
+    input.focus();
+    return;
+  }
+
+  renameSaveInFlight = true;
+  clearRowError(row);
+  input.disabled = true;
+  const token = ++renameSaveToken;
+
+  try {
+    const updated = await renameSpace(spaceId, trimmed);
+    if (token !== renameSaveToken) {
+      return;
+    }
+
+    const index = loadedSpaces.findIndex((space) => space.id === spaceId);
+    if (index >= 0) {
+      loadedSpaces[index] = {
+        ...loadedSpaces[index],
+        ...updated,
+        id: spaceId,
+      };
+    }
+
+    editingSpaceId = null;
+    renameSaveInFlight = false;
+    renameInitialValue = "";
+    renderSpaces(loadedSpaces);
+    updateSpaceLabel(loadedSpaces[index] ?? updated);
+
+    const button = getRow(spaceId)?.querySelector(
+      ".settings-sort-spaces-rename"
+    );
+    if (button instanceof HTMLButtonElement) {
+      button.focus();
+    }
+  } catch (error) {
+    if (token !== renameSaveToken) {
+      return;
+    }
+
+    console.error("Could not rename space:", error);
+    renameSaveInFlight = false;
+    input.disabled = false;
+    showRowError(row, describeRenameError(error));
+    input.focus();
+  }
+}
+
+/**
  * @param {Array<{ id?: string, object?: string, icon?: unknown, displayName?: string, name?: string }>} spaces
  */
 function renderSpaces(spaces) {
@@ -116,6 +326,10 @@ function renderSpaces(spaces) {
 
     const item = document.createElement("li");
     item.className = "settings-sort-spaces-row";
+    item.dataset.spaceId = space.id;
+    if (editingSpaceId === space.id) {
+      item.classList.add("settings-sort-spaces-row--editing");
+    }
 
     const mark = document.createElement("span");
     mark.className = "settings-sort-spaces-mark";
@@ -123,26 +337,48 @@ function renderSpaces(spaces) {
     const icon = iconMark(space.icon);
     mark.textContent = icon || getSpaceDisplayName(space)[0]?.toLocaleUpperCase() || "#";
 
-    const name = document.createElement("span");
-    name.className = "settings-sort-spaces-name";
-    name.textContent = getSpaceDisplayName(space);
+    const nameWrap = document.createElement("div");
+    nameWrap.className = "settings-sort-spaces-name-wrap";
+
+    if (editingSpaceId === space.id) {
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "settings-sort-spaces-name-input";
+      input.value = renameInitialValue;
+      input.maxLength = 200;
+      input.autocomplete = "off";
+      input.spellcheck = false;
+      input.setAttribute("aria-label", "Space name");
+      input.disabled = renameSaveInFlight;
+      nameWrap.append(input);
+    } else {
+      const name = document.createElement("span");
+      name.className = "settings-sort-spaces-name";
+      name.textContent = getSpaceDisplayName(space);
+      nameWrap.append(name);
+    }
 
     const actions = document.createElement("div");
     actions.className = "settings-sort-spaces-actions";
 
     const index = spaces.indexOf(space);
-    actions.append(
-      moveButton("up", index, spaces.length),
-      moveButton("down", index, spaces.length),
-    );
+    const up = moveButton("up", index, spaces.length);
+    const down = moveButton("down", index, spaces.length);
+    const rename = renameButton(space);
+    if (editingSpaceId === space.id) {
+      up.disabled = true;
+      down.disabled = true;
+      rename.disabled = true;
+    }
+    actions.append(up, down, rename);
 
     if (nameIsAmbiguous(spaces, space) && space.object) {
       const kind = document.createElement("span");
       kind.className = "settings-sort-spaces-kind";
       kind.textContent = space.object;
-      item.append(mark, name, kind, actions);
+      item.append(mark, nameWrap, kind, actions);
     } else {
-      item.append(mark, name, actions);
+      item.append(mark, nameWrap, actions);
     }
 
     list.append(item);
@@ -168,10 +404,35 @@ function moveButton(direction, index, count) {
 }
 
 /**
+ * @param {{ id: string, object?: string }} space
+ */
+function renameButton(space) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "settings-sort-spaces-rename";
+  button.dataset.spaceId = space.id;
+  button.textContent = "Rename";
+
+  if (isOneToOneSpaceObject(space.object)) {
+    button.disabled = true;
+    button.title = ONE_TO_ONE_RENAME_TOOLTIP;
+    button.setAttribute("aria-label", ONE_TO_ONE_RENAME_TOOLTIP);
+  } else {
+    button.setAttribute("aria-label", "Rename space");
+  }
+
+  return button;
+}
+
+/**
  * @param {number} index
  * @param {number} delta
  */
 function moveSpace(index, delta) {
+  if (editingSpaceId || renameSaveInFlight) {
+    return;
+  }
+
   const next = index + delta;
   if (next < 0 || next >= loadedSpaces.length) {
     return;
@@ -201,22 +462,84 @@ function bindSortSpacesList() {
   }
 
   list.dataset.bound = "true";
+
   list.addEventListener("click", (event) => {
     const target = event.target;
-    if (!(target instanceof HTMLButtonElement)) {
-      return;
-    }
-    if (!target.classList.contains("settings-sort-spaces-move")) {
+    if (!(target instanceof Element)) {
       return;
     }
 
-    const index = Number(target.dataset.index);
-    const delta = target.dataset.direction === "up" ? -1 : 1;
-    if (!Number.isInteger(index)) {
+    const rename = target.closest(".settings-sort-spaces-rename");
+    if (rename instanceof HTMLButtonElement && list.contains(rename)) {
+      const spaceId = rename.dataset.spaceId;
+      if (spaceId) {
+        beginRename(spaceId);
+      }
       return;
     }
 
-    moveSpace(index, delta);
+    const move = target.closest(".settings-sort-spaces-move");
+    if (move instanceof HTMLButtonElement && list.contains(move)) {
+      const index = Number(move.dataset.index);
+      const delta = move.dataset.direction === "up" ? -1 : 1;
+      if (!Number.isInteger(index)) {
+        return;
+      }
+      moveSpace(index, delta);
+    }
+  });
+
+  list.addEventListener("keydown", (event) => {
+    if (!(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    if (!event.target.classList.contains("settings-sort-spaces-name-input")) {
+      return;
+    }
+
+    const row = event.target.closest(".settings-sort-spaces-row");
+    const spaceId = row instanceof HTMLElement ? row.dataset.spaceId : "";
+    if (!spaceId) {
+      return;
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void saveRename(spaceId);
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelRename({ restoreFocus: true });
+    }
+  });
+
+  list.addEventListener("focusout", (event) => {
+    if (!(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    if (!event.target.classList.contains("settings-sort-spaces-name-input")) {
+      return;
+    }
+
+    const row = event.target.closest(".settings-sort-spaces-row");
+    const spaceId = row instanceof HTMLElement ? row.dataset.spaceId : "";
+    if (!spaceId || editingSpaceId !== spaceId || renameSaveInFlight) {
+      return;
+    }
+
+    const next = event.relatedTarget;
+    if (next instanceof Node && row?.contains(next)) {
+      return;
+    }
+
+    // Defer so a click on another control can run first.
+    queueMicrotask(() => {
+      if (editingSpaceId === spaceId && !renameSaveInFlight) {
+        void saveRename(spaceId);
+      }
+    });
   });
 }
 
@@ -256,12 +579,16 @@ export async function loadSortSpacesList() {
     const usable = spaces.filter((space) => space && typeof space.id === "string");
     if (usable.length === 0) {
       loadedSpaces = [];
+      editingSpaceId = null;
       getList()?.replaceChildren();
       showStatus("No spaces yet.");
       return;
     }
 
     hideStatus();
+    // Drop edit mode on a full reload so the list matches the server.
+    editingSpaceId = null;
+    renameSaveInFlight = false;
     loadedSpaces = orderSpaces(usable);
     renderSpaces(loadedSpaces);
   } catch (error) {

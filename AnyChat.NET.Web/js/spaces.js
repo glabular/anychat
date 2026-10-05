@@ -437,7 +437,7 @@ export async function reconcileSpaces() {
  * Refresh label metadata for an existing space radio without reselecting.
  * @param {object} space
  */
-function updateSpaceLabel(space) {
+export function updateSpaceLabel(space) {
   const input = document.querySelector(
     `input[name="space"][value="${CSS.escape(space.id)}"]`
   );

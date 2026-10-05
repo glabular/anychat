@@ -403,6 +403,14 @@ body.is-settings .main {
   line-height: 1;
 }
 
+.settings-sort-spaces-name-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .settings-sort-spaces-name {
   min-width: 0;
   font-size: 0.95rem;
@@ -413,15 +421,52 @@ body.is-settings .main {
   white-space: nowrap;
 }
 
+.settings-sort-spaces-name-input {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-light-bg, transparent);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.settings-sort-spaces-name-input:focus,
+.settings-sort-spaces-name-input:focus-visible {
+  outline: none;
+  border-color: var(--color-text-muted);
+}
+
+.settings-sort-spaces-name-input:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.settings-sort-spaces-error {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-red);
+}
+
+.settings-sort-spaces-error[hidden] {
+  display: none;
+}
+
 .settings-sort-spaces-actions {
   flex: 0 0 auto;
   display: flex;
   gap: 0.25rem;
   margin-left: auto;
+  align-items: center;
 }
 
-.settings-sort-spaces-move {
-  width: 1.75rem;
+.settings-sort-spaces-move,
+.settings-sort-spaces-rename {
   height: 1.75rem;
   padding: 0;
   border: none;
@@ -434,18 +479,31 @@ body.is-settings .main {
   cursor: pointer;
 }
 
-.settings-sort-spaces-move:hover:not(:disabled) {
+.settings-sort-spaces-move {
+  width: 1.75rem;
+}
+
+.settings-sort-spaces-rename {
+  padding: 0 0.45rem;
+  font-size: 0.8rem;
+}
+
+.settings-sort-spaces-move:hover:not(:disabled),
+.settings-sort-spaces-rename:hover:not(:disabled) {
   background-color: var(--color-surface-hover);
   color: var(--color-text);
 }
 
-.settings-sort-spaces-move:disabled {
+.settings-sort-spaces-move:disabled,
+.settings-sort-spaces-rename:disabled {
   opacity: 0.35;
   cursor: default;
 }
 
 .settings-sort-spaces-move:focus,
-.settings-sort-spaces-move:focus-visible {
+.settings-sort-spaces-move:focus-visible,
+.settings-sort-spaces-rename:focus,
+.settings-sort-spaces-rename:focus-visible {
   outline: none;
 }
 

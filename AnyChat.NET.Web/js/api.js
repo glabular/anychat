@@ -264,6 +264,34 @@ export async function fetchSpaces() {
 }
 
 /**
+ * Rename a space (Spaces.UpdateAsync via API).
+ * @param {string} spaceId
+ * @param {string} name
+ * @returns {Promise<{
+ *   id?: string,
+ *   name?: string,
+ *   object?: string,
+ *   description?: string,
+ *   displayName?: string,
+ *   gatewayUrl?: string,
+ *   networkId?: string
+ * }>}
+ */
+export async function renameSpace(spaceId, name) {
+  const response = await fetch(
+    `${spacesUrl()}/${encodeURIComponent(spaceId)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    }
+  );
+
+  await throwIfNotOk(response, `Response status: ${response.status}`);
+  return await response.json();
+}
+
+/**
  * Create a space via the API proxy (Anytype Spaces.CreateAsync).
  * @param {string} name
  * @param {string} [description]
