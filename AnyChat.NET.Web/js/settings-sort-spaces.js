@@ -6,6 +6,7 @@ import {
 import { isOneToOneSpaceObject } from "./space-members.js";
 import { orderSpaces, writeSpaceOrder } from "./space-order.js";
 import {
+  filterVisibleSpaces,
   isSpaceHidden,
   setSpaceVisible,
 } from "./space-visibility.js";
@@ -20,6 +21,8 @@ const LOADING_STATUS_DELAY_MS = 10;
 
 const ONE_TO_ONE_RENAME_TOOLTIP =
   "You can’t rename a personal one-to-one space.";
+
+const LAST_VISIBLE_TOOLTIP = "Keep at least one space in the rail.";
 
 /** @type {Array<{ id: string, object?: string, icon?: unknown, displayName?: string, name?: string }>} */
 let loadedSpaces = [];
@@ -323,6 +326,8 @@ function renderSpaces(spaces) {
 
   list.replaceChildren();
 
+  const visibleCount = filterVisibleSpaces(spaces).length;
+
   for (const space of spaces) {
     if (!space?.id) {
       continue;
@@ -338,13 +343,34 @@ function renderSpaces(spaces) {
       item.classList.add("settings-sort-spaces-row--hidden");
     }
 
+    const spaceIsVisible = !isSpaceHidden(space.id);
+    const lastVisible = spaceIsVisible && visibleCount <= 1;
+
+    const visibleWrap = document.createElement("span");
+    visibleWrap.className = "settings-sort-spaces-visible-wrap";
+
     const visible = document.createElement("input");
     visible.type = "checkbox";
     visible.className = "settings-sort-spaces-visible";
-    visible.checked = !isSpaceHidden(space.id);
+    visible.checked = spaceIsVisible;
     visible.dataset.spaceId = space.id;
-    visible.title = "Show in spaces rail";
-    visible.setAttribute("aria-label", "Show in spaces rail");
+    visible.setAttribute(
+      "aria-label",
+      lastVisible ? LAST_VISIBLE_TOOLTIP : "Show in spaces rail"
+    );
+
+    const visibleTip = document.createElement("span");
+    visibleTip.className = "settings-sort-spaces-visible-tooltip";
+    visibleTip.setAttribute("aria-hidden", "true");
+    visibleTip.hidden = true;
+
+    if (lastVisible) {
+      visible.disabled = true;
+      visibleTip.textContent = LAST_VISIBLE_TOOLTIP;
+      visibleTip.hidden = false;
+    }
+
+    visibleWrap.append(visible, visibleTip);
 
     const mark = document.createElement("span");
     mark.className = "settings-sort-spaces-mark";
@@ -392,9 +418,9 @@ function renderSpaces(spaces) {
       const kind = document.createElement("span");
       kind.className = "settings-sort-spaces-kind";
       kind.textContent = space.object;
-      item.append(visible, mark, nameWrap, kind, actions);
+      item.append(visibleWrap, mark, nameWrap, kind, actions);
     } else {
-      item.append(visible, mark, nameWrap, actions);
+      item.append(visibleWrap, mark, nameWrap, actions);
     }
 
     list.append(item);
@@ -420,29 +446,53 @@ function moveButton(direction, index, count) {
 }
 
 /**
- * Center the tip on the Rename button in viewport coords so pane overflow
- * cannot clip it.
+ * Center a tip on its control in viewport coords so pane overflow cannot clip it.
  * @param {HTMLElement} wrap
+ * @param {string} controlSelector
+ * @param {string} tipSelector
  */
-function positionRenameTooltip(wrap) {
-  const button = wrap.querySelector(".settings-sort-spaces-rename");
-  const tip = wrap.querySelector(".settings-sort-spaces-rename-tooltip");
-  if (!(button instanceof HTMLElement) || !(tip instanceof HTMLElement) || tip.hidden) {
+function positionFixedTooltip(wrap, controlSelector, tipSelector) {
+  const control = wrap.querySelector(controlSelector);
+  const tip = wrap.querySelector(tipSelector);
+  if (!(control instanceof HTMLElement) || !(tip instanceof HTMLElement) || tip.hidden) {
     return;
   }
 
-  const rect = button.getBoundingClientRect();
+  const rect = control.getBoundingClientRect();
   tip.style.left = `${rect.left + rect.width / 2}px`;
   tip.style.top = `${rect.top}px`;
   tip.style.transform = "translate(-50%, calc(-100% - 0.4rem))";
 }
 
-function repositionHoveredRenameTooltip() {
-  const wrap = document.querySelector(
+function positionRenameTooltip(wrap) {
+  positionFixedTooltip(
+    wrap,
+    ".settings-sort-spaces-rename",
+    ".settings-sort-spaces-rename-tooltip"
+  );
+}
+
+function positionVisibleTooltip(wrap) {
+  positionFixedTooltip(
+    wrap,
+    ".settings-sort-spaces-visible",
+    ".settings-sort-spaces-visible-tooltip"
+  );
+}
+
+function repositionHoveredTooltips() {
+  const renameWrap = document.querySelector(
     ".settings-sort-spaces-rename-wrap:hover, .settings-sort-spaces-rename-wrap:focus-within"
   );
-  if (wrap instanceof HTMLElement) {
-    positionRenameTooltip(wrap);
+  if (renameWrap instanceof HTMLElement) {
+    positionRenameTooltip(renameWrap);
+  }
+
+  const visibleWrap = document.querySelector(
+    ".settings-sort-spaces-visible-wrap:hover, .settings-sort-spaces-visible-wrap:focus-within"
+  );
+  if (visibleWrap instanceof HTMLElement) {
+    positionVisibleTooltip(visibleWrap);
   }
 }
 
@@ -523,22 +573,27 @@ function bindSortSpacesList() {
     if (!(target instanceof Element)) {
       return;
     }
-    const wrap = target.closest(".settings-sort-spaces-rename-wrap");
-    if (!(wrap instanceof HTMLElement) || !list.contains(wrap)) {
-      return;
+    const renameWrap = target.closest(".settings-sort-spaces-rename-wrap");
+    if (renameWrap instanceof HTMLElement && list.contains(renameWrap)) {
+      const related = event.relatedTarget;
+      if (!(related instanceof Node && renameWrap.contains(related))) {
+        positionRenameTooltip(renameWrap);
+      }
     }
-    const related = event.relatedTarget;
-    if (related instanceof Node && wrap.contains(related)) {
-      return;
+    const visibleWrap = target.closest(".settings-sort-spaces-visible-wrap");
+    if (visibleWrap instanceof HTMLElement && list.contains(visibleWrap)) {
+      const related = event.relatedTarget;
+      if (!(related instanceof Node && visibleWrap.contains(related))) {
+        positionVisibleTooltip(visibleWrap);
+      }
     }
-    positionRenameTooltip(wrap);
   });
 
   const detail = document.getElementById("settings-detail-sort-spaces");
-  detail?.addEventListener("scroll", repositionHoveredRenameTooltip, {
+  detail?.addEventListener("scroll", repositionHoveredTooltips, {
     passive: true,
   });
-  window.addEventListener("resize", repositionHoveredRenameTooltip);
+  window.addEventListener("resize", repositionHoveredTooltips);
 
   list.addEventListener("click", (event) => {
     const target = event.target;
@@ -583,11 +638,13 @@ function bindSortSpacesList() {
       return;
     }
 
-    setSpaceVisible(spaceId, target.checked);
-    const row = target.closest(".settings-sort-spaces-row");
-    if (row instanceof HTMLElement) {
-      row.classList.toggle("settings-sort-spaces-row--hidden", !target.checked);
+    if (!target.checked && filterVisibleSpaces(loadedSpaces).length <= 1) {
+      target.checked = true;
+      return;
     }
+
+    setSpaceVisible(spaceId, target.checked);
+    renderSpaces(loadedSpaces);
     populateSpacesSidebar(loadedSpaces);
   });
 

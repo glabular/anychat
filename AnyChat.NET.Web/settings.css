@@ -402,6 +402,13 @@ body.is-settings .main {
   opacity: 0.48;
 }
 
+.settings-sort-spaces-visible-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
 .settings-sort-spaces-visible {
   appearance: none;
   -webkit-appearance: none;
@@ -440,16 +447,56 @@ body.is-settings .main {
   transform: rotate(-45deg) scale(1);
 }
 
-.settings-sort-spaces-row:hover .settings-sort-spaces-visible {
+.settings-sort-spaces-row:hover .settings-sort-spaces-visible:not(:disabled) {
   border-color: var(--color-text-muted);
 }
 
-.settings-sort-spaces-row:hover .settings-sort-spaces-visible:checked {
+.settings-sort-spaces-row:hover .settings-sort-spaces-visible:checked:not(:disabled) {
   border-color: var(--color-text-muted);
 }
 
-.settings-sort-spaces-row:hover .settings-sort-spaces-visible:checked::before {
+.settings-sort-spaces-row:hover .settings-sort-spaces-visible:checked:not(:disabled)::before {
   border-color: #fff;
+}
+
+.settings-sort-spaces-visible:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.settings-sort-spaces-visible-tooltip {
+  box-sizing: border-box;
+  display: block;
+  background-color: var(--color-light-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  width: max-content;
+  max-width: 14rem;
+  white-space: normal;
+  padding: 0.4rem 1rem;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: normal;
+  line-height: 1.35;
+  text-align: center;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease;
+}
+
+.settings-sort-spaces-visible-tooltip[hidden] {
+  display: none;
+}
+
+.settings-sort-spaces-visible-wrap:hover .settings-sort-spaces-visible-tooltip:not([hidden]),
+.settings-sort-spaces-visible-wrap:focus-within .settings-sort-spaces-visible-tooltip:not([hidden]) {
+  opacity: 1;
+  visibility: visible;
 }
 
 .settings-sort-spaces-mark {
