@@ -13,6 +13,10 @@ import { setChatsCreateButtonReady } from "./chats-create-button.js";
 import { setSpacesCreateButtonReady } from "./spaces-create-button.js";
 import { orderSpaces } from "./space-order.js";
 import {
+  filterVisibleSpaces,
+  isSpaceHidden,
+} from "./space-visibility.js";
+import {
   ensureReturnSpaceId,
   exitSettings,
   isSettingsOpen,
@@ -85,7 +89,7 @@ export function populateSpacesSidebar(spaces, options = {}) {
   const createButton = document.getElementById("spaces-create");
   clearSpaceLabels(spacesSidebar);
 
-  const ordered = orderSpaces(spaces);
+  const ordered = filterVisibleSpaces(orderSpaces(spaces));
   ordered.forEach((space, index) => {
     const spaceButton = getSpaceButton(space, index + 1);
     if (createButton) {
@@ -114,6 +118,14 @@ export function populateSpacesSidebar(spaces, options = {}) {
     }
   } else {
     setChatsCreateButtonReady(false);
+    if (!isSettingsOpen()) {
+      clearChatsUiWhenNoSpaceSelected();
+      try {
+        localStorage.removeItem(SELECTED_SPACE_STORAGE_KEY);
+      } catch {
+        // non-fatal
+      }
+    }
   }
 
   markSpacesRailReady();
@@ -377,17 +389,18 @@ export async function reconcileSpaces() {
 
   const selected = document.querySelector('input[name="space"]:checked');
   const selectedId = selected?.value ?? null;
-  const selectedLost = Boolean(selectedId && !serverById.has(selectedId));
+  const selectedLost = Boolean(
+    selectedId && (!serverById.has(selectedId) || isSpaceHidden(selectedId))
+  );
 
   for (const label of [
     ...spacesSidebar.querySelectorAll('label:has(input[name="space"])'),
   ]) {
     const input = label.querySelector('input[name="space"]');
     const id = input instanceof HTMLInputElement ? input.value : "";
-    if (!id || serverById.has(id)) {
-      continue;
+    if (!id || !serverById.has(id) || isSpaceHidden(id)) {
+      label.remove();
     }
-    label.remove();
   }
 
   const createButton = document.getElementById("spaces-create");
@@ -397,7 +410,10 @@ export async function reconcileSpaces() {
     )
   );
 
-  for (const space of serverById.values()) {
+  const orderedVisible = filterVisibleSpaces(
+    orderSpaces([...serverById.values()])
+  );
+  for (const space of orderedVisible) {
     if (existingIds.has(space.id)) {
       updateSpaceLabel(space);
       continue;

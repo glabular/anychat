@@ -386,6 +386,64 @@ body.is-settings .main {
   border-color: color-mix(in srgb, var(--color-text) 14%, transparent);
 }
 
+.settings-sort-spaces-row--hidden .settings-sort-spaces-mark,
+.settings-sort-spaces-row--hidden .settings-sort-spaces-name,
+.settings-sort-spaces-row--hidden .settings-sort-spaces-name-input,
+.settings-sort-spaces-row--hidden .settings-sort-spaces-kind,
+.settings-sort-spaces-row--hidden .settings-sort-spaces-actions {
+  opacity: 0.48;
+}
+
+.settings-sort-spaces-visible {
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--color-text) 16%, transparent);
+  border-radius: 4px;
+  background-color: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  display: grid;
+  place-content: center;
+}
+
+.settings-sort-spaces-visible::before {
+  content: "";
+  width: 0.55rem;
+  height: 0.3rem;
+  margin-top: -0.1rem;
+  border-left: 2px solid color-mix(in srgb, var(--color-text) 65%, transparent);
+  border-bottom: 2px solid color-mix(in srgb, var(--color-text) 65%, transparent);
+  transform: rotate(-45deg) scale(0);
+  transform-origin: center;
+}
+
+.settings-sort-spaces-visible:checked {
+  background-color: transparent;
+  border-color: color-mix(in srgb, var(--color-text) 16%, transparent);
+}
+
+.settings-sort-spaces-visible:checked::before {
+  border-color: #fff;
+  transform: rotate(-45deg) scale(1);
+}
+
+.settings-sort-spaces-row:hover .settings-sort-spaces-visible {
+  border-color: var(--color-text-muted);
+}
+
+.settings-sort-spaces-row:hover .settings-sort-spaces-visible:checked {
+  border-color: var(--color-text-muted);
+}
+
+.settings-sort-spaces-row:hover .settings-sort-spaces-visible:checked::before {
+  border-color: #fff;
+}
+
 .settings-sort-spaces-mark {
   flex: 0 0 auto;
   width: 2.5rem;

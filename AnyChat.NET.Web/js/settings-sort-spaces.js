@@ -6,6 +6,10 @@ import {
 import { isOneToOneSpaceObject } from "./space-members.js";
 import { orderSpaces, writeSpaceOrder } from "./space-order.js";
 import {
+  isSpaceHidden,
+  setSpaceVisible,
+} from "./space-visibility.js";
+import {
   getSpaceDisplayName,
   populateSpacesSidebar,
   updateSpaceLabel,
@@ -330,6 +334,17 @@ function renderSpaces(spaces) {
     if (editingSpaceId === space.id) {
       item.classList.add("settings-sort-spaces-row--editing");
     }
+    if (isSpaceHidden(space.id)) {
+      item.classList.add("settings-sort-spaces-row--hidden");
+    }
+
+    const visible = document.createElement("input");
+    visible.type = "checkbox";
+    visible.className = "settings-sort-spaces-visible";
+    visible.checked = !isSpaceHidden(space.id);
+    visible.dataset.spaceId = space.id;
+    visible.title = "Show in spaces rail";
+    visible.setAttribute("aria-label", "Show in spaces rail");
 
     const mark = document.createElement("span");
     mark.className = "settings-sort-spaces-mark";
@@ -377,9 +392,9 @@ function renderSpaces(spaces) {
       const kind = document.createElement("span");
       kind.className = "settings-sort-spaces-kind";
       kind.textContent = space.object;
-      item.append(mark, nameWrap, kind, actions);
+      item.append(visible, mark, nameWrap, kind, actions);
     } else {
-      item.append(mark, nameWrap, actions);
+      item.append(visible, mark, nameWrap, actions);
     }
 
     list.append(item);
@@ -549,6 +564,31 @@ function bindSortSpacesList() {
       }
       moveSpace(index, delta);
     }
+  });
+
+  list.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) {
+      return;
+    }
+    if (!target.classList.contains("settings-sort-spaces-visible")) {
+      return;
+    }
+    if (!list.contains(target)) {
+      return;
+    }
+
+    const spaceId = target.dataset.spaceId;
+    if (!spaceId) {
+      return;
+    }
+
+    setSpaceVisible(spaceId, target.checked);
+    const row = target.closest(".settings-sort-spaces-row");
+    if (row instanceof HTMLElement) {
+      row.classList.toggle("settings-sort-spaces-row--hidden", !target.checked);
+    }
+    populateSpacesSidebar(loadedSpaces);
   });
 
   list.addEventListener("keydown", (event) => {
