@@ -346,7 +346,7 @@ body.is-settings .main {
 }
 
 .settings-sort-spaces-title {
-  margin: 0 0 1.5rem;
+  margin: 0 0 2rem;
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--color-text);
@@ -369,6 +369,7 @@ body.is-settings .main {
   list-style: none;
   display: flex;
   flex-direction: column;
+  gap: 0.15rem;
 }
 
 .settings-sort-spaces-row {
