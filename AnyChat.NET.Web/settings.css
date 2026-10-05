@@ -460,6 +460,19 @@ body.is-settings .main {
   position: relative;
   display: inline-flex;
   align-items: center;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Reserve width when idle; reveal only on row hover so ↑↓ do not shift. */
+.settings-sort-spaces-row:hover .settings-sort-spaces-rename-wrap {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.settings-sort-spaces-row--editing .settings-sort-spaces-rename-wrap {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /*
