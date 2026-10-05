@@ -55,6 +55,10 @@ import {
   isDeleteChatConfirmOpen,
 } from "./delete-chat-confirm.js";
 import {
+  closeDeleteMessageConfirm,
+  isDeleteMessageConfirmOpen,
+} from "./delete-message-confirm.js";
+import {
   closeLogoutConfirm,
   isLogoutConfirmOpen,
 } from "./logout-confirm.js";
@@ -468,6 +472,7 @@ export function hideChatPanel(options = {}) {
   cancelChatRename({ restoreFocus: false });
   closeChatPanelMenu();
   closeMessageContextMenu();
+  closeDeleteMessageConfirm({ restoreFocus: false });
   closeDeleteChatConfirm({ restoreFocus: false });
   closeLogoutConfirm({ restoreFocus: false });
   closeMemberProfilePanel({ restoreFocus: false });
@@ -515,7 +520,7 @@ export function closeOpenChat() {
   return true;
 }
 
-/** Escape: rename → delete confirm → logout confirm → create-space → create-chat → header menu → message menu → message edit → member profile → open chat. */
+/** Escape: rename → delete-message confirm → delete-chat confirm → logout confirm → create-space → create-chat → header menu → message menu → message edit → member profile → open chat. */
 export function initChatViewCloseBindings() {
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") {
@@ -523,6 +528,11 @@ export function initChatViewCloseBindings() {
     }
 
     if (cancelChatRename({ restoreFocus: true })) {
+      event.preventDefault();
+      return;
+    }
+
+    if (closeDeleteMessageConfirm({ restoreFocus: true })) {
       event.preventDefault();
       return;
     }
@@ -581,6 +591,12 @@ export function initChatViewCloseBindings() {
     if (isChatRenameOpen()) {
       event.preventDefault();
       cancelChatRename({ restoreFocus: true });
+      return;
+    }
+
+    if (isDeleteMessageConfirmOpen()) {
+      event.preventDefault();
+      closeDeleteMessageConfirm({ restoreFocus: true });
       return;
     }
 

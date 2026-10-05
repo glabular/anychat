@@ -672,6 +672,20 @@ function applyMessageDeletedFromStream(state, messageId) {
 }
 
 /**
+ * Remove a message from the open chat after a local delete (or idempotent SSE).
+ * @param {string | null | undefined} messageId
+ * @returns {boolean} true if an open-chat state was available to update
+ */
+export function removeOpenChatMessageById(messageId) {
+  const state = chatHistoryState;
+  if (!state) {
+    return false;
+  }
+  applyMessageDeletedFromStream(state, messageId);
+  return true;
+}
+
+/**
  * Best-effort author profile fetch for a newly streamed message (non-blocking).
  * @param {ChatMessageStreamSubscription} sub
  * @param {ChatHistoryState} state
@@ -976,6 +990,36 @@ export function getOpenChatEditableMessage(messageId) {
     return null;
   }
   if (typeof message.content?.text !== "string") {
+    return null;
+  }
+
+  return {
+    message,
+    spaceId: state.spaceId,
+    chatId: state.chatId,
+  };
+}
+
+/**
+ * Own, server-accepted message eligible for delete in the open chat.
+ * Same ownership/send-status rules as edit; text content is not required.
+ * @param {string | null | undefined} messageId
+ * @returns {{ message: object, spaceId: string, chatId: string } | null}
+ */
+export function getOpenChatDeletableMessage(messageId) {
+  const state = chatHistoryState;
+  if (!state || typeof messageId !== "string" || messageId.length === 0) {
+    return null;
+  }
+
+  const message = state.messages.find((entry) => entry?.id === messageId);
+  if (!message || message.isMine !== true) {
+    return null;
+  }
+  if (
+    message.clientSendStatus === "sending"
+    || message.clientSendStatus === "failed"
+  ) {
     return null;
   }
 

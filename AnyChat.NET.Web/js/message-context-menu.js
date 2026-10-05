@@ -3,6 +3,7 @@
  */
 
 import { enterMessageEdit } from "./message-edit.js";
+import { openDeleteMessageConfirm } from "./delete-message-confirm.js";
 
 let menuBound = false;
 
@@ -14,7 +15,7 @@ let targetCopyText = null;
 
 /**
  * Per-action enablement. Most stay false until their feature ships.
- * `edit` / `copyText` are set dynamically when the menu opens.
+ * `edit` / `copyText` / `delete` are set dynamically when the menu opens.
  * @type {Record<string, { enabled: boolean }>}
  */
 const MESSAGE_CONTEXT_MENU_ACTIONS = {
@@ -53,19 +54,24 @@ function syncMessageContextMenuActions() {
 }
 
 /**
- * Show Edit only for own bubbles (with a server message id). Others never see it.
+ * Show Edit / Delete only for own bubbles (with a server message id).
+ * Others never see those controls.
  * @param {boolean} visible
  */
-function setEditMenuItemVisible(visible) {
+function setOwnMessageMenuItemsVisible(visible) {
   const editItem = document.getElementById("message-context-menu-edit-item");
   const editSeparator = document.getElementById(
     "message-context-menu-edit-separator"
   );
+  const deleteItem = document.getElementById("message-context-menu-delete-item");
   if (editItem) {
     editItem.hidden = !visible;
   }
   if (editSeparator) {
     editSeparator.hidden = !visible;
+  }
+  if (deleteItem) {
+    deleteItem.hidden = !visible;
   }
 }
 
@@ -192,11 +198,20 @@ function positionMenuAtCursor(menu, clientX, clientY) {
 
 /**
  * @param {string | null} messageId
- * @returns {Promise<{ message: object, spaceId: string, chatId: string } | null>}
+ * @returns {Promise<{
+ *   editable: { message: object, spaceId: string, chatId: string } | null,
+ *   deletable: { message: object, spaceId: string, chatId: string } | null,
+ * }>}
  */
-async function loadEditableMessage(messageId) {
-  const { getOpenChatEditableMessage } = await import("./chats.js");
-  return getOpenChatEditableMessage(messageId);
+async function loadOwnMessageActions(messageId) {
+  const {
+    getOpenChatEditableMessage,
+    getOpenChatDeletableMessage,
+  } = await import("./chats.js");
+  return {
+    editable: getOpenChatEditableMessage(messageId),
+    deletable: getOpenChatDeletableMessage(messageId),
+  };
 }
 
 /**
@@ -215,22 +230,23 @@ async function openMessageContextMenu(event, bubble) {
   targetCopyText = getCopyableTextFromBubble(bubble);
   MESSAGE_CONTEXT_MENU_ACTIONS.copyText.enabled = targetCopyText !== null;
 
-  // Own rows only (never show Edit on others’ bubbles).
+  // Own rows only (never show Edit / Delete on others’ bubbles).
   const isOwnBubble =
     Boolean(row?.classList.contains("message-row--mine"))
     && typeof requestMessageId === "string"
     && requestMessageId.length > 0;
 
-  setEditMenuItemVisible(isOwnBubble);
+  setOwnMessageMenuItemsVisible(isOwnBubble);
 
-  const editable = isOwnBubble
-    ? await loadEditableMessage(requestMessageId)
-    : null;
+  const ownActions = isOwnBubble
+    ? await loadOwnMessageActions(requestMessageId)
+    : { editable: null, deletable: null };
   // Dismissed or another bubble opened while the lookup was in flight.
   if (targetMessageId !== requestMessageId) {
     return;
   }
-  MESSAGE_CONTEXT_MENU_ACTIONS.edit.enabled = Boolean(editable);
+  MESSAGE_CONTEXT_MENU_ACTIONS.edit.enabled = Boolean(ownActions.editable);
+  MESSAGE_CONTEXT_MENU_ACTIONS.delete.enabled = Boolean(ownActions.deletable);
 
   syncMessageContextMenuActions();
   menu.hidden = false;
@@ -259,7 +275,7 @@ async function handleEditAction(event) {
   }
 
   const messageId = targetMessageId;
-  const editable = await loadEditableMessage(messageId);
+  const { editable } = await loadOwnMessageActions(messageId);
   closeMessageContextMenu();
   if (!editable) {
     return;
@@ -273,6 +289,28 @@ async function handleEditAction(event) {
   });
 }
 
+async function handleDeleteAction(event) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (!MESSAGE_CONTEXT_MENU_ACTIONS.delete.enabled) {
+    return;
+  }
+
+  const messageId = targetMessageId;
+  const { deletable } = await loadOwnMessageActions(messageId);
+  closeMessageContextMenu();
+  if (!deletable) {
+    return;
+  }
+
+  openDeleteMessageConfirm({
+    spaceId: deletable.spaceId,
+    chatId: deletable.chatId,
+    messageId: deletable.message.id,
+  });
+}
+
 export function initMessageContextMenu() {
   if (menuBound) {
     return;
@@ -282,6 +320,7 @@ export function initMessageContextMenu() {
   const menu = getMenu();
   const editItem = document.getElementById("message-context-menu-edit");
   const copyTextItem = document.getElementById("message-context-menu-copy-text");
+  const deleteItem = document.getElementById("message-context-menu-delete");
   if (!list || !menu) {
     return;
   }
@@ -311,6 +350,10 @@ export function initMessageContextMenu() {
 
   editItem?.addEventListener("click", (event) => {
     void handleEditAction(event);
+  });
+
+  deleteItem?.addEventListener("click", (event) => {
+    void handleDeleteAction(event);
   });
 
   document.addEventListener("mousedown", (event) => {

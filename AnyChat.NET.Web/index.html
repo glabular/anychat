@@ -706,6 +706,45 @@
       </div>
     </div>
     <div
+      id="delete-message-modal"
+      class="create-chat-modal"
+      hidden
+    >
+      <div
+        id="delete-message-dialog"
+        class="create-chat-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-message-title"
+      >
+        <div class="create-chat-header">
+          <h2 id="delete-message-title" class="create-chat-title">
+            Delete message?
+          </h2>
+        </div>
+        <p class="create-chat-body">
+          This permanently removes the message from the chat for everyone.
+        </p>
+        <p id="delete-message-error" class="create-chat-error" hidden></p>
+        <div class="create-chat-actions create-chat-actions--confirm">
+          <button
+            type="button"
+            id="delete-message-cancel"
+            class="create-chat-button-secondary"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            id="delete-message-confirm"
+            class="create-chat-submit create-chat-submit--danger"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
       id="logout-confirm-modal"
       class="create-chat-modal"
       hidden
@@ -1111,7 +1150,7 @@
             <span class="message-context-menu-label">Copy message link</span>
           </button>
         </li>
-        <li role="none">
+        <li id="message-context-menu-delete-item" role="none" hidden>
           <button
             type="button"
             id="message-context-menu-delete"

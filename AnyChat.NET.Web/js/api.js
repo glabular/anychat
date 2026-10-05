@@ -435,6 +435,22 @@ export async function editChatMessage(spaceId, chatId, messageId, text) {
 }
 
 /**
+ * Delete an owned chat message (Anytype DeleteMessageAsync via API).
+ * @param {string} spaceId
+ * @param {string} chatId
+ * @param {string} messageId
+ * @returns {Promise<void>}
+ */
+export async function deleteChatMessage(spaceId, chatId, messageId) {
+  const response = await fetch(
+    `${spacesUrl()}/${encodeURIComponent(spaceId)}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}`,
+    { method: "DELETE" }
+  );
+
+  await throwIfNotOk(response, `Response status: ${response.status}`);
+}
+
+/**
  * SSE URL for live messages in one chat (proxied by the API).
  * @param {string} spaceId
  * @param {string} chatId
