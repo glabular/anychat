@@ -1113,6 +1113,7 @@ function createReplyQuote(message) {
   );
 
   if (parentDeleted) {
+    quote.dataset.replyParentDeleted = "true";
     // One quiet line — do not repeat "deleted" as author + body.
     const deletedEl = document.createElement("span");
     deletedEl.className =

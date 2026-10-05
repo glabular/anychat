@@ -2317,6 +2317,25 @@ async function seekOlderPagesForMessageId(
 }
 
 /**
+ * Parent of this quote is already known deleted — do not seek older pages.
+ * @param {ChatHistoryState} state
+ * @param {string} parentMessageId
+ * @param {HTMLButtonElement | null | undefined} quoteButton
+ * @returns {boolean}
+ */
+function isReplyParentKnownDeleted(state, parentMessageId, quoteButton) {
+  if (quoteButton instanceof HTMLElement
+    && quoteButton.dataset.replyParentDeleted === "true") {
+    return true;
+  }
+
+  return state.messages.some(
+    (entry) => entry?.replyToMessageId === parentMessageId
+      && entry?.replyToMessageDeleted === true
+  );
+}
+
+/**
  * Scroll to a replied-to message, seeking a few older pages when needed.
  * Unreachable parents (attachment-only / deleted / beyond budget): stay put
  * and show a short tip on the quote — never fall through to latest.
@@ -2333,6 +2352,11 @@ async function jumpToRepliedMessage(messageId, quoteButton = null) {
   const state = chatHistoryState;
   const container = getChatMessagesContainer();
   if (!state || !container || state.isLoadingOlder) {
+    return;
+  }
+
+  if (isReplyParentKnownDeleted(state, trimmedId, quoteButton)) {
+    showReplyJumpUnavailableTip(quoteButton);
     return;
   }
 
