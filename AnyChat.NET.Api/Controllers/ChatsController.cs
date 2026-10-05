@@ -1,8 +1,10 @@
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using AnyChat.NET.Api.Filters;
 using AnyChat.NET.Api.Models;
 using AnyChat.NET.Api.Services;
+using Anytype.NET;
 using Anytype.NET.Interfaces;
 using Anytype.NET.Models;
 using Anytype.NET.Models.Requests;
@@ -445,6 +447,64 @@ public class ChatsController(
                 message,
                 participantId,
                 LookupReplyPreview(message, replyPreviewById)));
+        }
+        catch (Exception ex) when (AnytypeAuthExceptionFilter.IsAnytypeAuthFailure(ex))
+        {
+            return AnytypeAuthExceptionFilter.CreateInvalidResult();
+        }
+        catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
+        {
+            return AnytypeUnavailableExceptionFilter.CreateResult();
+        }
+    }
+
+    [HttpDelete("{chatId}/messages/{messageId}")]
+    public async Task<IActionResult> DeleteMessage(
+        string spaceId,
+        string chatId,
+        string messageId)
+    {
+        if (string.IsNullOrWhiteSpace(messageId))
+        {
+            return BadRequest(new { error = "Message id is required." });
+        }
+
+        var client = session.TryGetClient();
+        if (client is null)
+        {
+            return AnytypeAuthExceptionFilter.CreateMissingResult();
+        }
+
+        try
+        {
+            var participantId = await memberResolver.ResolveParticipantIdAsync(spaceId);
+            if (string.IsNullOrWhiteSpace(participantId))
+            {
+                return StatusCode(
+                    StatusCodes.Status403Forbidden,
+                    new { error = "Current member identity is unknown; cannot verify message ownership." });
+            }
+
+            ChatMessage message;
+            try
+            {
+                message = await client.Chats.GetMessageAsync(spaceId, chatId, messageId);
+            }
+            catch (AnytypeApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                return NotFound(new { error = "Message not found." });
+            }
+
+            if (string.IsNullOrWhiteSpace(message.Creator)
+                || !string.Equals(message.Creator, participantId, StringComparison.Ordinal))
+            {
+                return StatusCode(
+                    StatusCodes.Status403Forbidden,
+                    new { error = "Only the message author can delete this message." });
+            }
+
+            await client.Chats.DeleteMessageAsync(spaceId, chatId, messageId);
+            return NoContent();
         }
         catch (Exception ex) when (AnytypeAuthExceptionFilter.IsAnytypeAuthFailure(ex))
         {

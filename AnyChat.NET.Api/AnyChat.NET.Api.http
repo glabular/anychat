@@ -63,3 +63,7 @@ Accept: application/json
 }
 
 ###
+
+DELETE {{AnyChat.NET.Api_HostAddress}}/api/spaces/{{spaceId}}/chats/{{chatId}}/messages/{{messageId}}
+
+###
