@@ -364,13 +364,14 @@ function renderSpaces(spaces) {
     const index = spaces.indexOf(space);
     const up = moveButton("up", index, spaces.length);
     const down = moveButton("down", index, spaces.length);
-    const rename = renameButton(space);
-    if (editingSpaceId === space.id) {
+    const renameWrap = renameControl(space);
+    const rename = renameWrap.querySelector(".settings-sort-spaces-rename");
+    if (editingSpaceId === space.id && rename instanceof HTMLButtonElement) {
       up.disabled = true;
       down.disabled = true;
       rename.disabled = true;
     }
-    actions.append(up, down, rename);
+    actions.append(up, down, renameWrap);
 
     if (nameIsAmbiguous(spaces, space) && space.object) {
       const kind = document.createElement("span");
@@ -404,24 +405,63 @@ function moveButton(direction, index, count) {
 }
 
 /**
+ * Center the tip on the Rename button in viewport coords so pane overflow
+ * cannot clip it.
+ * @param {HTMLElement} wrap
+ */
+function positionRenameTooltip(wrap) {
+  const button = wrap.querySelector(".settings-sort-spaces-rename");
+  const tip = wrap.querySelector(".settings-sort-spaces-rename-tooltip");
+  if (!(button instanceof HTMLElement) || !(tip instanceof HTMLElement) || tip.hidden) {
+    return;
+  }
+
+  const rect = button.getBoundingClientRect();
+  tip.style.left = `${rect.left + rect.width / 2}px`;
+  tip.style.top = `${rect.top}px`;
+  tip.style.transform = "translate(-50%, calc(-100% - 0.4rem))";
+}
+
+function repositionHoveredRenameTooltip() {
+  const wrap = document.querySelector(
+    ".settings-sort-spaces-rename-wrap:hover, .settings-sort-spaces-rename-wrap:focus-within"
+  );
+  if (wrap instanceof HTMLElement) {
+    positionRenameTooltip(wrap);
+  }
+}
+
+/**
  * @param {{ id: string, object?: string }} space
  */
-function renameButton(space) {
+function renameControl(space) {
+  const wrap = document.createElement("span");
+  wrap.className = "settings-sort-spaces-rename-wrap";
+
   const button = document.createElement("button");
   button.type = "button";
   button.className = "settings-sort-spaces-rename";
   button.dataset.spaceId = space.id;
   button.textContent = "Rename";
 
+  // Never use native title — browser chrome breaks the dark UI.
+  const tooltip = document.createElement("span");
+  tooltip.className = "settings-sort-spaces-rename-tooltip";
+  tooltip.setAttribute("aria-hidden", "true");
+  tooltip.hidden = true;
+
   if (isOneToOneSpaceObject(space.object)) {
     button.disabled = true;
-    button.title = ONE_TO_ONE_RENAME_TOOLTIP;
     button.setAttribute("aria-label", ONE_TO_ONE_RENAME_TOOLTIP);
+    wrap.setAttribute("aria-label", ONE_TO_ONE_RENAME_TOOLTIP);
+    tooltip.textContent = ONE_TO_ONE_RENAME_TOOLTIP;
+    tooltip.hidden = false;
   } else {
     button.setAttribute("aria-label", "Rename space");
   }
 
-  return button;
+  wrap.append(button, tooltip);
+  return wrap;
 }
 
 /**
@@ -462,6 +502,28 @@ function bindSortSpacesList() {
   }
 
   list.dataset.bound = "true";
+
+  list.addEventListener("mouseover", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    const wrap = target.closest(".settings-sort-spaces-rename-wrap");
+    if (!(wrap instanceof HTMLElement) || !list.contains(wrap)) {
+      return;
+    }
+    const related = event.relatedTarget;
+    if (related instanceof Node && wrap.contains(related)) {
+      return;
+    }
+    positionRenameTooltip(wrap);
+  });
+
+  const detail = document.getElementById("settings-detail-sort-spaces");
+  detail?.addEventListener("scroll", repositionHoveredRenameTooltip, {
+    passive: true,
+  });
+  window.addEventListener("resize", repositionHoveredRenameTooltip);
 
   list.addEventListener("click", (event) => {
     const target = event.target;

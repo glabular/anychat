@@ -465,6 +465,53 @@ body.is-settings .main {
   align-items: center;
 }
 
+.settings-sort-spaces-rename-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/*
+  Same look as .chats-create-tooltip / .space-tooltip.
+  position:fixed + JS centers on the Rename button so the tip is not
+  clipped by .settings-sort-spaces overflow.
+*/
+.settings-sort-spaces-rename-tooltip {
+  box-sizing: border-box;
+  display: block;
+  /* Settings pane is --color-bg; tip needs a raised surface + edge. */
+  background-color: var(--color-light-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  width: max-content;
+  max-width: 14rem;
+  white-space: normal;
+  padding: 0.4rem 1rem;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: normal;
+  line-height: 1.35;
+  text-align: center;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease;
+}
+
+.settings-sort-spaces-rename-tooltip[hidden] {
+  display: none;
+}
+
+.settings-sort-spaces-rename-wrap:hover .settings-sort-spaces-rename-tooltip:not([hidden]),
+.settings-sort-spaces-rename-wrap:focus-within .settings-sort-spaces-rename-tooltip:not([hidden]) {
+  opacity: 1;
+  visibility: visible;
+}
+
 .settings-sort-spaces-move,
 .settings-sort-spaces-rename {
   height: 1.75rem;
