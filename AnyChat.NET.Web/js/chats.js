@@ -648,13 +648,18 @@ function applyMessageDeletedFromStream(state, messageId) {
   const existingIndex = state.messages.findIndex(
     (entry) => entry?.id === messageId
   );
-  if (existingIndex < 0) {
-    state.messageIds.delete(messageId);
-    return;
+  if (existingIndex >= 0) {
+    state.messages.splice(existingIndex, 1);
   }
 
-  state.messages.splice(existingIndex, 1);
   state.messageIds.delete(messageId);
+  for (const message of state.messages) {
+    if (message?.replyToMessageId === messageId) {
+      message.replyToText = null;
+      message.replyToAuthorName = null;
+      message.replyToMessageDeleted = true;
+    }
+  }
   rerenderOpenChatMessagesPreservingViewport(state.messages);
 
   if (!wasTip) {

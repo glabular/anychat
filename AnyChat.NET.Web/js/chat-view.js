@@ -1097,6 +1097,7 @@ function createReplyQuote(message) {
       : "";
   const replyToText =
     typeof message.replyToText === "string" ? message.replyToText.trim() : "";
+  const parentDeleted = message.replyToMessageDeleted === true;
 
   const quote = document.createElement("button");
   quote.type = "button";
@@ -1104,19 +1105,24 @@ function createReplyQuote(message) {
   quote.dataset.replyToMessageId = replyToMessageId;
   quote.setAttribute(
     "aria-label",
-    authorName
+    parentDeleted
+      ? "Replied message was deleted"
+      : authorName
       ? `Go to message from ${authorName}`
       : "Go to replied message"
   );
 
   const authorEl = document.createElement("span");
   authorEl.className = "message-reply-quote-author";
-  authorEl.textContent = authorName || "Unknown";
+  authorEl.textContent = parentDeleted ? "Deleted message" : authorName || "Unknown";
   quote.appendChild(authorEl);
 
   const textEl = document.createElement("span");
   textEl.className = "message-reply-quote-text";
-  if (replyToText) {
+  if (parentDeleted) {
+    textEl.classList.add("message-reply-quote-text--placeholder");
+    textEl.textContent = "This message was deleted";
+  } else if (replyToText) {
     textEl.textContent = replyToText;
   } else {
     textEl.classList.add("message-reply-quote-text--placeholder");

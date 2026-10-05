@@ -637,12 +637,12 @@ public class ChatsController(
         };
     }
 
-    private readonly record struct ReplyPreview(string? Text, string? AuthorName);
+    private readonly record struct ReplyPreview(string? Text, string? AuthorName, bool Deleted = false);
 
     /// <summary>
     /// Parent-message id → text + author name. Uses data already present in
     /// <paramref name="messages"/>, then <c>GetMessageAsync</c> for missing reply targets.
-    /// Failed fetches are omitted (soft-fail).
+    /// Failed fetches are recorded as deleted so quote UI can show a placeholder.
     /// </summary>
     private static async Task<Dictionary<string, ReplyPreview>> BuildReplyPreviewLookupAsync(
         IChatsApi chats,
@@ -686,7 +686,8 @@ public class ChatsController(
             }
             catch (Exception)
             {
-                // Soft-fail: leave missing so reply quote fields stay null.
+                // Parent missing (usually deleted): mark so quotes do not look like attachments.
+                previewById[replyId] = new ReplyPreview(null, null, Deleted: true);
             }
         }
 
@@ -760,8 +761,18 @@ public class ChatsController(
                 Text = message.Content?.Text,
             },
             ReplyToMessageId = replyToMessageId,
-            ReplyToText = replyToMessageId is null ? null : replyPreview?.Text,
-            ReplyToAuthorName = replyToMessageId is null ? null : replyPreview?.AuthorName,
+            ReplyToText = replyToMessageId is null
+                || replyPreview is null
+                || replyPreview.Value.Deleted
+                ? null
+                : replyPreview.Value.Text,
+            ReplyToAuthorName = replyToMessageId is null
+                || replyPreview is null
+                || replyPreview.Value.Deleted
+                ? null
+                : replyPreview.Value.AuthorName,
+            ReplyToMessageDeleted = replyToMessageId is not null
+                && (replyPreview is null || replyPreview.Value.Deleted),
             CreatedAt = message.CreatedAt,
             ModifiedAt = message.ModifiedAt,
             IsMine = isMine,
