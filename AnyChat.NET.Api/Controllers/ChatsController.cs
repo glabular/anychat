@@ -762,6 +762,7 @@ public class ChatsController(
             Content = new ChatMessageContentDto
             {
                 Text = message.Content?.Text,
+                Attachments = MapAttachments(message.Attachments),
             },
             ReplyToMessageId = replyToMessageId,
             ReplyToText = replyToMessageId is null || replyPreview?.Deleted == true
@@ -776,5 +777,93 @@ public class ChatsController(
             ModifiedAt = message.ModifiedAt,
             IsMine = isMine,
         };
+    }
+
+    /// <summary>
+    /// Map Anytype message-level attachments into the content DTO. Skips entries
+    /// with no usable target id.
+    /// </summary>
+    private static IReadOnlyList<ChatMessageAttachmentDto>? MapAttachments(
+        IReadOnlyList<ChatAttachment>? attachments)
+    {
+        if (attachments is null || attachments.Count == 0)
+        {
+            return null;
+        }
+
+        List<ChatMessageAttachmentDto>? mapped = null;
+        foreach (var attachment in attachments)
+        {
+            if (string.IsNullOrWhiteSpace(attachment.Target))
+            {
+                continue;
+            }
+
+            var fileId = NormalizeAttachmentFileId(attachment.Target);
+            if (string.IsNullOrWhiteSpace(fileId))
+            {
+                continue;
+            }
+
+            mapped ??= new List<ChatMessageAttachmentDto>(attachments.Count);
+            var type = string.IsNullOrWhiteSpace(attachment.Type)
+                ? null
+                : attachment.Type.Trim();
+            mapped.Add(new ChatMessageAttachmentDto
+            {
+                FileId = fileId,
+                Type = type,
+                IsImage = IsImageAttachment(type),
+            });
+        }
+
+        return mapped is { Count: > 0 } ? mapped : null;
+    }
+
+    /// <summary>
+    /// True for Anytype <c>type: image</c>. SVG is never treated as a displayable
+    /// image (untrusted markup if rendered as raw SVG).
+    /// </summary>
+    private static bool IsImageAttachment(string? type)
+    {
+        if (string.IsNullOrWhiteSpace(type))
+        {
+            return false;
+        }
+
+        if (type.Contains("svg", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return string.Equals(type, "image", StringComparison.OrdinalIgnoreCase)
+            || type.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Anytype may send <c>target</c> as a bare id or as an authenticated
+    /// <c>/v1/spaces/.../files/{cid}</c> URL. Gateway image URLs need the cid.
+    /// </summary>
+    private static string NormalizeAttachmentFileId(string target)
+    {
+        var trimmed = target.Trim();
+        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
+        {
+            return trimmed;
+        }
+
+        var segments = uri.AbsolutePath.Split(
+            '/',
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        for (var i = 0; i < segments.Length - 1; i++)
+        {
+            if (string.Equals(segments[i], "files", StringComparison.OrdinalIgnoreCase))
+            {
+                return segments[i + 1];
+            }
+        }
+
+        return segments.Length > 0 ? segments[^1] : trimmed;
     }
 }
