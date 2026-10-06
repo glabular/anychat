@@ -18,6 +18,7 @@ import {
 import { captureAndRememberChatScroll, rememberChatScroll, restoreChatScrollAnchor } from "./chat-scroll-memory.js";
 import {
   getSpaceMember,
+  buildMessageImageUrl,
 } from "./space-members.js";
 import {
   closeMemberProfilePanel,
@@ -983,7 +984,7 @@ function messageBodyText(message) {
 }
 
 /**
- * Stub label when the bubble has attachments but no text (until images render).
+ * Stub label for non-image attachments (images render as <img>).
  * @param {object | null | undefined} message
  * @returns {string}
  */
@@ -992,6 +993,100 @@ function attachmentStubLabel(message) {
     (attachment) => attachment && attachment.isImage === true
   );
   return hasImage ? "Photo" : "File";
+}
+
+/**
+ * @param {string | null} url
+ * @returns {HTMLDivElement}
+ */
+function createMessageImageAttachment(url) {
+  const frame = document.createElement("div");
+  frame.className = "message-media-frame message-media-frame--loading";
+
+  if (!url) {
+    frame.classList.remove("message-media-frame--loading");
+    frame.classList.add("message-media-frame--error");
+    const errorEl = document.createElement("div");
+    errorEl.className = "message-media-error";
+    errorEl.textContent = "Couldn't load image";
+    frame.appendChild(errorEl);
+    return frame;
+  }
+
+  const img = document.createElement("img");
+  img.className = "message-media-image";
+  img.alt = "";
+  img.decoding = "async";
+
+  img.addEventListener("load", () => {
+    frame.classList.remove("message-media-frame--loading");
+    frame.classList.add("message-media-frame--ready");
+  });
+
+  img.addEventListener("error", () => {
+    frame.classList.remove("message-media-frame--loading");
+    frame.classList.add("message-media-frame--error");
+    frame.replaceChildren();
+    const errorEl = document.createElement("div");
+    errorEl.className = "message-media-error";
+    errorEl.textContent = "Couldn't load image";
+    frame.appendChild(errorEl);
+  });
+
+  img.src = url;
+  frame.appendChild(img);
+  return frame;
+}
+
+/**
+ * Append image frames and/or a File stub for non-image attachments.
+ * @param {HTMLElement} bubble
+ * @param {object} message
+ */
+function appendMessageAttachments(bubble, message) {
+  const attachments = messageAttachments(message);
+  if (attachments.length === 0) {
+    return;
+  }
+
+  const gatewayUrl = getMessageMediaGatewayUrl();
+  let paintedImage = false;
+  let hasNonImage = false;
+
+  for (const attachment of attachments) {
+    if (!attachment || typeof attachment !== "object") {
+      continue;
+    }
+
+    if (attachment.isImage === true) {
+      const fileId =
+        typeof attachment.fileId === "string" ? attachment.fileId : "";
+      const url = fileId
+        ? buildMessageImageUrl(gatewayUrl, fileId)
+        : null;
+      bubble.appendChild(createMessageImageAttachment(url));
+      paintedImage = true;
+      continue;
+    }
+
+    hasNonImage = true;
+  }
+
+  // Drop Photo stub when images are present; keep File for non-image-only.
+  if (!paintedImage && hasNonImage) {
+    const stubEl = document.createElement("div");
+    stubEl.className =
+      "message-bubble-text message-bubble-text--placeholder";
+    stubEl.textContent = "File";
+    bubble.appendChild(stubEl);
+  } else if (!paintedImage && !hasNonImage) {
+    // Attachments present but none usable — keep a quiet Photo stub.
+    const stubEl = document.createElement("div");
+    stubEl.className =
+      "message-bubble-text message-bubble-text--placeholder";
+    stubEl.textContent = attachmentStubLabel(message);
+    bubble.appendChild(stubEl);
+  }
 }
 
 /** True when the message has visible body text and/or any attachment. */
@@ -1269,14 +1364,7 @@ function createMessageRow(message) {
     bubble.appendChild(textEl);
   }
 
-  if (hasMessageAttachments(message)) {
-    // Stub until Step 4 paints real images (also under captions).
-    const stubEl = document.createElement("div");
-    stubEl.className =
-      "message-bubble-text message-bubble-text--placeholder";
-    stubEl.textContent = attachmentStubLabel(message);
-    bubble.appendChild(stubEl);
-  }
+  appendMessageAttachments(bubble, message);
 
   const timeLabel = formatTimeHhMm(message.createdAt);
   const edited = isMessageEdited(message);
