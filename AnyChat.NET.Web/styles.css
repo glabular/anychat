@@ -1263,8 +1263,9 @@ body.is-chats-sidebar-resizing * {
 }
 
 .message-media-image {
+  /* No z-index: a value here stacks above .chat-scroll-to-latest (z-index: 0)
+     inside .chat-messages-area. Blur stays behind via DOM order. */
   position: relative;
-  z-index: 1;
   display: block;
   max-width: 100%;
   max-height: 45vh;
