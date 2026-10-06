@@ -35,6 +35,7 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 
 ### Fixed
 
+- Editing a message with a photo keeps the attachment 
 - Message time sits on the last line of short captions (including under photos) instead of always wrapping alone
 - Quote click on replies to attachment-only (hidden) parents no longer jumps to latest; tip says the message cannot be opened
 - Sticky “at latest” scroll survives image layout and space hops until you scroll away; mid-chat offsets still restore after photos settle

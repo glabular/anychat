@@ -429,11 +429,14 @@ public class ChatsController(
 
         try
         {
+            // Anytype replaces the whole message body on edit. Omitting attachments
+            // clears photos/files, so re-send the current list with the new text.
+            var existing = await client.Chats.GetMessageAsync(spaceId, chatId, messageId);
             await client.Chats.EditMessageAsync(
                 spaceId,
                 chatId,
                 messageId,
-                new EditChatMessageRequest { Text = text });
+                BuildEditChatMessageRequest(text, existing));
 
             var message = await client.Chats.GetMessageAsync(spaceId, chatId, messageId);
             var participantId = await memberResolver.ResolveParticipantIdAsync(spaceId);
@@ -736,6 +739,45 @@ public class ChatsController(
         }
 
         return name.Trim();
+    }
+
+    /// <summary>
+    /// Build an Anytype edit payload that keeps attachments (and content style/marks)
+    /// while updating text. Anytype treats omitted attachments as “remove all”.
+    /// </summary>
+    private static EditChatMessageRequest BuildEditChatMessageRequest(
+        string text,
+        ChatMessage existing)
+    {
+        var request = new EditChatMessageRequest { Text = text };
+
+        if (existing.Attachments is { Count: > 0 })
+        {
+            request.Attachments = existing.Attachments
+                .Where(static a => !string.IsNullOrWhiteSpace(a.Target))
+                .Select(static a => new ChatAttachment
+                {
+                    Target = a.Target,
+                    Type = a.Type,
+                })
+                .ToList();
+        }
+
+        var content = existing.Content;
+        if (content is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(content.Style))
+            {
+                request.Style = content.Style;
+            }
+
+            if (content.Marks is { Count: > 0 })
+            {
+                request.Marks = content.Marks;
+            }
+        }
+
+        return request;
     }
 
     private static ChatMessageDto MapMessage(
