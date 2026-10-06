@@ -1005,6 +1005,81 @@ function attachmentStubLabel(message) {
   return hasImage ? "Photo" : "File";
 }
 
+/** Minimum media frame width so tiny/narrow photos stay readable. */
+const MESSAGE_MEDIA_MIN_WIDTH_PX = 11 * 16;
+/** Max media height relative to the viewport. */
+const MESSAGE_MEDIA_MAX_HEIGHT_VH = 0.45;
+
+/**
+ * @param {HTMLElement} frame
+ * @returns {number}
+ */
+function getMessageMediaMaxWidth(frame) {
+  const bubble = frame.closest(".message-bubble");
+  if (bubble instanceof HTMLElement && bubble.clientWidth > 0) {
+    const style = getComputedStyle(bubble);
+    const pad =
+      (Number.parseFloat(style.paddingLeft) || 0)
+      + (Number.parseFloat(style.paddingRight) || 0);
+    return Math.max(1, bubble.clientWidth - pad);
+  }
+
+  return Math.min(
+    MESSAGE_MEDIA_MIN_WIDTH_PX * 2,
+    Math.floor(window.innerWidth * 0.45)
+  );
+}
+
+/**
+ * Size the frame and enable blurred fill only when contain would leave bars.
+ * @param {HTMLElement} frame
+ * @param {HTMLImageElement} img
+ * @param {HTMLImageElement} blur
+ */
+function layoutMessageMediaFrame(frame, img, blur) {
+  const nw = img.naturalWidth;
+  const nh = img.naturalHeight;
+  if (!nw || !nh) {
+    return;
+  }
+
+  const maxW = getMessageMediaMaxWidth(frame);
+  const maxH = Math.round(window.innerHeight * MESSAGE_MEDIA_MAX_HEIGHT_VH);
+  const minW = Math.min(MESSAGE_MEDIA_MIN_WIDTH_PX, maxW);
+  const aspect = nw / nh;
+
+  // Fit in the max box without upscaling past natural size (tiny stickers
+  // stay small inside a minimum-width letterboxed frame).
+  let idealW = Math.min(maxW, maxH * aspect, nw);
+  let idealH = idealW / aspect;
+  if (idealH > maxH) {
+    idealH = maxH;
+    idealW = idealH * aspect;
+  }
+
+  const frameW = Math.max(idealW, minW);
+  // Widen a short ideal to minW → keep frame height from that width (pillarbox).
+  const frameH = idealW < minW
+    ? Math.min(maxH, minW / aspect)
+    : idealH;
+
+  frame.style.width = `${Math.round(frameW)}px`;
+  frame.style.height = `${Math.round(frameH)}px`;
+
+  const needsLetterbox =
+    idealW < frameW - 1 || idealH < frameH - 1;
+  frame.classList.toggle("message-media-frame--letterbox", needsLetterbox);
+
+  if (needsLetterbox) {
+    const blurSrc = img.currentSrc || img.src;
+    if (blur.src !== blurSrc) {
+      blur.src = blurSrc;
+    }
+  } else {
+    blur.removeAttribute("src");
+  }
+}
+
 /**
  * @param {string | null} url
  * @returns {HTMLDivElement}
@@ -1023,10 +1098,18 @@ function createMessageImageAttachment(url) {
     return frame;
   }
 
+  const blur = document.createElement("img");
+  blur.className = "message-media-blur";
+  blur.alt = "";
+  blur.decoding = "async";
+  blur.setAttribute("aria-hidden", "true");
+  blur.draggable = false;
+
   const img = document.createElement("img");
   img.className = "message-media-image";
   img.alt = "";
   img.decoding = "async";
+  img.draggable = false;
 
   img.addEventListener("load", () => {
     // Sample before the frame grows: restore/open pins to the short loading
@@ -1034,13 +1117,18 @@ function createMessageImageAttachment(url) {
     settleMessageMediaFrame(frame, () => {
       frame.classList.remove("message-media-frame--loading");
       frame.classList.add("message-media-frame--ready");
+      layoutMessageMediaFrame(frame, img, blur);
     });
   });
 
   img.addEventListener("error", () => {
     settleMessageMediaFrame(frame, () => {
       frame.classList.remove("message-media-frame--loading");
+      frame.classList.remove("message-media-frame--letterbox");
+      frame.classList.remove("message-media-frame--ready");
       frame.classList.add("message-media-frame--error");
+      frame.style.width = "";
+      frame.style.height = "";
       frame.replaceChildren();
       const errorEl = document.createElement("div");
       errorEl.className = "message-media-error";
@@ -1050,7 +1138,7 @@ function createMessageImageAttachment(url) {
   });
 
   img.src = url;
-  frame.appendChild(img);
+  frame.append(blur, img);
   return frame;
 }
 
@@ -1071,6 +1159,15 @@ function settleMessageMediaFrame(frame, applyLayout) {
   applyLayout();
 
   requestAnimationFrame(() => {
+    // Refine size now that the frame is in the bubble (cached loads fire early).
+    if (frame.isConnected && frame.classList.contains("message-media-frame--ready")) {
+      const img = frame.querySelector(".message-media-image");
+      const blur = frame.querySelector(".message-media-blur");
+      if (img instanceof HTMLImageElement && blur instanceof HTMLImageElement) {
+        layoutMessageMediaFrame(frame, img, blur);
+      }
+    }
+
     if (pinLatest) {
       scrollChatToLatest();
     } else {
