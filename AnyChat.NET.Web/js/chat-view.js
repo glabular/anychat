@@ -1599,8 +1599,10 @@ function createMessageRow(message) {
   appendMessageAttachments(bubble, message);
 
   const bodyText = messageBodyText(message);
+  /** @type {HTMLElement | null} */
+  let textEl = null;
   if (bodyText) {
-    const textEl = document.createElement("div");
+    textEl = document.createElement("div");
     textEl.className = "message-bubble-text";
     textEl.textContent = bodyText;
     bubble.appendChild(textEl);
@@ -1612,10 +1614,16 @@ function createMessageRow(message) {
 
   if (timeLabel || edited || sendStatus) {
     // Invisible end-of-text reserve so absolute meta can sit on the last line.
+    // Inside the text node when caption/body exists (incl. block captions under
+    // photos); otherwise on the bubble for media-only rows.
     const spacer = document.createElement("span");
     spacer.className = "message-bubble-meta-spacer";
     spacer.setAttribute("aria-hidden", "true");
-    bubble.appendChild(spacer);
+    if (textEl) {
+      textEl.appendChild(spacer);
+    } else {
+      bubble.appendChild(spacer);
+    }
 
     const meta = document.createElement("div");
     meta.className = "message-bubble-meta";
