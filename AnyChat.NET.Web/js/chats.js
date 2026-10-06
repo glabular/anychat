@@ -26,6 +26,7 @@ import { setChatsCreateButtonReady } from "./chats-create-button.js";
 import {
   beginOpenChatMessages,
   clearMessageProfilesContext,
+  setMessageMediaContext,
   finishOpenChatMessagesLoad,
   hideChatPanel,
   initChatComposer,
@@ -2536,6 +2537,9 @@ async function openChatMessages(chatId) {
   const spaceObject = selectedSpaceInput.dataset.spaceObject ?? "";
   const gatewayUrl = selectedSpaceInput.dataset.gatewayUrl ?? "";
   const profilesEnabled = isRegularSpaceObject(spaceObject);
+
+  // Media gateway for all chat types (1:1 included). Profiles stay space-only.
+  setMessageMediaContext({ gatewayUrl });
 
   if (profilesEnabled) {
     setMessageProfilesContext({

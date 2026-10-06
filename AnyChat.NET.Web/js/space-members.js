@@ -215,14 +215,14 @@ export function initialsFromDisplayName(name) {
 }
 
 /**
- * Build a browser-loadable avatar URL from the space gateway + file id.
+ * Build a browser-loadable image URL from the space gateway + file id.
  * Anytype may supply either a bare cid or an authenticated
  * `/v1/spaces/.../files/{cid}` URL — only the cid works on the gateway.
  * @param {string | null | undefined} gatewayUrl
  * @param {string | null | undefined} fileId
  * @returns {string | null}
  */
-export function buildMemberFileAvatarUrl(gatewayUrl, fileId) {
+export function buildGatewayImageUrl(gatewayUrl, fileId) {
   const base = typeof gatewayUrl === "string" ? gatewayUrl.trim().replace(/\/$/, "") : "";
   const cid = extractFileCid(fileId);
   if (!base || !cid) {
@@ -230,6 +230,27 @@ export function buildMemberFileAvatarUrl(gatewayUrl, fileId) {
   }
 
   return `${base}/image/${encodeURIComponent(cid)}`;
+}
+
+/**
+ * Build a browser-loadable avatar URL from the space gateway + file id.
+ * @param {string | null | undefined} gatewayUrl
+ * @param {string | null | undefined} fileId
+ * @returns {string | null}
+ */
+export function buildMemberFileAvatarUrl(gatewayUrl, fileId) {
+  return buildGatewayImageUrl(gatewayUrl, fileId);
+}
+
+/**
+ * Build a browser-loadable message-attachment image URL.
+ * Same gateway path as member file avatars.
+ * @param {string | null | undefined} gatewayUrl
+ * @param {string | null | undefined} fileId
+ * @returns {string | null}
+ */
+export function buildMessageImageUrl(gatewayUrl, fileId) {
+  return buildGatewayImageUrl(gatewayUrl, fileId);
 }
 
 /**

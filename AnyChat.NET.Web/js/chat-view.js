@@ -91,6 +91,13 @@ let onOutgoingPreviewChanged = null;
  */
 let messageProfiles = null;
 
+/**
+ * Gateway for message attachment images. Kept for every open chat (including
+ * 1:1), independent of author-profile rendering.
+ * @type {{ gatewayUrl: string } | null}
+ */
+let messageMedia = null;
+
 /** Unsent composer text keyed by spaceId + chatId for the current session. */
 const composerDrafts = new Map();
 
@@ -468,6 +475,7 @@ export function hideChatPanel(options = {}) {
 
   openChatToken += 1;
   openChat = null;
+  clearMessageMediaContext();
   clearMessageProfilesContext();
   cancelChatRename({ restoreFocus: false });
   closeChatPanelMenu();
@@ -756,6 +764,32 @@ export function setMessageProfilesContext(context) {
 
 export function clearMessageProfilesContext() {
   messageProfiles = null;
+}
+
+/**
+ * Remember the space gateway for message images while a chat is open.
+ * Call for every chat type; profiles may still be disabled in 1:1.
+ * @param {{ gatewayUrl?: string } | null} context
+ */
+export function setMessageMediaContext(context) {
+  if (!context) {
+    messageMedia = null;
+    return;
+  }
+
+  messageMedia = {
+    gatewayUrl:
+      typeof context.gatewayUrl === "string" ? context.gatewayUrl.trim() : "",
+  };
+}
+
+export function clearMessageMediaContext() {
+  messageMedia = null;
+}
+
+/** @returns {string} gateway URL for the open chat, or empty when unset */
+export function getMessageMediaGatewayUrl() {
+  return messageMedia?.gatewayUrl ?? "";
 }
 
 /** Drop in-memory drafts after logout so text does not survive a new session. */
