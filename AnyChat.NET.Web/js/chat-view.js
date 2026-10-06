@@ -1076,6 +1076,37 @@ function attachmentStubLabel(message) {
   return hasImage ? "Photo" : "File";
 }
 
+/**
+ * Compact attachment chip (document icon + label) above caption text.
+ * @param {string} label
+ * @returns {HTMLElement}
+ */
+function createMessageFileAttachmentChip(label) {
+  const chip = document.createElement("div");
+  chip.className = "message-file-chip";
+  chip.setAttribute("aria-label", label);
+
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.setAttribute("class", "message-file-chip-icon");
+  icon.setAttribute("viewBox", "0 0 24 24");
+  icon.setAttribute("aria-hidden", "true");
+  icon.setAttribute("focusable", "false");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("fill", "currentColor");
+  path.setAttribute(
+    "d",
+    "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm0 2.5L18.5 9H14zM8 13h8v1.5H8zm0 3h8v1.5H8zm0-6h5V11H8z"
+  );
+  icon.appendChild(path);
+
+  const text = document.createElement("span");
+  text.className = "message-file-chip-label";
+  text.textContent = label;
+
+  chip.append(icon, text);
+  return chip;
+}
+
 /** Minimum media frame width so tiny/narrow photos stay readable. */
 const MESSAGE_MEDIA_MIN_WIDTH_PX = 11 * 16;
 /** Max media height relative to the viewport. */
@@ -1311,20 +1342,14 @@ function appendMessageAttachments(bubble, message) {
     hasNonImage = true;
   }
 
-  // Drop Photo stub when images are present; keep File for non-image-only.
+  // Drop Photo stub when images are present; keep a File chip for
+  // non-image-only. Unusable attachments get a quiet Photo/File chip.
   if (!paintedImage && hasNonImage) {
-    const stubEl = document.createElement("div");
-    stubEl.className =
-      "message-bubble-text message-bubble-text--placeholder";
-    stubEl.textContent = "File";
-    bubble.appendChild(stubEl);
+    bubble.appendChild(createMessageFileAttachmentChip("File"));
   } else if (!paintedImage && !hasNonImage) {
-    // Attachments present but none usable — keep a quiet Photo stub.
-    const stubEl = document.createElement("div");
-    stubEl.className =
-      "message-bubble-text message-bubble-text--placeholder";
-    stubEl.textContent = attachmentStubLabel(message);
-    bubble.appendChild(stubEl);
+    bubble.appendChild(
+      createMessageFileAttachmentChip(attachmentStubLabel(message))
+    );
   }
 }
 

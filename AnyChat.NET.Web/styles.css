@@ -108,7 +108,9 @@ textarea,
 .selectable .message-send-status *,
 .selectable .message-author-avatar,
 .selectable .message-author-avatar *,
-.selectable .message-author-name {
+.selectable .message-author-name,
+.selectable .message-file-chip,
+.selectable .message-file-chip * {
   user-select: none;
   -webkit-user-select: none;
 }
@@ -1209,6 +1211,51 @@ body.is-chats-sidebar-resizing * {
   color: rgba(255, 255, 255, 0.72);
 }
 
+/* Non-image attachment: chip above caption (not inline with body text). */
+.message-file-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0.35rem 0 0.15rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
+  background: color-mix(in srgb, var(--color-bg) 45%, transparent);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.2;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.message-file-chip:first-child {
+  margin-top: 0;
+}
+
+.message-file-chip-icon {
+  flex: 0 0 auto;
+  width: 1.1rem;
+  height: 1.1rem;
+  opacity: 0.9;
+}
+
+.message-file-chip-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-row--mine .message-file-chip {
+  border-color: color-mix(in srgb, var(--color-text) 22%, transparent);
+  background: color-mix(in srgb, #000 18%, transparent);
+  color: rgba(248, 248, 248, 0.85);
+}
+
 .message-media-frame {
   display: block;
   position: relative;
@@ -1223,8 +1270,9 @@ body.is-chats-sidebar-resizing * {
   margin-top: 0;
 }
 
-/* Caption under photo: block so it clears the media frame cleanly. */
-.message-media-frame + .message-bubble-text {
+/* Caption under photo / file chip: block so it clears the attachment cleanly. */
+.message-media-frame + .message-bubble-text,
+.message-file-chip + .message-bubble-text {
   display: block;
   margin-top: 0.35rem;
 }
