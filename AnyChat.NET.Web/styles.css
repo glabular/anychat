@@ -1200,6 +1200,15 @@ body.is-chats-sidebar-resizing * {
   overflow-wrap: anywhere;
 }
 
+.message-bubble-text--placeholder {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.message-row--mine .message-bubble-text--placeholder {
+  color: rgba(255, 255, 255, 0.72);
+}
+
 /* Reserves last-line room for absolute meta (Telegram-style). */
 .message-bubble-meta-spacer {
   display: inline-block;

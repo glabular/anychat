@@ -922,9 +922,47 @@ export function initInitialLoadRetry(onRetry) {
   });
 }
 
-function isRenderableTextMessage(message) {
+/**
+ * @param {object | null | undefined} message
+ * @returns {unknown[]}
+ */
+function messageAttachments(message) {
+  const attachments = message?.content?.attachments;
+  return Array.isArray(attachments) ? attachments : [];
+}
+
+/**
+ * @param {object | null | undefined} message
+ * @returns {boolean}
+ */
+function hasMessageAttachments(message) {
+  return messageAttachments(message).length > 0;
+}
+
+/**
+ * @param {object | null | undefined} message
+ * @returns {string}
+ */
+function messageBodyText(message) {
   const text = message?.content?.text;
-  return typeof text === "string" && text.trim().length > 0;
+  return typeof text === "string" ? text.trim() : "";
+}
+
+/**
+ * Stub label when the bubble has attachments but no text (until images render).
+ * @param {object | null | undefined} message
+ * @returns {string}
+ */
+function attachmentStubLabel(message) {
+  const hasImage = messageAttachments(message).some(
+    (attachment) => attachment && attachment.isImage === true
+  );
+  return hasImage ? "Photo" : "File";
+}
+
+/** True when the message has visible body text and/or any attachment. */
+function isRenderableMessage(message) {
+  return messageBodyText(message).length > 0 || hasMessageAttachments(message);
 }
 
 function rowModifierClass(isMine) {
@@ -1146,7 +1184,7 @@ function createReplyQuote(message) {
  * @returns {HTMLDivElement | null}
  */
 function createMessageRow(message) {
-  if (!isRenderableTextMessage(message)) {
+  if (!isRenderableMessage(message)) {
     return null;
   }
 
@@ -1189,10 +1227,22 @@ function createMessageRow(message) {
     bubble.appendChild(quote);
   }
 
-  const textEl = document.createElement("div");
-  textEl.className = "message-bubble-text";
-  textEl.textContent = message.content.text;
-  bubble.appendChild(textEl);
+  const bodyText = messageBodyText(message);
+  if (bodyText) {
+    const textEl = document.createElement("div");
+    textEl.className = "message-bubble-text";
+    textEl.textContent = bodyText;
+    bubble.appendChild(textEl);
+  }
+
+  if (hasMessageAttachments(message)) {
+    // Stub until Step 4 paints real images (also under captions).
+    const stubEl = document.createElement("div");
+    stubEl.className =
+      "message-bubble-text message-bubble-text--placeholder";
+    stubEl.textContent = attachmentStubLabel(message);
+    bubble.appendChild(stubEl);
+  }
 
   const timeLabel = formatTimeHhMm(message.createdAt);
   const edited = isMessageEdited(message);
