@@ -2892,13 +2892,16 @@ export async function fetchChatMessages(
 
 /**
  * Always returns parts when a latest message exists so `createdAt` is cached
- * even for non-text messages (empty preview text is fine).
+ * even for non-text messages. Attachment-only tips use a short Photo/File label.
  * @param {object} message
  * @param {{ isOneToOne: boolean }} options
  * @returns {ChatPreviewParts}
  */
 function formatMessagePreview(message, { isOneToOne }) {
-  const text = message.content?.text?.trim() ?? "";
+  let text = message.content?.text?.trim() ?? "";
+  if (!text) {
+    text = attachmentPreviewLabel(message) ?? "";
+  }
 
   let senderLabel = null;
   if (text && !isOneToOne && message.isMine !== true) {
@@ -2917,6 +2920,23 @@ function formatMessagePreview(message, { isOneToOne }) {
   }
 
   return { senderLabel, text, createdAt };
+}
+
+/**
+ * Short chats-list label when the tip has no text body.
+ * @param {object | null | undefined} message
+ * @returns {string | null}
+ */
+function attachmentPreviewLabel(message) {
+  const attachments = message?.content?.attachments;
+  if (!Array.isArray(attachments) || attachments.length === 0) {
+    return null;
+  }
+
+  const hasImage = attachments.some(
+    (attachment) => attachment && attachment.isImage === true
+  );
+  return hasImage ? "Photo" : "File";
 }
 
 /**
