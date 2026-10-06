@@ -19,6 +19,9 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 - Context menu Copy text for message bubbles (own and others’)
 - Delete your own messages from the context menu
 - Context menu Copy message link
+- Display image attachments in chat bubbles (photo-only messages included)
+- Chat list shows Photo / File when the latest message has no text
+- Click a bubble photo to open an in-window image viewer (Esc / backdrop / × to close)
 
 ### Changed
 
@@ -33,6 +36,7 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 ### Fixed
 
 - Quote click on replies to attachment-only (hidden) parents no longer jumps to latest; tip says the message cannot be opened
+- Scroll position in chats with images is kept across chat/space switches after photos finish laying out
 - Open chat reflects Anytype Desktop message edits and deletes over the
   existing SSE stream (no reopen)
 - Spaces and chats lists soft-refresh while the window is visible so remote

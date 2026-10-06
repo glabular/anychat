@@ -1320,7 +1320,7 @@ body.is-chats-sidebar-resizing * {
   color: rgba(255, 255, 255, 0.72);
 }
 
-/* In-window image viewer (fits the app webview; fullscreen is a later step). */
+/* In-window image viewer.*/
 .message-image-viewer {
   position: fixed;
   inset: 0;
