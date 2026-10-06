@@ -1536,6 +1536,9 @@ function createMessageRow(message) {
     bubble.appendChild(quote);
   }
 
+  // Image above caption (messenger-style).
+  appendMessageAttachments(bubble, message);
+
   const bodyText = messageBodyText(message);
   if (bodyText) {
     const textEl = document.createElement("div");
@@ -1543,8 +1546,6 @@ function createMessageRow(message) {
     textEl.textContent = bodyText;
     bubble.appendChild(textEl);
   }
-
-  appendMessageAttachments(bubble, message);
 
   const timeLabel = formatTimeHhMm(message.createdAt);
   const edited = isMessageEdited(message);

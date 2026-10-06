@@ -1223,6 +1223,12 @@ body.is-chats-sidebar-resizing * {
   margin-top: 0;
 }
 
+/* Caption under photo: block so it clears the media frame cleanly. */
+.message-media-frame + .message-bubble-text {
+  display: block;
+  margin-top: 0.35rem;
+}
+
 .message-media-frame--loading {
   min-width: 11rem;
   min-height: 7rem;
