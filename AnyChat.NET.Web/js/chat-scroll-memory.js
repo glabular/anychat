@@ -95,6 +95,20 @@ export function captureChatScrollAnchor(container) {
     return { atLatest: true };
   }
 
+  return captureChatScrollMessageAnchor(container);
+}
+
+/**
+ * Snapshot the top visible message even when the short current layout happens
+ * to be near the bottom. Used to preserve position while images change height.
+ * @param {HTMLElement | null | undefined} container
+ * @returns {ChatScrollMessageAnchor | null}
+ */
+export function captureChatScrollMessageAnchor(container) {
+  if (!container) {
+    return null;
+  }
+
   const rows = getMessageRows(container);
   const topRow = findTopVisibleRow(container, rows);
   if (!topRow) {
@@ -103,7 +117,7 @@ export function captureChatScrollAnchor(container) {
 
   const messageId = resolveStableMessageId(topRow, rows);
   if (!messageId) {
-    return { atLatest: true };
+    return null;
   }
 
   const offsetPx =

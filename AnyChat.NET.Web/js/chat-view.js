@@ -15,7 +15,12 @@ import {
   scrollChatToLatest,
   syncScrollToLatestButton,
 } from "./chat-messages-scroll.js";
-import { captureAndRememberChatScroll, rememberChatScroll, restoreChatScrollAnchor } from "./chat-scroll-memory.js";
+import {
+  captureAndRememberChatScroll,
+  captureChatScrollMessageAnchor,
+  rememberChatScroll,
+  restoreChatScrollAnchor,
+} from "./chat-scroll-memory.js";
 import {
   getSpaceMember,
   buildMessageImageUrl,
@@ -98,6 +103,11 @@ let messageProfiles = null;
  * @type {{ gatewayUrl: string } | null}
  */
 let messageMedia = null;
+
+/** True only when this render intentionally opened/restored at the latest tip. */
+let pinLatestWhileMessageImagesSettle = true;
+/** Original saved message offset; loading placeholders may be too short to apply it. */
+let messageImageRestoreAnchor = null;
 
 /** Unsent composer text keyed by spaceId + chatId for the current session. */
 const composerDrafts = new Map();
@@ -1019,23 +1029,59 @@ function createMessageImageAttachment(url) {
   img.decoding = "async";
 
   img.addEventListener("load", () => {
-    frame.classList.remove("message-media-frame--loading");
-    frame.classList.add("message-media-frame--ready");
+    // Sample before the frame grows: restore/open pins to the short loading
+    // height, then the real image would leave the viewport below the fold.
+    settleMessageMediaFrame(frame, () => {
+      frame.classList.remove("message-media-frame--loading");
+      frame.classList.add("message-media-frame--ready");
+    });
   });
 
   img.addEventListener("error", () => {
-    frame.classList.remove("message-media-frame--loading");
-    frame.classList.add("message-media-frame--error");
-    frame.replaceChildren();
-    const errorEl = document.createElement("div");
-    errorEl.className = "message-media-error";
-    errorEl.textContent = "Couldn't load image";
-    frame.appendChild(errorEl);
+    settleMessageMediaFrame(frame, () => {
+      frame.classList.remove("message-media-frame--loading");
+      frame.classList.add("message-media-frame--error");
+      frame.replaceChildren();
+      const errorEl = document.createElement("div");
+      errorEl.className = "message-media-error";
+      errorEl.textContent = "Couldn't load image";
+      frame.appendChild(errorEl);
+    });
   });
 
   img.src = url;
   frame.appendChild(img);
   return frame;
+}
+
+/**
+ * Apply a media-frame size change; if the feed was at latest beforehand, re-pin
+ * after layout so async image growth does not leave a gap under the viewport.
+ * Cached images may fire load before the frame is inserted — re-pin next frame.
+ * @param {HTMLElement} frame
+ * @param {() => void} applyLayout
+ */
+function settleMessageMediaFrame(frame, applyLayout) {
+  const container = document.getElementById("chat-messages");
+  const pinLatest =
+    pinLatestWhileMessageImagesSettle && isChatMessagesAtLatest(container);
+  const anchor = pinLatest
+    ? null
+    : messageImageRestoreAnchor ?? captureChatScrollMessageAnchor(container);
+  applyLayout();
+
+  requestAnimationFrame(() => {
+    if (pinLatest) {
+      scrollChatToLatest();
+    } else {
+      restoreChatScrollAnchor(container, anchor);
+      syncScrollToLatestButton();
+    }
+
+    if (!container?.querySelector(".message-media-frame--loading")) {
+      messageImageRestoreAnchor = null;
+    }
+  });
 }
 
 /**
@@ -1544,6 +1590,10 @@ export function renderOpenChatMessages(messages, options = {}) {
     return;
   }
 
+  pinLatestWhileMessageImagesSettle =
+    !scrollAnchor || scrollAnchor.atLatest === true;
+  messageImageRestoreAnchor =
+    scrollAnchor && scrollAnchor.atLatest !== true ? scrollAnchor : null;
   endMessagesLoad();
   // Hide before clearing/appending so the browser never paints scrollTop=0.
   setMessagesPreparing(container, true);
