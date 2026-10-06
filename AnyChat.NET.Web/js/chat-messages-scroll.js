@@ -1,5 +1,5 @@
 /** Distance from the bottom that still counts as “at latest”. */
-const CHAT_LATEST_THRESHOLD_PX = 24;
+const CHAT_LATEST_THRESHOLD_PX = 48;
 
 const VISIBLE_CLASS = "chat-scroll-to-latest--visible";
 /** Must cover the CSS hide transition (transform + opacity). */

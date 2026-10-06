@@ -36,7 +36,7 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 ### Fixed
 
 - Quote click on replies to attachment-only (hidden) parents no longer jumps to latest; tip says the message cannot be opened
-- Scroll position in chats with images is kept across chat/space switches after photos finish laying out
+- Sticky “at latest” scroll survives image layout and space hops until you scroll away; mid-chat offsets still restore after photos settle
 - Open chat reflects Anytype Desktop message edits and deletes over the
   existing SSE stream (no reopen)
 - Spaces and chats lists soft-refresh while the window is visible so remote

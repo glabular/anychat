@@ -108,8 +108,13 @@ let messageProfiles = null;
  */
 let messageMedia = null;
 
-/** True only when this render intentionally opened/restored at the latest tip. */
-let pinLatestWhileMessageImagesSettle = true;
+/**
+ * Sticky “read the tip” mode. Survives image height changes and space hops until
+ * the user clearly scrolls away from the bottom.
+ */
+let stickChatScrollToLatest = true;
+/** Ignore scroll-driven remember briefly after programmatic pin-to-latest. */
+let suppressScrollRememberUntil = 0;
 /** Original saved message offset; loading placeholders may be too short to apply it. */
 let messageImageRestoreAnchor = null;
 
@@ -428,15 +433,63 @@ function cancelScheduledScrollRemember() {
   }
 }
 
-function captureOpenChatScrollNow() {
+function markStickChatScrollToLatest() {
+  stickChatScrollToLatest = true;
+  suppressScrollRememberUntil = performance.now() + 400;
+}
+
+/**
+ * Pin the feed to the tip and remember atLatest. Use after opens/restores and
+ * after media frames finish laying out while stick mode is on.
+ */
+function pinOpenChatScrollToLatest() {
+  markStickChatScrollToLatest();
+  scrollChatToLatest();
   if (!openChat) {
     return;
+  }
+  rememberChatScroll(openChat.spaceId, openChat.chatId, { atLatest: true });
+}
+
+/**
+ * @param {{ allowReleaseStick?: boolean }} [options]
+ * `allowReleaseStick` is only for user scroll debounce. Leave/space-hop must
+ * keep sticky tip as atLatest even if images briefly moved the viewport.
+ */
+function captureOpenChatScrollNow(options = {}) {
+  if (!openChat) {
+    return;
+  }
+
+  const allowReleaseStick = options.allowReleaseStick === true;
+  const container = document.getElementById("chat-messages");
+
+  if (stickChatScrollToLatest) {
+    const suppressActive = performance.now() < suppressScrollRememberUntil;
+    const stillAtTip = isChatMessagesAtLatest(container);
+    const imagesLoading = Boolean(
+      container?.querySelector(".message-media-frame--loading")
+    );
+
+    // Hop/leave, pin settle, loading frames, or still at tip: keep atLatest.
+    if (
+      !allowReleaseStick
+      || suppressActive
+      || stillAtTip
+      || imagesLoading
+    ) {
+      rememberChatScroll(openChat.spaceId, openChat.chatId, { atLatest: true });
+      return;
+    }
+
+    // User scroll debounce: clearly left the tip — drop sticky mode.
+    stickChatScrollToLatest = false;
   }
 
   captureAndRememberChatScroll(
     openChat.spaceId,
     openChat.chatId,
-    document.getElementById("chat-messages")
+    container
   );
 }
 
@@ -447,15 +500,22 @@ function captureOpenChatScrollNow() {
  */
 export function rememberOpenChatScrollPosition() {
   cancelScheduledScrollRemember();
-  captureOpenChatScrollNow();
+  captureOpenChatScrollNow({ allowReleaseStick: false });
 }
 
 /** Debounced capture while the user scrolls the open feed. */
 export function scheduleRememberOpenChatScrollPosition() {
+  if (performance.now() < suppressScrollRememberUntil) {
+    return;
+  }
+
   cancelScheduledScrollRemember();
   scrollRememberTimer = setTimeout(() => {
     scrollRememberTimer = null;
-    captureOpenChatScrollNow();
+    if (performance.now() < suppressScrollRememberUntil) {
+      return;
+    }
+    captureOpenChatScrollNow({ allowReleaseStick: true });
   }, SCROLL_REMEMBER_DEBOUNCE_MS);
 }
 
@@ -466,6 +526,7 @@ export function rememberOpenChatScrollAtLatest() {
     return;
   }
 
+  markStickChatScrollToLatest();
   rememberChatScroll(openChat.spaceId, openChat.chatId, { atLatest: true });
 }
 
@@ -1180,16 +1241,14 @@ function createMessageImageAttachment(url) {
 }
 
 /**
- * Apply a media-frame size change; if the feed was at latest beforehand, re-pin
- * after layout so async image growth does not leave a gap under the viewport.
- * Cached images may fire load before the frame is inserted — re-pin next frame.
+ * Apply a media-frame size change, then restore scroll intent. Sticky tip mode
+ * always re-pins (do not re-sample “at latest” after the frame already grew).
  * @param {HTMLElement} frame
  * @param {() => void} applyLayout
  */
 function settleMessageMediaFrame(frame, applyLayout) {
   const container = document.getElementById("chat-messages");
-  const pinLatest =
-    pinLatestWhileMessageImagesSettle && isChatMessagesAtLatest(container);
+  const pinLatest = stickChatScrollToLatest;
   const anchor = pinLatest
     ? null
     : messageImageRestoreAnchor ?? captureChatScrollMessageAnchor(container);
@@ -1206,7 +1265,7 @@ function settleMessageMediaFrame(frame, applyLayout) {
     }
 
     if (pinLatest) {
-      scrollChatToLatest();
+      pinOpenChatScrollToLatest();
     } else {
       restoreChatScrollAnchor(container, anchor);
       syncScrollToLatestButton();
@@ -1725,8 +1784,8 @@ export function renderOpenChatMessages(messages, options = {}) {
     return;
   }
 
-  pinLatestWhileMessageImagesSettle =
-    !scrollAnchor || scrollAnchor.atLatest === true;
+  const openAtLatest = !scrollAnchor || scrollAnchor.atLatest === true;
+  stickChatScrollToLatest = openAtLatest;
   messageImageRestoreAnchor =
     scrollAnchor && scrollAnchor.atLatest !== true ? scrollAnchor : null;
   endMessagesLoad();
@@ -1751,8 +1810,10 @@ export function renderOpenChatMessages(messages, options = {}) {
   }
 
   list.appendChild(fragment);
-  if (!restoreChatScrollAnchor(container, scrollAnchor)) {
-    scrollChatToLatest();
+  if (openAtLatest || !restoreChatScrollAnchor(container, scrollAnchor)) {
+    pinOpenChatScrollToLatest();
+  } else {
+    stickChatScrollToLatest = false;
   }
   setMessagesPreparing(container, false);
   syncScrollToLatestButton();
@@ -1811,7 +1872,9 @@ export function appendNewerChatMessages(messages, options = {}) {
   }
 
   const pinLatest =
-    scrollMode === "always" || isChatMessagesAtLatest(container);
+    scrollMode === "always"
+    || stickChatScrollToLatest
+    || isChatMessagesAtLatest(container);
 
   const { fragment, renderedCount } = buildMessageFragment(messages, {
     previousDayKey: getLastDayKey(list),
@@ -1823,7 +1886,7 @@ export function appendNewerChatMessages(messages, options = {}) {
   setEmptyMessagesVisible(false);
   list.appendChild(fragment);
   if (pinLatest) {
-    scrollChatToLatest();
+    pinOpenChatScrollToLatest();
   } else {
     syncScrollToLatestButton();
   }
@@ -1842,7 +1905,7 @@ export function rerenderOpenChatMessagesPreservingViewport(messages) {
     return;
   }
 
-  const pinLatest = isChatMessagesAtLatest(container);
+  const pinLatest = stickChatScrollToLatest || isChatMessagesAtLatest(container);
   const previousScrollTop = container.scrollTop;
   const previousScrollHeight = container.scrollHeight;
 
@@ -1870,8 +1933,9 @@ export function rerenderOpenChatMessagesPreservingViewport(messages) {
   setMessagesPreparing(container, false);
 
   if (pinLatest) {
-    scrollChatToLatest();
+    pinOpenChatScrollToLatest();
   } else {
+    stickChatScrollToLatest = false;
     void container.offsetHeight;
     container.scrollTop =
       previousScrollTop + (container.scrollHeight - previousScrollHeight);
