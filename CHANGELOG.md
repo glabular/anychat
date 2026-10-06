@@ -36,6 +36,7 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 ### Fixed
 
 - Non-image attachments show as a file chip above the caption instead of italic “File” jammed into the text
+- Attachment-only bubbles keep a compact file chip with time on the same row (no stretch over the timestamp)
 - Editing a message with a photo keeps the attachment 
 - Message time sits on the last line of short captions (including under photos) instead of always wrapping alone
 - Quote click on replies to attachment-only (hidden) parents no longer jumps to latest; tip says the message cannot be opened

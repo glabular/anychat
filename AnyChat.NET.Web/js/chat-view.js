@@ -1077,6 +1077,41 @@ function attachmentStubLabel(message) {
 }
 
 /**
+ * Put the meta spacer on the last content line: body text, file-chip row, or
+ * (for photo-only) skip spacer and mark the bubble for on-media time.
+ * Never append the spacer as a sibling after a block attachment — that
+ * always creates an empty timestamp row. File chips stay compact; a flex
+ * row holds the spacer so time sits to the right without stretching the chip.
+ * @param {HTMLElement} bubble
+ * @param {HTMLElement | null} textEl
+ * @param {HTMLElement} spacer
+ */
+function placeMessageBubbleMetaSpacer(bubble, textEl, spacer) {
+  if (textEl) {
+    textEl.appendChild(spacer);
+    return;
+  }
+
+  const chip = bubble.querySelector(":scope > .message-file-chip:last-of-type");
+  if (chip) {
+    const row = document.createElement("div");
+    row.className = "message-file-chip-row";
+    chip.replaceWith(row);
+    row.append(chip, spacer);
+    return;
+  }
+
+  const media = bubble.querySelector(".message-media-frame:last-of-type");
+  if (media) {
+    bubble.classList.add("message-bubble--meta-on-media");
+    media.classList.add("message-media-frame--with-meta");
+    return;
+  }
+
+  bubble.appendChild(spacer);
+}
+
+/**
  * Compact attachment chip (document icon + label) above caption text.
  * @param {string} label
  * @returns {HTMLElement}
@@ -1638,17 +1673,12 @@ function createMessageRow(message) {
   const sendStatus = resolveOutgoingSendStatus(message);
 
   if (timeLabel || edited || sendStatus) {
-    // Invisible end-of-text reserve so absolute meta can sit on the last line.
-    // Inside the text node when caption/body exists (incl. block captions under
-    // photos); otherwise on the bubble for media-only rows.
+    // Reserve last-line room for absolute meta. Prefer the last content host
+    // (text → file chip → media) so block attachments do not force a blank row.
     const spacer = document.createElement("span");
     spacer.className = "message-bubble-meta-spacer";
     spacer.setAttribute("aria-hidden", "true");
-    if (textEl) {
-      textEl.appendChild(spacer);
-    } else {
-      bubble.appendChild(spacer);
-    }
+    placeMessageBubbleMetaSpacer(bubble, textEl, spacer);
 
     const meta = document.createElement("div");
     meta.className = "message-bubble-meta";
@@ -1734,7 +1764,12 @@ export function updateMessageRowSendStatus({ clientTempId, messageId, status }) 
       const spacer = document.createElement("span");
       spacer.className = "message-bubble-meta-spacer";
       spacer.setAttribute("aria-hidden", "true");
-      bubble.appendChild(spacer);
+      const textHost = bubble.querySelector(":scope > .message-bubble-text");
+      placeMessageBubbleMetaSpacer(
+        bubble,
+        textHost instanceof HTMLElement ? textHost : null,
+        spacer
+      );
     }
     meta = document.createElement("div");
     meta.className = "message-bubble-meta";

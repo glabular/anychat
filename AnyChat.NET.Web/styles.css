@@ -110,7 +110,8 @@ textarea,
 .selectable .message-author-avatar *,
 .selectable .message-author-name,
 .selectable .message-file-chip,
-.selectable .message-file-chip * {
+.selectable .message-file-chip *,
+.selectable .message-file-chip-row {
   user-select: none;
   -webkit-user-select: none;
 }
@@ -1236,6 +1237,33 @@ body.is-chats-sidebar-resizing * {
   margin-top: 0;
 }
 
+/* Attachment-only: compact chip + end spacer on one row (time stays clear). */
+.message-file-chip-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  margin: 0.35rem 0 0.15rem;
+  gap: 0.5rem;
+}
+
+.message-file-chip-row:first-child {
+  margin-top: 0;
+}
+
+.message-file-chip-row .message-file-chip {
+  margin: 0;
+  flex: 0 1 auto;
+  max-width: calc(100% - 3.25rem);
+}
+
+.message-file-chip-row .message-bubble-meta-spacer {
+  margin-left: auto;
+  flex: 0 0 auto;
+  height: 0.85em;
+  align-self: center;
+}
+
 .message-file-chip-icon {
   flex: 0 0 auto;
   width: 1.1rem;
@@ -1272,7 +1300,8 @@ body.is-chats-sidebar-resizing * {
 
 /* Caption under photo / file chip: block so it clears the attachment cleanly. */
 .message-media-frame + .message-bubble-text,
-.message-file-chip + .message-bubble-text {
+.message-file-chip + .message-bubble-text,
+.message-file-chip-row + .message-bubble-text {
   display: block;
   margin-top: 0.35rem;
 }
@@ -1473,6 +1502,19 @@ body.is-chats-sidebar-resizing * {
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* Photo-only: sit time on the image (no blank spacer row under the frame). */
+.message-bubble--meta-on-media .message-bubble-meta {
+  bottom: 0.85rem;
+  z-index: 2;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.35rem;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.message-row--mine .message-bubble--meta-on-media .message-bubble-meta {
+  background: rgba(0, 0, 0, 0.4);
 }
 
 .message-bubble-edited,
