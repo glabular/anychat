@@ -1243,6 +1243,12 @@ body.is-chats-sidebar-resizing * {
 
 .message-media-frame--ready {
   background: #0a0a0a;
+  cursor: zoom-in;
+}
+
+.message-media-frame--ready:focus,
+.message-media-frame--ready:focus-visible {
+  outline: none;
 }
 
 .message-media-blur {
@@ -1312,6 +1318,70 @@ body.is-chats-sidebar-resizing * {
 
 .message-row--mine .message-media-error {
   color: rgba(255, 255, 255, 0.72);
+}
+
+/* In-window image viewer (fits the app webview; fullscreen is a later step). */
+.message-image-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 2.5rem 1.25rem 1.25rem;
+  background-color: rgba(0, 0, 0, 0.82);
+}
+
+.message-image-viewer[hidden] {
+  display: none;
+}
+
+.message-image-viewer-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background-color: var(--color-light-bg);
+  color: var(--color-text);
+  font: inherit;
+  line-height: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.message-image-viewer-close-icon {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.message-image-viewer-close:hover {
+  background-color: var(--color-surface-hover);
+}
+
+.message-image-viewer-close:focus,
+.message-image-viewer-close:focus-visible {
+  outline: none;
+}
+
+.message-image-viewer-image {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 0.35rem;
+  user-select: none;
 }
 
 /* Reserves last-line room for absolute meta (Telegram-style). */

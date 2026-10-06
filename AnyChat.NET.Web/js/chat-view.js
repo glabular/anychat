@@ -32,6 +32,10 @@ import {
   openMemberProfilePanel,
 } from "./member-profile-panel.js";
 import {
+  closeMessageImageViewer,
+  openMessageImageViewer,
+} from "./message-image-viewer.js";
+import {
   closeCreateChatModal,
   isCreateChatModalOpen,
 } from "./create-chat-modal.js";
@@ -495,6 +499,7 @@ export function hideChatPanel(options = {}) {
   closeDeleteChatConfirm({ restoreFocus: false });
   closeLogoutConfirm({ restoreFocus: false });
   closeMemberProfilePanel({ restoreFocus: false });
+  closeMessageImageViewer({ restoreFocus: false });
   clearChatMessages();
   resetChatHistoryStatus();
   setSendErrorVisible(false);
@@ -539,10 +544,15 @@ export function closeOpenChat() {
   return true;
 }
 
-/** Escape: rename → delete-message confirm → delete-chat confirm → logout confirm → create-space → create-chat → header menu → message menu → message edit → member profile → open chat. */
+/** Escape: image viewer → rename → delete-message confirm → delete-chat confirm → logout confirm → create-space → create-chat → header menu → message menu → message edit → member profile → open chat. */
 export function initChatViewCloseBindings() {
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") {
+      return;
+    }
+
+    if (closeMessageImageViewer({ restoreFocus: true })) {
+      event.preventDefault();
       return;
     }
 
@@ -1117,6 +1127,9 @@ function createMessageImageAttachment(url) {
     settleMessageMediaFrame(frame, () => {
       frame.classList.remove("message-media-frame--loading");
       frame.classList.add("message-media-frame--ready");
+      frame.setAttribute("role", "button");
+      frame.tabIndex = 0;
+      frame.setAttribute("aria-label", "Open image");
       layoutMessageMediaFrame(frame, img, blur);
     });
   });
@@ -1126,6 +1139,9 @@ function createMessageImageAttachment(url) {
       frame.classList.remove("message-media-frame--loading");
       frame.classList.remove("message-media-frame--letterbox");
       frame.classList.remove("message-media-frame--ready");
+      frame.removeAttribute("role");
+      frame.removeAttribute("tabindex");
+      frame.removeAttribute("aria-label");
       frame.classList.add("message-media-frame--error");
       frame.style.width = "";
       frame.style.height = "";
@@ -1135,6 +1151,27 @@ function createMessageImageAttachment(url) {
       errorEl.textContent = "Couldn't load image";
       frame.appendChild(errorEl);
     });
+  });
+
+  frame.addEventListener("click", (event) => {
+    if (!frame.classList.contains("message-media-frame--ready")) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    openMessageImageViewer(url);
+  });
+
+  frame.addEventListener("keydown", (event) => {
+    if (!frame.classList.contains("message-media-frame--ready")) {
+      return;
+    }
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    openMessageImageViewer(url);
   });
 
   img.src = url;
