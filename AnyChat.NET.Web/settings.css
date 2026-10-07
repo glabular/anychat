@@ -428,13 +428,6 @@ body.is-settings .main {
   }
 }
 
-.settings-sort-spaces-bulk-help {
-  margin: 0.65rem 0 0;
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
-  line-height: 1.4;
-}
-
 .settings-sort-spaces-status {
   margin: 0 0 1rem;
   color: var(--color-text-muted);
