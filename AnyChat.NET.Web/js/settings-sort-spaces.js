@@ -1,5 +1,6 @@
 import {
   describeSpacesLoadError,
+  fetchChats,
   fetchSpaces,
   renameSpace,
 } from "./api.js";
@@ -7,8 +8,10 @@ import { isOneToOneSpaceObject } from "./space-members.js";
 import { orderSpaces, writeSpaceOrder } from "./space-order.js";
 import {
   filterVisibleSpaces,
+  hideSpaceIds,
   isSpaceHidden,
   setSpaceVisible,
+  unhideAllSpaces,
 } from "./space-visibility.js";
 import {
   getSpaceDisplayName,
@@ -18,6 +21,9 @@ import {
 
 /** Wait before showing a loading label. */
 const LOADING_STATUS_DELAY_MS = 10;
+
+/** Keep the hide-chatless spinner visible at least this long. */
+const HIDE_CHATLESS_SPINNER_MIN_MS = 100;
 
 const ONE_TO_ONE_RENAME_TOOLTIP =
   "You can’t rename a personal one-to-one space.";
@@ -33,6 +39,11 @@ let loadingStatusTimer = null;
 /** Bumps when a new load starts so a late fetch cannot overwrite a newer one. */
 let loadGeneration = 0;
 
+/** Bumps when a hide-chatless scan starts so a late scan cannot apply. */
+let hideChatlessGeneration = 0;
+
+let hideChatlessInFlight = false;
+
 /** @type {string | null} */
 let editingSpaceId = null;
 /** @type {string} */
@@ -46,6 +57,32 @@ function getList() {
 
 function getStatus() {
   return document.getElementById("settings-sort-spaces-status");
+}
+
+function getHideChatlessButton() {
+  return document.getElementById("settings-sort-spaces-hide-chatless");
+}
+
+function getUnhideAllButton() {
+  return document.getElementById("settings-sort-spaces-unhide-all");
+}
+
+/**
+ * @param {boolean} busy
+ */
+function setHideChatlessBusy(busy) {
+  const button = getHideChatlessButton();
+  if (!(button instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  button.disabled = busy;
+  button.setAttribute("aria-busy", busy ? "true" : "false");
+
+  const spinner = button.querySelector(".settings-sort-spaces-bulk-spinner");
+  if (spinner instanceof HTMLElement) {
+    spinner.hidden = !busy;
+  }
 }
 
 /**
@@ -560,7 +597,133 @@ function moveSpace(index, delta) {
   }
 }
 
+/**
+ * Probe visible spaces for empty chat lists, then hide those (floor: ≥1 visible).
+ */
+async function hideChatlessSpaces() {
+  if (hideChatlessInFlight || loadedSpaces.length === 0) {
+    return;
+  }
+
+  const visible = loadedSpaces.filter(
+    (space) => space?.id && !isSpaceHidden(space.id)
+  );
+  if (visible.length === 0) {
+    return;
+  }
+
+  const scanGeneration = ++hideChatlessGeneration;
+  const loadAtStart = loadGeneration;
+  hideChatlessInFlight = true;
+  const busyStartedAt = Date.now();
+  setHideChatlessBusy(true);
+  hideStatus();
+
+  /** @type {string[]} */
+  const chatlessIds = [];
+  let probeFailures = 0;
+
+  try {
+    for (const space of visible) {
+      if (
+        scanGeneration !== hideChatlessGeneration ||
+        loadAtStart !== loadGeneration
+      ) {
+        return;
+      }
+
+      try {
+        const chats = await fetchChats(space.id);
+        if (!Array.isArray(chats) || chats.length === 0) {
+          chatlessIds.push(space.id);
+        }
+      } catch (error) {
+        probeFailures += 1;
+        console.error("Could not probe chats for space:", space.id, error);
+      }
+    }
+
+    if (
+      scanGeneration !== hideChatlessGeneration ||
+      loadAtStart !== loadGeneration
+    ) {
+      return;
+    }
+
+    // Spaces that stay visible without being in chatlessIds (have chats or probe failed).
+    const otherVisible = visible.length - chatlessIds.length;
+    let toHide = chatlessIds;
+    if (otherVisible < 1 && toHide.length > 0) {
+      // Keep one chatless space so the rail is never empty.
+      toHide = toHide.slice(0, -1);
+    }
+
+    if (toHide.length > 0) {
+      hideSpaceIds(toHide);
+      renderSpaces(loadedSpaces);
+      populateSpacesSidebar(loadedSpaces);
+    }
+
+    if (probeFailures > 0) {
+      showStatus(
+        probeFailures === 1
+          ? "Could not check chats for 1 space; it was left unchanged."
+          : `Could not check chats for ${probeFailures} spaces; they were left unchanged.`,
+        { error: true }
+      );
+    } else {
+      hideStatus();
+    }
+  } finally {
+    if (scanGeneration === hideChatlessGeneration) {
+      const remaining =
+        HIDE_CHATLESS_SPINNER_MIN_MS - (Date.now() - busyStartedAt);
+      if (remaining > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remaining));
+      }
+      if (scanGeneration === hideChatlessGeneration) {
+        hideChatlessInFlight = false;
+        setHideChatlessBusy(false);
+      }
+    }
+  }
+}
+
+function unhideAllVisibleSpaces() {
+  if (hideChatlessInFlight) {
+    return;
+  }
+
+  unhideAllSpaces();
+  renderSpaces(loadedSpaces);
+  populateSpacesSidebar(loadedSpaces);
+  hideStatus();
+}
+
+function bindBulkVisibilityActions() {
+  const hideButton = getHideChatlessButton();
+  if (hideButton instanceof HTMLButtonElement && hideButton.dataset.bound !== "true") {
+    hideButton.dataset.bound = "true";
+    hideButton.addEventListener("click", () => {
+      void hideChatlessSpaces();
+    });
+  }
+
+  const unhideButton = getUnhideAllButton();
+  if (
+    unhideButton instanceof HTMLButtonElement &&
+    unhideButton.dataset.bound !== "true"
+  ) {
+    unhideButton.dataset.bound = "true";
+    unhideButton.addEventListener("click", () => {
+      unhideAllVisibleSpaces();
+    });
+  }
+}
+
 function bindSortSpacesList() {
+  bindBulkVisibilityActions();
+
   const list = getList();
   if (!list || list.dataset.bound === "true") {
     return;
