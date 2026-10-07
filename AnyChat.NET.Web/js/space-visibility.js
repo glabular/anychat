@@ -62,6 +62,29 @@ export function setSpaceVisible(spaceId, visible) {
 }
 
 /**
+ * Hide many spaces in one write. Invalid ids are skipped.
+ * @param {string[]} ids
+ */
+export function hideSpaceIds(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return;
+  }
+
+  const next = new Set(readHiddenSpaceIds());
+  for (const id of ids) {
+    if (typeof id === "string" && id.length > 0) {
+      next.add(id);
+    }
+  }
+  writeHiddenSpaceIds([...next]);
+}
+
+/** Clear every manually hidden space (Unhide all). */
+export function unhideAllSpaces() {
+  writeHiddenSpaceIds([]);
+}
+
+/**
  * Drop spaces the user hid from the rail. Order is preserved.
  * @param {Array<{ id?: string }>} spaces
  */
