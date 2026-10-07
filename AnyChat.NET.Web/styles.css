@@ -1003,6 +1003,20 @@ body.is-chats-sidebar-resizing * {
   overflow-wrap: anywhere;
 }
 
+/* Photo + caption: wrap caption to the media width so long text cannot
+   stretch the bubble and leave empty space beside the image. */
+.message-bubble--has-media {
+  width: max-content;
+}
+
+.message-bubble--has-media .message-bubble-text {
+  max-width: var(--message-media-width);
+}
+
+.message-bubble--has-media .message-reply-quote {
+  max-width: var(--message-media-width);
+}
+
 .message-row--with-profile .message-bubble {
   max-width: 100%;
 }
@@ -1357,7 +1371,8 @@ body.is-chats-sidebar-resizing * {
   position: relative;
   display: block;
   max-width: 100%;
-  max-height: 45vh;
+  /* Fixed rem cap — do not track viewport height (window short ≠ shrink photo). */
+  max-height: 20rem;
   width: auto;
   height: auto;
   vertical-align: middle;

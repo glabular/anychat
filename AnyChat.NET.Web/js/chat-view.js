@@ -1144,27 +1144,129 @@ function createMessageFileAttachmentChip(label) {
 
 /** Minimum media frame width so tiny/narrow photos stay readable. */
 const MESSAGE_MEDIA_MIN_WIDTH_PX = 11 * 16;
-/** Max media height relative to the viewport. */
-const MESSAGE_MEDIA_MAX_HEIGHT_VH = 0.45;
+/**
+ * Max media height in rem (not vh). Window height must not shrink photos;
+ * only the chat-column width budget may change the frame size.
+ */
+const MESSAGE_MEDIA_MAX_HEIGHT_REM = 20;
+/** Matches `.message-bubble { max-width: min(70%, 42rem) }`. */
+const MESSAGE_BUBBLE_MAX_WIDTH_FRAC = 0.7;
+const MESSAGE_BUBBLE_MAX_WIDTH_REM = 42;
+
+function rootFontSizePx() {
+  return (
+    Number.parseFloat(getComputedStyle(document.documentElement).fontSize)
+    || 16
+  );
+}
 
 /**
+ * Available content width for a media frame from the chat column budget —
+ * not the fit-content bubble (that circularly locks a small size after shrink).
  * @param {HTMLElement} frame
  * @returns {number}
  */
 function getMessageMediaMaxWidth(frame) {
   const bubble = frame.closest(".message-bubble");
-  if (bubble instanceof HTMLElement && bubble.clientWidth > 0) {
-    const style = getComputedStyle(bubble);
-    const pad =
-      (Number.parseFloat(style.paddingLeft) || 0)
-      + (Number.parseFloat(style.paddingRight) || 0);
-    return Math.max(1, bubble.clientWidth - pad);
+  const row = frame.closest(".message-row");
+  const body = frame.closest(".message-body");
+  const feed = document.getElementById("chat-messages");
+
+  let containerW = 0;
+  if (body instanceof HTMLElement && body.clientWidth > 0) {
+    containerW = body.clientWidth;
+  } else if (row instanceof HTMLElement && row.clientWidth > 0) {
+    containerW = row.clientWidth;
+  } else if (feed instanceof HTMLElement && feed.clientWidth > 0) {
+    containerW = feed.clientWidth;
   }
 
-  return Math.min(
-    MESSAGE_MEDIA_MIN_WIDTH_PX * 2,
-    Math.floor(window.innerWidth * 0.45)
-  );
+  if (containerW <= 0) {
+    return Math.min(
+      MESSAGE_MEDIA_MIN_WIDTH_PX * 2,
+      Math.floor(window.innerWidth * 0.45)
+    );
+  }
+
+  const rootFontPx = rootFontSizePx();
+  const withProfile = row?.classList.contains("message-row--with-profile");
+  const maxBubbleW = withProfile
+    ? containerW
+    : Math.min(
+      containerW * MESSAGE_BUBBLE_MAX_WIDTH_FRAC,
+      MESSAGE_BUBBLE_MAX_WIDTH_REM * rootFontPx
+    );
+
+  let pad = 0;
+  if (bubble instanceof HTMLElement) {
+    const style = getComputedStyle(bubble);
+    pad =
+      (Number.parseFloat(style.paddingLeft) || 0)
+      + (Number.parseFloat(style.paddingRight) || 0);
+  }
+
+  return Math.max(1, Math.floor(maxBubbleW - pad));
+}
+
+/** @type {ResizeObserver | null} */
+let messageMediaLayoutObserver = null;
+/** @type {number | null} */
+let messageMediaLayoutRaf = null;
+
+/**
+ * Re-apply layout to every ready media frame (window / sidebar resize).
+ */
+function relayoutReadyMessageMediaFrames() {
+  const feed = document.getElementById("chat-messages");
+  if (!feed) {
+    return;
+  }
+
+  let laidOut = 0;
+  for (const frame of feed.querySelectorAll(".message-media-frame--ready")) {
+    if (!(frame instanceof HTMLElement)) {
+      continue;
+    }
+    const img = frame.querySelector(".message-media-image");
+    const blur = frame.querySelector(".message-media-blur");
+    if (
+      !(img instanceof HTMLImageElement)
+      || !(blur instanceof HTMLImageElement)
+      || !img.naturalWidth
+      || !img.naturalHeight
+    ) {
+      continue;
+    }
+    layoutMessageMediaFrame(frame, img, blur);
+    laidOut += 1;
+  }
+
+  if (laidOut > 0 && stickChatScrollToLatest) {
+    pinOpenChatScrollToLatest();
+  }
+}
+
+function scheduleRelayoutReadyMessageMediaFrames() {
+  if (messageMediaLayoutRaf !== null) {
+    return;
+  }
+  messageMediaLayoutRaf = requestAnimationFrame(() => {
+    messageMediaLayoutRaf = null;
+    relayoutReadyMessageMediaFrames();
+  });
+}
+
+/** Observe the message feed so media frames track column / window size. */
+export function initMessageMediaLayout() {
+  const feed = document.getElementById("chat-messages");
+  if (!feed || messageMediaLayoutObserver) {
+    return;
+  }
+
+  messageMediaLayoutObserver = new ResizeObserver(() => {
+    scheduleRelayoutReadyMessageMediaFrames();
+  });
+  messageMediaLayoutObserver.observe(feed);
 }
 
 /**
@@ -1181,7 +1283,7 @@ function layoutMessageMediaFrame(frame, img, blur) {
   }
 
   const maxW = getMessageMediaMaxWidth(frame);
-  const maxH = Math.round(window.innerHeight * MESSAGE_MEDIA_MAX_HEIGHT_VH);
+  const maxH = Math.round(MESSAGE_MEDIA_MAX_HEIGHT_REM * rootFontSizePx());
   const minW = Math.min(MESSAGE_MEDIA_MIN_WIDTH_PX, maxW);
   const aspect = nw / nh;
 
@@ -1215,6 +1317,39 @@ function layoutMessageMediaFrame(frame, img, blur) {
   } else {
     blur.removeAttribute("src");
   }
+
+  syncMessageBubbleToMediaWidth(frame.closest(".message-bubble"));
+}
+
+/**
+ * Keep caption/quote from stretching the bubble wider than the photo
+ * (fit-content + long wrapping text otherwise grows to max-width).
+ * @param {HTMLElement | null} bubble
+ */
+function syncMessageBubbleToMediaWidth(bubble) {
+  if (!(bubble instanceof HTMLElement)) {
+    return;
+  }
+
+  let mediaW = 0;
+  for (const frame of bubble.querySelectorAll(".message-media-frame--ready")) {
+    if (!(frame instanceof HTMLElement)) {
+      continue;
+    }
+    const w = frame.offsetWidth;
+    if (w > mediaW) {
+      mediaW = w;
+    }
+  }
+
+  if (mediaW <= 0) {
+    bubble.classList.remove("message-bubble--has-media");
+    bubble.style.removeProperty("--message-media-width");
+    return;
+  }
+
+  bubble.classList.add("message-bubble--has-media");
+  bubble.style.setProperty("--message-media-width", `${Math.round(mediaW)}px`);
 }
 
 /**
