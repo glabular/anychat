@@ -186,9 +186,16 @@ public partial class MainWindow : Window
         {
             // Set DefaultBackgroundColor at controller creation so WebView2 never
             // paints its default white before our first navigation completes.
+            // Fluent overlay: no classic scrollbar gutter, so chats-list rows can
+            // stay full-bleed (CSS ::-webkit-scrollbar width forces a gutter).
+            var environmentOptions = new CoreWebView2EnvironmentOptions
+            {
+                ScrollBarStyle = CoreWebView2ScrollbarStyle.FluentOverlay,
+            };
             var environment = await CoreWebView2Environment.CreateAsync(
                 browserExecutableFolder: null,
-                userDataFolder: WebView2UserDataFolder);
+                userDataFolder: WebView2UserDataFolder,
+                options: environmentOptions);
             var controllerOptions = environment.CreateCoreWebView2ControllerOptions();
             controllerOptions.DefaultBackgroundColor = AppBackground;
             await WebView.EnsureCoreWebView2Async(environment, controllerOptions);

@@ -53,6 +53,7 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
   stream and background recovery probe retry at different times
 - First chat-list click after launch opens the chat (WebView2 is focused when
   the startup surface is dismissed)
+- Chat list selection no longer leaves a gap when the list can scroll
 
 ## [0.3.0] - 2026-09-17
 

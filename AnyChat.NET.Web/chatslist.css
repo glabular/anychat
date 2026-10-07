@@ -110,7 +110,8 @@
 
 .chats-create-wrap {
     position: absolute;
-    right: calc(1rem + var(--scrollbar-size));
+    /* List uses overlay scrollbars (no classic gutter); keep a small inset. */
+    right: 1rem;
     bottom: 0.75rem;
     z-index: 1;
     display: inline-flex;
@@ -218,7 +219,7 @@
 .chats-scroll-to-top {
     position: absolute;
     /* Sit immediately left of #chats-create (40px) with a 0.5rem gap. */
-    right: calc(1rem + var(--scrollbar-size) + 40px + 0.5rem);
+    right: calc(1rem + 40px + 0.5rem);
     bottom: 0.75rem;
     z-index: 1;
     box-sizing: border-box;
