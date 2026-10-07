@@ -285,8 +285,16 @@ public partial class MainWindow : Window
         // show an empty white HWND for a frame.
         WebView.Visibility = Visibility.Visible;
         Dispatcher.BeginInvoke(
-            () => StartupSurface.Visibility = Visibility.Collapsed,
-            System.Windows.Threading.DispatcherPriority.Render);
+            () =>
+            {
+                StartupSurface.Visibility = Visibility.Collapsed;
+                // WebView2's child HWND is not focused when Visibility flips.
+                // Without this, the first click on a chats-list row is spent
+                // activating the view (space/settings clicks were fine). Focus
+                // so that first chat select reaches the page.
+                _ = WebView.Focus();
+            },
+            System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     private void ConfigureWebViewForDesktop()
