@@ -675,6 +675,21 @@ async function hideChatlessSpaces() {
       toHide = toHide.slice(0, -1);
     }
 
+    // Hold results until the spinner has been busy at least the minimum time,
+    // then apply while still busy so the list updates as work "finishes".
+    const remaining =
+      HIDE_CHATLESS_SPINNER_MIN_MS - (Date.now() - busyStartedAt);
+    if (remaining > 0) {
+      await new Promise((resolve) => setTimeout(resolve, remaining));
+    }
+
+    if (
+      scanGeneration !== hideChatlessGeneration ||
+      loadAtStart !== loadGeneration
+    ) {
+      return;
+    }
+
     if (toHide.length > 0) {
       hideSpaceIds(toHide);
       renderSpaces(loadedSpaces);
@@ -693,15 +708,8 @@ async function hideChatlessSpaces() {
     }
   } finally {
     if (scanGeneration === hideChatlessGeneration) {
-      const remaining =
-        HIDE_CHATLESS_SPINNER_MIN_MS - (Date.now() - busyStartedAt);
-      if (remaining > 0) {
-        await new Promise((resolve) => setTimeout(resolve, remaining));
-      }
-      if (scanGeneration === hideChatlessGeneration) {
-        await setHideChatlessBusy(false);
-        hideChatlessInFlight = false;
-      }
+      await setHideChatlessBusy(false);
+      hideChatlessInFlight = false;
     }
   }
 }
