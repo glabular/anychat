@@ -1009,12 +1009,37 @@ body.is-chats-sidebar-resizing * {
   width: max-content;
 }
 
+/* Thin chrome around photos (padding reads as the bubble “border”). */
+.message-bubble--has-media,
+.message-bubble--meta-on-media {
+  padding: 0.15rem;
+}
+
+.message-bubble--has-media:not(.message-bubble--meta-on-media) {
+  /* Slightly more bottom room for the caption bar. */
+  padding-bottom: 0.4rem;
+}
+
+.message-bubble--has-media .message-media-frame,
+.message-bubble--meta-on-media .message-media-frame {
+  margin: 0;
+  border-radius: 0.6rem;
+}
+
 .message-bubble--has-media .message-bubble-text {
+  box-sizing: border-box;
   max-width: var(--message-media-width);
+  padding: 0.3rem 0.45rem 0.1rem;
 }
 
 .message-bubble--has-media .message-reply-quote {
+  box-sizing: border-box;
   max-width: var(--message-media-width);
+  margin: 0.35rem 0.35rem 0.25rem;
+}
+
+.message-bubble--has-media .message-author-name {
+  padding: 0.35rem 0.45rem 0.15rem;
 }
 
 .message-row--with-profile .message-bubble {
@@ -1521,13 +1546,20 @@ body.is-chats-sidebar-resizing * {
 
 /* Photo-only: same meta as text bubbles, overlaid on the image; show on hover. */
 .message-bubble--meta-on-media .message-bubble-meta {
-  bottom: 0.85rem;
+  right: 0.4rem;
+  bottom: 0.4rem;
   z-index: 2;
   padding: 0.2rem 0.4rem;
   border-radius: 0.35rem;
   background: rgba(0, 0, 0, 0.5);
   opacity: 0;
   transition: opacity 0.15s ease;
+}
+
+/* Caption under photo: meta sits in the text bar, not over the image. */
+.message-bubble--has-media:not(.message-bubble--meta-on-media) .message-bubble-meta {
+  right: 0.55rem;
+  bottom: 0.4rem;
 }
 
 .message-bubble--meta-on-media:hover .message-bubble-meta,
