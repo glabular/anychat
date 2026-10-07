@@ -534,6 +534,14 @@ function positionVisibleTooltip(wrap) {
   );
 }
 
+function positionBulkTooltip(wrap) {
+  positionFixedTooltip(
+    wrap,
+    ".settings-sort-spaces-bulk-button",
+    ".settings-sort-spaces-bulk-tooltip"
+  );
+}
+
 function repositionHoveredTooltips() {
   const renameWrap = document.querySelector(
     ".settings-sort-spaces-rename-wrap:hover, .settings-sort-spaces-rename-wrap:focus-within"
@@ -547,6 +555,13 @@ function repositionHoveredTooltips() {
   );
   if (visibleWrap instanceof HTMLElement) {
     positionVisibleTooltip(visibleWrap);
+  }
+
+  const bulkWrap = document.querySelector(
+    ".settings-sort-spaces-bulk-wrap:hover, .settings-sort-spaces-bulk-wrap:focus-within"
+  );
+  if (bulkWrap instanceof HTMLElement) {
+    positionBulkTooltip(bulkWrap);
   }
 }
 
@@ -726,10 +741,31 @@ function unhideAllVisibleSpaces() {
 }
 
 function bindBulkVisibilityActions() {
+  const actions = document.querySelector(".settings-sort-spaces-bulk-actions");
+  if (actions instanceof HTMLElement && actions.dataset.tooltipsBound !== "true") {
+    actions.dataset.tooltipsBound = "true";
+    actions.addEventListener("mouseover", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+      const wrap = target.closest(".settings-sort-spaces-bulk-wrap");
+      if (!(wrap instanceof HTMLElement) || !actions.contains(wrap)) {
+        return;
+      }
+      const related = event.relatedTarget;
+      if (!(related instanceof Node && wrap.contains(related))) {
+        positionBulkTooltip(wrap);
+      }
+    });
+  }
+
   const hideButton = getHideChatlessButton();
   if (hideButton instanceof HTMLButtonElement && hideButton.dataset.bound !== "true") {
     hideButton.dataset.bound = "true";
     hideButton.addEventListener("click", () => {
+      // Drop focus so :focus-within does not pin the tip after the pointer leaves.
+      hideButton.blur();
       void hideChatlessSpaces();
     });
   }
@@ -742,6 +778,8 @@ function bindBulkVisibilityActions() {
     unhideButton.dataset.bound = "true";
     unhideButton.addEventListener("click", () => {
       unhideAllVisibleSpaces();
+      // Drop focus so :focus-within does not pin the tip after the pointer leaves.
+      unhideButton.blur();
     });
   }
 }

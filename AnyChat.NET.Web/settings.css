@@ -371,6 +371,12 @@ body.is-settings .main {
   gap: 0.5rem;
 }
 
+.settings-sort-spaces-bulk-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
 .settings-sort-spaces-bulk-button {
   box-sizing: border-box;
   display: inline-flex;
@@ -689,10 +695,11 @@ body.is-settings .main {
 
 /*
   Same look as .chats-create-tooltip / .space-tooltip.
-  position:fixed + JS centers on the Rename button so the tip is not
+  position:fixed + JS centers on the control so the tip is not
   clipped by .settings-sort-spaces overflow.
 */
-.settings-sort-spaces-rename-tooltip {
+.settings-sort-spaces-rename-tooltip,
+.settings-sort-spaces-bulk-tooltip {
   box-sizing: border-box;
   display: block;
   /* Settings pane is --color-bg; tip needs a raised surface + edge. */
@@ -715,10 +722,16 @@ body.is-settings .main {
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
 }
 
-.settings-sort-spaces-rename-tooltip[hidden] {
+/* Bulk tips only: wait before showing; hide without extra delay. */
+.settings-sort-spaces-bulk-tooltip {
+  transition-delay: 0s;
+}
+
+.settings-sort-spaces-rename-tooltip[hidden],
+.settings-sort-spaces-bulk-tooltip[hidden] {
   display: none;
 }
 
@@ -726,6 +739,13 @@ body.is-settings .main {
 .settings-sort-spaces-rename-wrap:focus-within .settings-sort-spaces-rename-tooltip:not([hidden]) {
   opacity: 1;
   visibility: visible;
+}
+
+.settings-sort-spaces-bulk-wrap:hover .settings-sort-spaces-bulk-tooltip:not([hidden]),
+.settings-sort-spaces-bulk-wrap:focus-within .settings-sort-spaces-bulk-tooltip:not([hidden]) {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0.6s;
 }
 
 .settings-sort-spaces-move,
