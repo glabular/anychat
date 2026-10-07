@@ -665,8 +665,7 @@ body.is-chats-sidebar-resizing * {
 
 /*
   Setting ::-webkit-scrollbar width forces a classic gutter (content shrinks).
-  Skip #chats-list so it can keep overlay scrollbars and full-bleed rows;
-  that list relies on scrollbar-width / scrollbar-color above for the fade.
+  Skip #chats-list so it can keep overlay scrollbars and full-bleed rows.
 */
 .idle-scrollbar:not(#chats-list)::-webkit-scrollbar {
   width: var(--scrollbar-size);
@@ -680,6 +679,19 @@ body.is-chats-sidebar-resizing * {
 .idle-scrollbar:not(#chats-list)::-webkit-scrollbar-thumb {
   background: var(--idle-scrollbar-thumb);
   border-radius: 999px;
+}
+
+/*
+  Fluent/overlay: fading via transparent scrollbar-color alone leaves the bar
+  unpainted until the next user scroll. Toggle width none↔thin so hover/idle
+  can hide and show it again without a wheel gesture.
+*/
+#chats-list.idle-scrollbar {
+  scrollbar-width: none;
+}
+
+#chats-list.idle-scrollbar.is-scrollbar-visible {
+  scrollbar-width: thin;
 }
 
 @media (prefers-reduced-motion: reduce) {

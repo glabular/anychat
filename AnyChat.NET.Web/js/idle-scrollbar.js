@@ -86,5 +86,8 @@ function attachIdleScrollbar(el) {
   el.addEventListener("pointermove", onPointerMove);
   el.addEventListener("pointerleave", onPointerLeave);
   el.addEventListener("pointerdown", onPointerDown);
+  // Wheel/trackpad must reveal too — overlay hide uses scrollbar-width: none,
+  // so native Fluent paint-on-scroll alone is not enough.
+  el.addEventListener("scroll", show, { passive: true });
   window.addEventListener("pointerup", onPointerUp);
 }
