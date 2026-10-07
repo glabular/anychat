@@ -23,7 +23,10 @@ import {
 const LOADING_STATUS_DELAY_MS = 10;
 
 /** Keep the hide-chatless spinner visible at least this long. */
-const HIDE_CHATLESS_SPINNER_MIN_MS = 100;
+const HIDE_CHATLESS_SPINNER_MIN_MS = 400;
+
+/** Match `.settings-sort-spaces-bulk-spinner` width transition. */
+const HIDE_CHATLESS_WIDTH_MS = 230;
 
 const ONE_TO_ONE_RENAME_TOOLTIP =
   "You can’t rename a personal one-to-one space.";
@@ -68,21 +71,35 @@ function getUnhideAllButton() {
 }
 
 /**
+ * Expand/collapse the spinner slot. Stays disabled until collapse finishes.
  * @param {boolean} busy
+ * @returns {Promise<void>}
  */
-function setHideChatlessBusy(busy) {
+async function setHideChatlessBusy(busy) {
   const button = getHideChatlessButton();
   if (!(button instanceof HTMLButtonElement)) {
     return;
   }
 
-  button.disabled = busy;
-  button.setAttribute("aria-busy", busy ? "true" : "false");
-
-  const spinner = button.querySelector(".settings-sort-spaces-bulk-spinner");
-  if (spinner instanceof HTMLElement) {
-    spinner.hidden = !busy;
+  if (busy) {
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    button.classList.add("settings-sort-spaces-bulk-button--busy");
+    return;
   }
+
+  button.classList.remove("settings-sort-spaces-bulk-button--busy");
+  button.setAttribute("aria-busy", "false");
+
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
+    .matches;
+  if (!reduceMotion && HIDE_CHATLESS_WIDTH_MS > 0) {
+    await new Promise((resolve) =>
+      setTimeout(resolve, HIDE_CHATLESS_WIDTH_MS)
+    );
+  }
+
+  button.disabled = false;
 }
 
 /**
@@ -682,8 +699,8 @@ async function hideChatlessSpaces() {
         await new Promise((resolve) => setTimeout(resolve, remaining));
       }
       if (scanGeneration === hideChatlessGeneration) {
+        await setHideChatlessBusy(false);
         hideChatlessInFlight = false;
-        setHideChatlessBusy(false);
       }
     }
   }

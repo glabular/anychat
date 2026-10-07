@@ -376,7 +376,7 @@ body.is-settings .main {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
+  gap: 0;
   padding: var(--btn-padding-y) var(--btn-padding-x);
   border: 1px solid var(--btn-border-secondary);
   border-radius: var(--btn-radius);
@@ -400,18 +400,41 @@ body.is-settings .main {
   color: var(--color-text-muted);
 }
 
+/* Width slot for the spinner — animates open/closed instead of display:none. */
 .settings-sort-spaces-bulk-spinner {
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  box-sizing: content-box;
+  width: 0;
+  height: 0.75rem;
+  margin-inline-start: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transition:
+    width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    margin-inline-start 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease;
+}
+
+.settings-sort-spaces-bulk-spinner::after {
+  content: "";
+  display: block;
+  box-sizing: border-box;
   width: 0.75rem;
   height: 0.75rem;
   border: 2px solid var(--color-border);
   border-top-color: var(--color-text-muted);
   border-radius: 50%;
-  animation: settings-sort-spaces-bulk-spin 0.7s linear infinite;
 }
 
-.settings-sort-spaces-bulk-spinner[hidden] {
-  display: none;
+.settings-sort-spaces-bulk-button--busy .settings-sort-spaces-bulk-spinner {
+  width: 0.75rem;
+  margin-inline-start: 0.45rem;
+  opacity: 1;
+}
+
+.settings-sort-spaces-bulk-button--busy .settings-sort-spaces-bulk-spinner::after {
+  animation: settings-sort-spaces-bulk-spin 0.7s linear infinite;
 }
 
 @keyframes settings-sort-spaces-bulk-spin {
@@ -422,6 +445,10 @@ body.is-settings .main {
 
 @media (prefers-reduced-motion: reduce) {
   .settings-sort-spaces-bulk-spinner {
+    transition: none;
+  }
+
+  .settings-sort-spaces-bulk-button--busy .settings-sort-spaces-bulk-spinner::after {
     animation: none;
     border-top-color: var(--color-border);
     opacity: 0.7;
