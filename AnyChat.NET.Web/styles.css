@@ -1519,17 +1519,37 @@ body.is-chats-sidebar-resizing * {
   -webkit-user-select: none;
 }
 
-/* Photo-only: sit time on the image (no blank spacer row under the frame). */
+/* Photo-only: same meta as text bubbles, overlaid on the image; show on hover. */
 .message-bubble--meta-on-media .message-bubble-meta {
   bottom: 0.85rem;
   z-index: 2;
   padding: 0.2rem 0.4rem;
   border-radius: 0.35rem;
   background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.message-bubble--meta-on-media:hover .message-bubble-meta,
+.message-bubble--meta-on-media:focus-within .message-bubble-meta {
+  opacity: 1;
 }
 
 .message-row--mine .message-bubble--meta-on-media .message-bubble-meta {
   background: rgba(0, 0, 0, 0.4);
+}
+
+@media (hover: none) {
+  /* Touch: no hover — keep time readable. */
+  .message-bubble--meta-on-media .message-bubble-meta {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-bubble--meta-on-media .message-bubble-meta {
+    transition: none;
+  }
 }
 
 .message-bubble-edited,

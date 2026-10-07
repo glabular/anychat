@@ -37,6 +37,7 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 
 - Chat photos reflow with the message column on window resize (no stuck small size after shrink / chat hop)
 - Photo + caption bubbles stay wrapped to the image width when the window gets wider (no empty strip beside the photo)
+- Photo-only bubbles show time/status on hover
 - Non-image attachments show as a file chip above the caption instead of italic “File” jammed into the text
 - Attachment-only bubbles keep a compact file chip with time on the same row (no stretch over the timestamp)
 - Editing a message with a photo keeps the attachment 
