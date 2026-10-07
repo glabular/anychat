@@ -395,9 +395,7 @@ body.is-settings .main {
 }
 
 .settings-sort-spaces-bulk-button:disabled {
-  opacity: 0.55;
   cursor: not-allowed;
-  color: var(--color-text-muted);
 }
 
 /* Width slot for the spinner — animates open/closed instead of display:none. */
