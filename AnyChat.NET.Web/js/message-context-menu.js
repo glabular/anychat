@@ -5,6 +5,9 @@
 import { enterMessageEdit } from "./message-edit.js";
 import { openDeleteMessageConfirm } from "./delete-message-confirm.js";
 
+/** Quick-react emojis shown above the action list. */
+const CONTEXT_MENU_QUICK_REACTIONS = ["❤️", "😂", "😮", "😢", "😡", "👍"];
+
 let menuBound = false;
 
 /** @type {string | null} */
@@ -53,6 +56,42 @@ function syncMessageContextMenuActions() {
     );
     button.disabled = !enabled;
     button.setAttribute("aria-disabled", enabled ? "false" : "true");
+  }
+}
+
+/**
+ * Enable quick-react buttons when the target has a server message id.
+ * Marks emojis the current user already reacted with.
+ * @param {string | null} messageId
+ * @param {object[] | null} reactions
+ */
+function syncMessageContextMenuReactions(messageId, reactions) {
+  const menu = getMenu();
+  if (!menu) {
+    return;
+  }
+
+  const canReact =
+    typeof messageId === "string" && messageId.length > 0;
+  /** @type {Set<string>} */
+  const mine = new Set();
+  if (Array.isArray(reactions)) {
+    for (const entry of reactions) {
+      if (entry?.reactedByMe === true && typeof entry.emoji === "string") {
+        mine.add(entry.emoji);
+      }
+    }
+  }
+
+  for (const button of menu.querySelectorAll(".message-context-menu-reaction")) {
+    if (!(button instanceof HTMLButtonElement)) {
+      continue;
+    }
+    const emoji = button.dataset.emoji ?? "";
+    button.disabled = !canReact;
+    const pressed = canReact && mine.has(emoji);
+    button.classList.toggle("message-context-menu-reaction--mine", pressed);
+    button.setAttribute("aria-pressed", pressed ? "true" : "false");
   }
 }
 
@@ -294,9 +333,35 @@ async function openMessageContextMenu(event, bubble) {
   MESSAGE_CONTEXT_MENU_ACTIONS.edit.enabled = Boolean(ownActions.editable);
   MESSAGE_CONTEXT_MENU_ACTIONS.delete.enabled = Boolean(ownActions.deletable);
 
+  const { getOpenChatMessageReactions } = await import("./chats.js");
+  if (targetMessageId !== requestMessageId) {
+    return;
+  }
+  syncMessageContextMenuReactions(
+    requestMessageId,
+    getOpenChatMessageReactions(requestMessageId)
+  );
+
   syncMessageContextMenuActions();
   menu.hidden = false;
   positionMenuAtCursor(menu, event.clientX, event.clientY);
+}
+
+async function handleQuickReactionClick(event, emoji) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const messageId = targetMessageId;
+  if (typeof messageId !== "string" || messageId.length === 0) {
+    return;
+  }
+  if (!CONTEXT_MENU_QUICK_REACTIONS.includes(emoji)) {
+    return;
+  }
+
+  closeMessageContextMenu();
+  const { toggleOpenChatReaction } = await import("./chats.js");
+  await toggleOpenChatReaction(messageId, emoji, { allowAdd: true });
 }
 
 async function handleCopyTextAction(event) {
@@ -387,6 +452,7 @@ export function initMessageContextMenu() {
 
   menuBound = true;
   syncMessageContextMenuActions();
+  syncMessageContextMenuReactions(null, null);
 
   list.addEventListener("contextmenu", (event) => {
     const target = event.target;
@@ -402,6 +468,29 @@ export function initMessageContextMenu() {
     event.preventDefault();
     event.stopPropagation();
     void openMessageContextMenu(event, bubble);
+  });
+
+  menu.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    if (target.closest(".message-context-menu-reaction-more")) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
+    const reactionBtn = target.closest(".message-context-menu-reaction");
+    if (
+      reactionBtn instanceof HTMLButtonElement
+      && menu.contains(reactionBtn)
+      && !reactionBtn.disabled
+    ) {
+      const emoji = reactionBtn.dataset.emoji ?? "";
+      void handleQuickReactionClick(event, emoji);
+    }
   });
 
   copyTextItem?.addEventListener("click", (event) => {

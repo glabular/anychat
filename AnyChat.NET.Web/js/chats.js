@@ -713,46 +713,50 @@ function applyReactionsUpdatedFromStream(state, messageId, reactions) {
 const pendingReactionToggles = new Set();
 
 /**
- * Optimistic toggle of an existing emoji on a message's reaction list.
- * Returns null when the emoji is not already present (add-new is out of scope).
+ * Optimistic toggle on a message's reaction list.
+ * When `allowAdd` is false and the emoji is missing, returns null (bubble pills).
+ * When `allowAdd` is true, missing emoji is added as count 1 / reactedByMe.
  * @param {object[]} reactions
  * @param {string} emoji
+ * @param {{ allowAdd?: boolean }} [options]
  * @returns {object[] | null}
  */
-function optimisticToggleExistingReaction(reactions, emoji) {
-  if (!Array.isArray(reactions)) {
-    return null;
-  }
-
-  const next = reactions.map((entry) => ({ ...entry }));
+function optimisticToggleReaction(reactions, emoji, { allowAdd = false } = {}) {
+  const next = Array.isArray(reactions)
+    ? reactions.map((entry) => ({ ...entry }))
+    : [];
   const index = next.findIndex((entry) => entry?.emoji === emoji);
+
   if (index < 0) {
-    return null;
-  }
+    if (!allowAdd) {
+      return null;
+    }
+    next.push({ emoji, count: 1, reactedByMe: true });
+  } else {
+    const current = next[index];
+    const count =
+      typeof current.count === "number" && Number.isFinite(current.count)
+        ? Math.trunc(current.count)
+        : 0;
 
-  const current = next[index];
-  const count =
-    typeof current.count === "number" && Number.isFinite(current.count)
-      ? Math.trunc(current.count)
-      : 0;
-
-  if (current.reactedByMe === true) {
-    const remaining = count - 1;
-    if (remaining <= 0) {
-      next.splice(index, 1);
+    if (current.reactedByMe === true) {
+      const remaining = count - 1;
+      if (remaining <= 0) {
+        next.splice(index, 1);
+      } else {
+        next[index] = {
+          ...current,
+          count: remaining,
+          reactedByMe: false,
+        };
+      }
     } else {
       next[index] = {
         ...current,
-        count: remaining,
-        reactedByMe: false,
+        count: Math.max(count, 0) + 1,
+        reactedByMe: true,
       };
     }
-  } else {
-    next[index] = {
-      ...current,
-      count: Math.max(count, 0) + 1,
-      reactedByMe: true,
-    };
   }
 
   next.sort(
@@ -764,11 +768,17 @@ function optimisticToggleExistingReaction(reactions, emoji) {
 }
 
 /**
- * Click an existing reaction pill to toggle it for the current user.
+ * Toggle a reaction for the current user on an open-chat message.
  * @param {string} messageId
  * @param {string} emoji
+ * @param {{ allowAdd?: boolean }} [options]
+ * @returns {Promise<boolean>} true when a toggle was attempted
  */
-async function toggleExistingReactionOnMessage(messageId, emoji) {
+export async function toggleOpenChatReaction(
+  messageId,
+  emoji,
+  { allowAdd = false } = {}
+) {
   const state = chatHistoryState;
   if (
     !state
@@ -777,29 +787,29 @@ async function toggleExistingReactionOnMessage(messageId, emoji) {
     || typeof emoji !== "string"
     || emoji.length === 0
   ) {
-    return;
+    return false;
   }
 
   const pendingKey = `${messageId}\0${emoji}`;
   if (pendingReactionToggles.has(pendingKey)) {
-    return;
+    return false;
   }
 
   const message = state.messages.find((entry) => entry?.id === messageId);
   if (!message) {
-    return;
+    return false;
   }
 
   const previousReactions = Array.isArray(message.reactions)
     ? message.reactions.map((entry) => ({ ...entry }))
     : null;
-  const optimistic = optimisticToggleExistingReaction(
+  const optimistic = optimisticToggleReaction(
     previousReactions ?? [],
-    emoji
+    emoji,
+    { allowAdd }
   );
   if (optimistic === null) {
-    // Only existing pills are toggleable; do not invent new emojis.
-    return;
+    return false;
   }
 
   pendingReactionToggles.add(pendingKey);
@@ -825,7 +835,7 @@ async function toggleExistingReactionOnMessage(messageId, emoji) {
       emoji
     );
     if (chatHistoryState !== state) {
-      return;
+      return true;
     }
 
     const next = Array.isArray(serverReactions) ? serverReactions : null;
@@ -834,6 +844,7 @@ async function toggleExistingReactionOnMessage(messageId, emoji) {
       messageId,
       reactions: message.reactions,
     });
+    return true;
   } catch (error) {
     console.error("Failed to toggle reaction:", error);
     if (chatHistoryState === state) {
@@ -843,6 +854,7 @@ async function toggleExistingReactionOnMessage(messageId, emoji) {
         reactions: previousReactions,
       });
     }
+    return false;
   } finally {
     pendingReactionToggles.delete(pendingKey);
     const livePill = document
@@ -854,6 +866,21 @@ async function toggleExistingReactionOnMessage(messageId, emoji) {
       livePill.disabled = false;
     }
   }
+}
+
+/**
+ * Reactions currently on an open-chat message (for menu pressed state).
+ * @param {string | null | undefined} messageId
+ * @returns {object[] | null}
+ */
+export function getOpenChatMessageReactions(messageId) {
+  if (typeof messageId !== "string" || messageId.length === 0) {
+    return null;
+  }
+  const message = chatHistoryState?.messages.find(
+    (entry) => entry?.id === messageId
+  );
+  return Array.isArray(message?.reactions) ? message.reactions : null;
 }
 
 function initMessageReactionClicks() {
@@ -893,7 +920,7 @@ function initMessageReactionClicks() {
 
     event.preventDefault();
     event.stopPropagation();
-    void toggleExistingReactionOnMessage(messageId, emoji);
+    void toggleOpenChatReaction(messageId, emoji, { allowAdd: false });
   });
 }
 
