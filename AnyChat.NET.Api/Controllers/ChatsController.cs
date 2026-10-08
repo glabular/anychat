@@ -184,6 +184,7 @@ public class ChatsController(
                 afterOrderId: string.Empty,
                 limit: limit);
             var participantId = await memberResolver.ResolveParticipantIdAsync(spaceId);
+            var selfIdentity = CurrentIdentityOrNull();
             var sourceMessages = response.Messages ?? [];
             var replyPreviewById = await BuildReplyPreviewLookupAsync(
                 client.Chats,
@@ -194,6 +195,7 @@ public class ChatsController(
                 .Select(message => MapMessage(
                     message,
                     participantId,
+                    selfIdentity,
                     LookupReplyPreview(message, replyPreviewById)))
                 .ToList();
 
@@ -242,6 +244,7 @@ public class ChatsController(
         try
         {
             var participantId = await memberResolver.ResolveParticipantIdAsync(spaceId);
+            var selfIdentity = CurrentIdentityOrNull();
 
             // Plain await foreach only — do not WhenAny-race MoveNextAsync with a timer.
             // Disposing the enumerator while MoveNextAsync is still pending (chat switch
@@ -259,6 +262,7 @@ public class ChatsController(
                     chatId,
                     streamEvent,
                     participantId,
+                    selfIdentity,
                     streamToken);
                 var json = JsonSerializer.Serialize(dto, StreamJsonOptions);
                 await Response.WriteAsync($"data: {json}\n\n", streamToken);
@@ -449,6 +453,7 @@ public class ChatsController(
             return Ok(MapMessage(
                 message,
                 participantId,
+                CurrentIdentityOrNull(),
                 LookupReplyPreview(message, replyPreviewById)));
         }
         catch (Exception ex) when (AnytypeAuthExceptionFilter.IsAnytypeAuthFailure(ex))
@@ -603,6 +608,7 @@ public class ChatsController(
         string chatId,
         ChatStreamEvent streamEvent,
         string? participantId,
+        string? selfIdentity,
         CancellationToken cancellationToken)
     {
         var type = streamEvent.Type ?? string.Empty;
@@ -623,6 +629,7 @@ public class ChatsController(
                 message = MapMessage(
                     payload.Message,
                     participantId,
+                    selfIdentity,
                     LookupReplyPreview(payload.Message, replyPreviewById));
             }
 
@@ -639,7 +646,7 @@ public class ChatsController(
             {
                 Type = type,
                 Id = payload?.Id,
-                Reactions = MapReactions(payload?.Reactions, participantId),
+                Reactions = MapReactions(payload?.Reactions, participantId, selfIdentity),
             };
         }
 
@@ -790,9 +797,17 @@ public class ChatsController(
         return request;
     }
 
+    private string? CurrentIdentityOrNull()
+    {
+        return identityStore.IsKnown && !string.IsNullOrWhiteSpace(identityStore.Identity)
+            ? identityStore.Identity
+            : null;
+    }
+
     private static ChatMessageDto MapMessage(
         ChatMessage message,
         string? participantId,
+        string? selfIdentity,
         ReplyPreview? replyPreview = null)
     {
         bool? isMine = null;
@@ -827,7 +842,7 @@ public class ChatsController(
                 && replyPreview?.Deleted == true,
             CreatedAt = message.CreatedAt,
             ModifiedAt = message.ModifiedAt,
-            Reactions = MapReactions(message.Reactions, participantId),
+            Reactions = MapReactions(message.Reactions, participantId, selfIdentity),
             IsMine = isMine,
         };
     }
@@ -835,10 +850,12 @@ public class ChatsController(
     /// <summary>
     /// Map Anytype emoji → reactor-id dictionary into an ordered list for the UI.
     /// Skips blank emojis and empty reactor lists. Returns null when nothing remains.
+    /// Anytype documents reactors as identities; also accept space participant ids.
     /// </summary>
     private static IReadOnlyList<ChatMessageReactionDto>? MapReactions(
         Dictionary<string, List<string>>? reactions,
-        string? participantId)
+        string? participantId,
+        string? selfIdentity)
     {
         if (reactions is null || reactions.Count == 0)
         {
@@ -867,8 +884,7 @@ public class ChatsController(
             {
                 Emoji = emoji,
                 Count = distinctReactors.Count,
-                ReactedByMe = participantId is not null
-                    && distinctReactors.Contains(participantId, StringComparer.Ordinal),
+                ReactedByMe = IsSelfReactor(distinctReactors, participantId, selfIdentity),
             });
         }
 
@@ -880,6 +896,24 @@ public class ChatsController(
         return mapped
             .OrderByDescending(static r => r.Count)
             .ToList();
+    }
+
+    /// <summary>
+    /// True when the reactor list contains the space participant id or vault identity.
+    /// </summary>
+    private static bool IsSelfReactor(
+        IReadOnlyList<string> reactors,
+        string? participantId,
+        string? selfIdentity)
+    {
+        if (participantId is not null
+            && reactors.Contains(participantId, StringComparer.Ordinal))
+        {
+            return true;
+        }
+
+        return selfIdentity is not null
+            && reactors.Contains(selfIdentity, StringComparer.Ordinal);
     }
 
     /// <summary>
