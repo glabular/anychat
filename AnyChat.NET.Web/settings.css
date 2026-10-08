@@ -496,8 +496,7 @@ body.is-settings .main {
 .settings-sort-spaces-row--hidden .settings-sort-spaces-mark,
 .settings-sort-spaces-row--hidden .settings-sort-spaces-name,
 .settings-sort-spaces-row--hidden .settings-sort-spaces-name-input,
-.settings-sort-spaces-row--hidden .settings-sort-spaces-kind,
-.settings-sort-spaces-row--hidden .settings-sort-spaces-actions {
+.settings-sort-spaces-row--hidden .settings-sort-spaces-kind {
   opacity: 0.48;
 }
 
