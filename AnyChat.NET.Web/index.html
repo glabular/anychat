@@ -298,58 +298,60 @@
             data-setting="sort-spaces"
             hidden
           >
-            <h1 class="settings-sort-spaces-title">Manage spaces</h1>
-            <p class="settings-sort-spaces-lead">
-              Reorder your spaces, rename them, or hide ones you don’t need in
-              the rail. Hiding only affects anychat — your spaces stay as they
-              are in Anytype.
-            </p>
-            <div class="settings-sort-spaces-bulk">
-              <div class="settings-sort-spaces-bulk-actions">
-                <span class="settings-sort-spaces-bulk-wrap">
-                  <button
-                    type="button"
-                    id="settings-sort-spaces-unhide-all"
-                    class="settings-sort-spaces-bulk-button"
-                    aria-label="Show every space in the rail again"
-                  >
-                    Unhide all
-                  </button>
-                  <span
-                    class="settings-sort-spaces-bulk-tooltip"
-                    aria-hidden="true"
-                  >Show every space in the rail again.</span>
-                </span>
-                <span class="settings-sort-spaces-bulk-wrap">
-                  <button
-                    type="button"
-                    id="settings-sort-spaces-hide-chatless"
-                    class="settings-sort-spaces-bulk-button"
-                    aria-label="Hide spaces that have no chats yet. At least one space always stays visible."
-                  >
-                    <span class="settings-sort-spaces-bulk-label">Hide spaces without chats</span>
+            <div class="settings-sort-spaces-frame">
+              <h1 class="settings-sort-spaces-title">Manage spaces</h1>
+              <p class="settings-sort-spaces-lead">
+                Reorder your spaces, rename them, or hide ones you don’t need in
+                the rail. Hiding only affects anychat — your spaces stay as they
+                are in Anytype.
+              </p>
+              <div class="settings-sort-spaces-bulk">
+                <div class="settings-sort-spaces-bulk-actions">
+                  <span class="settings-sort-spaces-bulk-wrap">
+                    <button
+                      type="button"
+                      id="settings-sort-spaces-unhide-all"
+                      class="settings-sort-spaces-bulk-button"
+                      aria-label="Show every space in the rail again"
+                    >
+                      Show all
+                    </button>
                     <span
-                      class="settings-sort-spaces-bulk-spinner"
+                      class="settings-sort-spaces-bulk-tooltip"
                       aria-hidden="true"
-                    ></span>
-                  </button>
-                  <span
-                    class="settings-sort-spaces-bulk-tooltip"
-                    aria-hidden="true"
-                  >Hide spaces that have no chats yet. You’ll always keep at least one.</span>
-                </span>
+                    >Show every space in the rail again.</span>
+                  </span>
+                  <span class="settings-sort-spaces-bulk-wrap">
+                    <button
+                      type="button"
+                      id="settings-sort-spaces-hide-chatless"
+                      class="settings-sort-spaces-bulk-button"
+                      aria-label="Hide spaces that have no chats yet. At least one space always stays visible."
+                    >
+                      <span class="settings-sort-spaces-bulk-label">Hide empty spaces</span>
+                      <span
+                        class="settings-sort-spaces-bulk-spinner"
+                        aria-hidden="true"
+                      ></span>
+                    </button>
+                    <span
+                      class="settings-sort-spaces-bulk-tooltip"
+                      aria-hidden="true"
+                    >Hide spaces that have no chats yet. You’ll always keep at least one.</span>
+                  </span>
+                </div>
               </div>
+              <p
+                id="settings-sort-spaces-status"
+                class="settings-sort-spaces-status"
+                hidden
+              ></p>
+              <ul
+                id="settings-sort-spaces-list"
+                class="settings-sort-spaces-list"
+                aria-label="Spaces"
+              ></ul>
             </div>
-            <p
-              id="settings-sort-spaces-status"
-              class="settings-sort-spaces-status"
-              hidden
-            ></p>
-            <ul
-              id="settings-sort-spaces-list"
-              class="settings-sort-spaces-list"
-              aria-label="Spaces"
-            ></ul>
           </div>
         </section>
         <section id="chat-panel" class="chat-panel" hidden>

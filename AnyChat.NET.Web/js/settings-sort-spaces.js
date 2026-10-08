@@ -85,6 +85,7 @@ async function setHideChatlessBusy(busy) {
     button.disabled = true;
     button.setAttribute("aria-busy", "true");
     button.classList.add("settings-sort-spaces-bulk-button--busy");
+    syncBulkActionsState();
     return;
   }
 
@@ -98,8 +99,25 @@ async function setHideChatlessBusy(busy) {
       setTimeout(resolve, HIDE_CHATLESS_WIDTH_MS)
     );
   }
+}
 
-  button.disabled = false;
+/** Enable/disable bulk actions from the current hide state. */
+function syncBulkActionsState() {
+  const unhideButton = getUnhideAllButton();
+  const hideButton = getHideChatlessButton();
+  const hiddenCount = loadedSpaces.filter(
+    (space) => space?.id && isSpaceHidden(space.id)
+  ).length;
+  const visibleCount = filterVisibleSpaces(loadedSpaces).length;
+
+  if (unhideButton instanceof HTMLButtonElement) {
+    unhideButton.disabled = hiddenCount === 0 || hideChatlessInFlight;
+  }
+
+  if (hideButton instanceof HTMLButtonElement && !hideChatlessInFlight) {
+    // Floor keeps ≥1 visible space, so a single visible row cannot be emptied.
+    hideButton.disabled = loadedSpaces.length === 0 || visibleCount <= 1;
+  }
 }
 
 /**
@@ -158,6 +176,102 @@ function iconMark(icon) {
   }
 
   return trimmed;
+}
+
+/**
+ * @param {string} name
+ * @param {Record<string, string>} [attrs]
+ * @returns {SVGElement}
+ */
+function svgEl(name, attrs = {}) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", name);
+  for (const [key, value] of Object.entries(attrs)) {
+    el.setAttribute(key, value);
+  }
+  return el;
+}
+
+/**
+ * @param {boolean} visible
+ * @returns {SVGElement}
+ */
+function eyeIcon(visible) {
+  const svg = svgEl("svg", {
+    class: "settings-sort-spaces-visible-icon",
+    width: "16",
+    height: "16",
+    viewBox: "0 0 16 16",
+    "aria-hidden": "true",
+    focusable: "false",
+  });
+
+  if (visible) {
+    svg.append(
+      svgEl("path", {
+        d: "M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8Z",
+        fill: "none",
+        stroke: "currentColor",
+        "stroke-width": "1.5",
+        "stroke-linecap": "round",
+        "stroke-linejoin": "round",
+      }),
+      svgEl("circle", {
+        cx: "8",
+        cy: "8",
+        r: "2",
+        fill: "none",
+        stroke: "currentColor",
+        "stroke-width": "1.5",
+      })
+    );
+  } else {
+    svg.append(
+      svgEl("path", {
+        d: "M1.5 8s2.5-4.5 6.5-4.5c1.1 0 2.1.3 3 .8M14.5 8s-1 .1-1.7.5M3 3l10 10",
+        fill: "none",
+        stroke: "currentColor",
+        "stroke-width": "1.5",
+        "stroke-linecap": "round",
+        "stroke-linejoin": "round",
+      }),
+      svgEl("path", {
+        d: "M6.2 6.4a2 2 0 0 0 3.4 3.2",
+        fill: "none",
+        stroke: "currentColor",
+        "stroke-width": "1.5",
+        "stroke-linecap": "round",
+      })
+    );
+  }
+
+  return svg;
+}
+
+/**
+ * @param {"up" | "down"} direction
+ * @returns {SVGElement}
+ */
+function chevronIcon(direction) {
+  const svg = svgEl("svg", {
+    class: "settings-sort-spaces-move-icon",
+    width: "14",
+    height: "14",
+    viewBox: "0 0 14 14",
+    "aria-hidden": "true",
+    focusable: "false",
+  });
+  const up = direction === "up";
+  svg.append(
+    svgEl("path", {
+      d: up ? "M3.5 8.5 L7 5 L10.5 8.5" : "M3.5 5.5 L7 9 L10.5 5.5",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": "1.6",
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+    })
+  );
+  return svg;
 }
 
 /**
@@ -397,21 +511,19 @@ function renderSpaces(spaces) {
       item.classList.add("settings-sort-spaces-row--hidden");
     }
 
+    const displayName = getSpaceDisplayName(space);
     const spaceIsVisible = !isSpaceHidden(space.id);
     const lastVisible = spaceIsVisible && visibleCount <= 1;
 
     const visibleWrap = document.createElement("span");
     visibleWrap.className = "settings-sort-spaces-visible-wrap";
 
-    const visible = document.createElement("input");
-    visible.type = "checkbox";
+    const visible = document.createElement("button");
+    visible.type = "button";
     visible.className = "settings-sort-spaces-visible";
-    visible.checked = spaceIsVisible;
     visible.dataset.spaceId = space.id;
-    visible.setAttribute(
-      "aria-label",
-      lastVisible ? LAST_VISIBLE_TOOLTIP : "Show in spaces rail"
-    );
+    visible.setAttribute("aria-pressed", spaceIsVisible ? "true" : "false");
+    visible.append(eyeIcon(spaceIsVisible));
 
     const visibleTip = document.createElement("span");
     visibleTip.className = "settings-sort-spaces-visible-tooltip";
@@ -420,8 +532,14 @@ function renderSpaces(spaces) {
 
     if (lastVisible) {
       visible.disabled = true;
+      visible.setAttribute("aria-label", LAST_VISIBLE_TOOLTIP);
       visibleTip.textContent = LAST_VISIBLE_TOOLTIP;
       visibleTip.hidden = false;
+    } else {
+      const actionLabel = spaceIsVisible
+        ? `Hide ${displayName}`
+        : `Show ${displayName}`;
+      visible.setAttribute("aria-label", actionLabel);
     }
 
     visibleWrap.append(visible, visibleTip);
@@ -430,7 +548,8 @@ function renderSpaces(spaces) {
     mark.className = "settings-sort-spaces-mark";
     mark.setAttribute("aria-hidden", "true");
     const icon = iconMark(space.icon);
-    mark.textContent = icon || getSpaceDisplayName(space)[0]?.toLocaleUpperCase() || "#";
+    mark.textContent =
+      icon || displayName[0]?.toLocaleUpperCase() || "#";
 
     const nameWrap = document.createElement("div");
     nameWrap.className = "settings-sort-spaces-name-wrap";
@@ -449,16 +568,28 @@ function renderSpaces(spaces) {
     } else {
       const name = document.createElement("span");
       name.className = "settings-sort-spaces-name";
-      name.textContent = getSpaceDisplayName(space);
+      name.textContent = displayName;
+      name.title = displayName;
       nameWrap.append(name);
+    }
+
+    if (nameIsAmbiguous(spaces, space) && space.object) {
+      const kind = document.createElement("span");
+      kind.className = "settings-sort-spaces-kind";
+      kind.textContent = space.object;
+      nameWrap.append(kind);
     }
 
     const actions = document.createElement("div");
     actions.className = "settings-sort-spaces-actions";
 
     const index = spaces.indexOf(space);
-    const up = moveButton("up", index, spaces.length);
-    const down = moveButton("down", index, spaces.length);
+    const reorder = document.createElement("div");
+    reorder.className = "settings-sort-spaces-reorder";
+    const up = moveButton("up", index, spaces.length, displayName);
+    const down = moveButton("down", index, spaces.length, displayName);
+    reorder.append(up, down);
+
     const renameWrap = renameControl(space);
     const rename = renameWrap.querySelector(".settings-sort-spaces-rename");
     if (editingSpaceId === space.id && rename instanceof HTMLButtonElement) {
@@ -466,35 +597,33 @@ function renderSpaces(spaces) {
       down.disabled = true;
       rename.disabled = true;
     }
-    actions.append(renameWrap, up, down);
+    actions.append(renameWrap, reorder);
 
-    if (nameIsAmbiguous(spaces, space) && space.object) {
-      const kind = document.createElement("span");
-      kind.className = "settings-sort-spaces-kind";
-      kind.textContent = space.object;
-      item.append(visibleWrap, mark, nameWrap, kind, actions);
-    } else {
-      item.append(visibleWrap, mark, nameWrap, actions);
-    }
-
+    item.append(visibleWrap, mark, nameWrap, actions);
     list.append(item);
   }
+
+  syncBulkActionsState();
 }
 
 /**
  * @param {"up" | "down"} direction
  * @param {number} index
  * @param {number} count
+ * @param {string} spaceName
  */
-function moveButton(direction, index, count) {
+function moveButton(direction, index, count, spaceName) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "settings-sort-spaces-move";
   button.dataset.direction = direction;
   button.dataset.index = String(index);
   const up = direction === "up";
-  button.textContent = up ? "↑" : "↓";
-  button.setAttribute("aria-label", up ? "Move up" : "Move down");
+  button.append(chevronIcon(direction));
+  button.setAttribute(
+    "aria-label",
+    up ? `Move ${spaceName} up` : `Move ${spaceName} down`
+  );
   button.disabled = up ? index === 0 : index === count - 1;
   return button;
 }
@@ -637,10 +766,15 @@ async function hideChatlessSpaces() {
     return;
   }
 
+  const hideButton = getHideChatlessButton();
+  if (hideButton instanceof HTMLButtonElement && hideButton.disabled) {
+    return;
+  }
+
   const visible = loadedSpaces.filter(
     (space) => space?.id && !isSpaceHidden(space.id)
   );
-  if (visible.length === 0) {
+  if (visible.length <= 1) {
     return;
   }
 
@@ -725,12 +859,18 @@ async function hideChatlessSpaces() {
     if (scanGeneration === hideChatlessGeneration) {
       await setHideChatlessBusy(false);
       hideChatlessInFlight = false;
+      syncBulkActionsState();
     }
   }
 }
 
 function unhideAllVisibleSpaces() {
   if (hideChatlessInFlight) {
+    return;
+  }
+
+  const unhideButton = getUnhideAllButton();
+  if (unhideButton instanceof HTMLButtonElement && unhideButton.disabled) {
     return;
   }
 
@@ -782,6 +922,8 @@ function bindBulkVisibilityActions() {
       unhideButton.blur();
     });
   }
+
+  syncBulkActionsState();
 }
 
 function bindSortSpacesList() {
@@ -844,34 +986,29 @@ function bindSortSpacesList() {
         return;
       }
       moveSpace(index, delta);
-    }
-  });
-
-  list.addEventListener("change", (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement)) {
-      return;
-    }
-    if (!target.classList.contains("settings-sort-spaces-visible")) {
-      return;
-    }
-    if (!list.contains(target)) {
       return;
     }
 
-    const spaceId = target.dataset.spaceId;
-    if (!spaceId) {
-      return;
-    }
+    const visible = target.closest(".settings-sort-spaces-visible");
+    if (visible instanceof HTMLButtonElement && list.contains(visible)) {
+      if (visible.disabled) {
+        return;
+      }
 
-    if (!target.checked && filterVisibleSpaces(loadedSpaces).length <= 1) {
-      target.checked = true;
-      return;
-    }
+      const spaceId = visible.dataset.spaceId;
+      if (!spaceId) {
+        return;
+      }
 
-    setSpaceVisible(spaceId, target.checked);
-    renderSpaces(loadedSpaces);
-    populateSpacesSidebar(loadedSpaces);
+      const currentlyVisible = visible.getAttribute("aria-pressed") === "true";
+      if (currentlyVisible && filterVisibleSpaces(loadedSpaces).length <= 1) {
+        return;
+      }
+
+      setSpaceVisible(spaceId, !currentlyVisible);
+      renderSpaces(loadedSpaces);
+      populateSpacesSidebar(loadedSpaces);
+    }
   });
 
   list.addEventListener("keydown", (event) => {
@@ -966,6 +1103,7 @@ export async function loadSortSpacesList() {
       loadedSpaces = [];
       editingSpaceId = null;
       getList()?.replaceChildren();
+      syncBulkActionsState();
       showStatus("No spaces yet.");
       return;
     }

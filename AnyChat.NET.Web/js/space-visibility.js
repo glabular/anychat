@@ -79,7 +79,7 @@ export function hideSpaceIds(ids) {
   writeHiddenSpaceIds([...next]);
 }
 
-/** Clear every manually hidden space (Unhide all). */
+/** Clear every manually hidden space (Show all). */
 export function unhideAllSpaces() {
   writeHiddenSpaceIds([]);
 }
