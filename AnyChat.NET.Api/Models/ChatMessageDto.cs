@@ -51,6 +51,12 @@ public sealed class ChatMessageDto
     public long? ModifiedAt { get; init; }
 
     /// <summary>
+    /// Reactions on the message, ordered by count descending.
+    /// Null when the message has no reactions.
+    /// </summary>
+    public IReadOnlyList<ChatMessageReactionDto>? Reactions { get; init; }
+
+    /// <summary>
     /// True when the message is from the learned current user, false when it is
     /// from someone else, and null when ownership cannot be determined yet.
     /// </summary>
