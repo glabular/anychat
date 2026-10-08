@@ -43,6 +43,7 @@ import {
   rerenderOpenChatMessagesPreservingViewport,
   scheduleRememberOpenChatScrollPosition,
   updateMessageRowSendStatus,
+  updateMessageRowReactions,
   clearInitialLoadError,
   resetChatHistoryStatus,
   setChatHistoryStatus,
@@ -531,7 +532,7 @@ function scheduleChatMessageStreamReconnect(sub) {
 
 /**
  * Parse one SSE `data:` payload and apply live message events to the open chat.
- * Handles message_added, message_updated, and message_deleted.
+ * Handles message_added, message_updated, message_deleted, and reactions_updated.
  * @param {ChatMessageStreamSubscription} sub
  * @param {string} raw
  */
@@ -577,6 +578,11 @@ function handleChatMessageStreamPayload(sub, raw) {
 
   if (parsed?.type === "message_deleted") {
     applyMessageDeletedFromStream(state, parsed.id);
+    return;
+  }
+
+  if (parsed?.type === "reactions_updated") {
+    applyReactionsUpdatedFromStream(state, parsed.id, parsed.reactions);
     return;
   }
 
@@ -675,6 +681,31 @@ function applyMessageDeletedFromStream(state, messageId) {
       ? formatMessagePreview(tip, { isOneToOne: isOneToOneSpace() })
       : { senderLabel: null, text: "", createdAt: null }
   );
+}
+
+/**
+ * Patch reactions on an open-chat message from a reactions_updated stream event.
+ * Updates in-memory state so remounts stay consistent, then patches the bubble.
+ * Does not touch chat-list preview or activity sort.
+ * @param {ChatHistoryState} state
+ * @param {unknown} messageId
+ * @param {unknown} reactions
+ */
+function applyReactionsUpdatedFromStream(state, messageId, reactions) {
+  if (typeof messageId !== "string" || messageId.length === 0) {
+    return;
+  }
+
+  const nextReactions = Array.isArray(reactions) ? reactions : null;
+  const message = state.messages.find((entry) => entry?.id === messageId);
+  if (message) {
+    message.reactions = nextReactions;
+  }
+
+  updateMessageRowReactions({
+    messageId,
+    reactions: nextReactions,
+  });
 }
 
 /**
