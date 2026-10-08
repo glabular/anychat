@@ -52,6 +52,34 @@ function appendInlineEmphasis(parent, text) {
 }
 
 /**
+ * Right-pointing chevron; CSS rotates it 90° when the item is open.
+ * @returns {HTMLElement}
+ */
+function createFaqChevron() {
+  const chevron = document.createElement("span");
+  chevron.className = "settings-faq-chevron";
+  chevron.setAttribute("aria-hidden", "true");
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "settings-faq-chevron-icon");
+  svg.setAttribute("width", "12");
+  svg.setAttribute("height", "12");
+  svg.setAttribute("viewBox", "0 0 12 12");
+  svg.setAttribute("focusable", "false");
+
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M4.25 2.5 L7.75 6 L4.25 9.5");
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", "currentColor");
+  path.setAttribute("stroke-width", "1.5");
+  path.setAttribute("stroke-linecap", "round");
+  path.setAttribute("stroke-linejoin", "round");
+  svg.append(path);
+  chevron.append(svg);
+  return chevron;
+}
+
+/**
  * @param {FaqEntry} entry
  * @param {number} index
  */
@@ -71,12 +99,7 @@ function createFaqItem(entry, index) {
   question.className = "settings-faq-question";
   question.textContent = entry.question;
 
-  const chevron = document.createElement("span");
-  chevron.className = "settings-faq-chevron";
-  chevron.setAttribute("aria-hidden", "true");
-  chevron.textContent = ">";
-
-  trigger.append(chevron, question);
+  trigger.append(createFaqChevron(), question);
 
   const panel = document.createElement("div");
   panel.id = panelId;
@@ -91,11 +114,24 @@ function createFaqItem(entry, index) {
   }
 
   trigger.addEventListener("click", () => {
+    const scroller = item.closest(".settings-faq");
+    const scrollTop =
+      scroller instanceof HTMLElement ? scroller.scrollTop : 0;
+
     const open = trigger.getAttribute("aria-expanded") === "true";
     const nextOpen = !open;
     trigger.setAttribute("aria-expanded", nextOpen ? "true" : "false");
     panel.hidden = !nextOpen;
     item.classList.toggle("is-open", nextOpen);
+
+    // Expanding can nudge the pane (overflow anchoring / focus scroll).
+    // Pin scroll so the FAQ title stays put.
+    if (scroller instanceof HTMLElement) {
+      scroller.scrollTop = scrollTop;
+      requestAnimationFrame(() => {
+        scroller.scrollTop = scrollTop;
+      });
+    }
   });
 
   item.append(trigger, panel);
