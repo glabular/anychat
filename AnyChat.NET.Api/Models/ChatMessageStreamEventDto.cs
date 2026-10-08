@@ -23,4 +23,10 @@ public sealed class ChatMessageStreamEventDto
     /// Message id for <c>message_deleted</c> / <c>reactions_updated</c>.
     /// </summary>
     public string? Id { get; init; }
+
+    /// <summary>
+    /// Mapped reactions for <c>reactions_updated</c>, ordered by count descending.
+    /// Null when the event has no reactions or every entry was empty.
+    /// </summary>
+    public IReadOnlyList<ChatMessageReactionDto>? Reactions { get; init; }
 }

@@ -633,6 +633,16 @@ public class ChatsController(
             };
         }
 
+        if (string.Equals(type, "reactions_updated", StringComparison.Ordinal))
+        {
+            return new ChatMessageStreamEventDto
+            {
+                Type = type,
+                Id = payload?.Id,
+                Reactions = MapReactions(payload?.Reactions, participantId),
+            };
+        }
+
         return new ChatMessageStreamEventDto
         {
             Type = type,
@@ -817,8 +827,59 @@ public class ChatsController(
                 && replyPreview?.Deleted == true,
             CreatedAt = message.CreatedAt,
             ModifiedAt = message.ModifiedAt,
+            Reactions = MapReactions(message.Reactions, participantId),
             IsMine = isMine,
         };
+    }
+
+    /// <summary>
+    /// Map Anytype emoji → reactor-id dictionary into an ordered list for the UI.
+    /// Skips blank emojis and empty reactor lists. Returns null when nothing remains.
+    /// </summary>
+    private static IReadOnlyList<ChatMessageReactionDto>? MapReactions(
+        Dictionary<string, List<string>>? reactions,
+        string? participantId)
+    {
+        if (reactions is null || reactions.Count == 0)
+        {
+            return null;
+        }
+
+        List<ChatMessageReactionDto>? mapped = null;
+        foreach (var (emoji, reactors) in reactions)
+        {
+            if (string.IsNullOrWhiteSpace(emoji) || reactors is null || reactors.Count == 0)
+            {
+                continue;
+            }
+
+            var distinctReactors = reactors
+                .Where(static id => !string.IsNullOrWhiteSpace(id))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            if (distinctReactors.Count == 0)
+            {
+                continue;
+            }
+
+            mapped ??= new List<ChatMessageReactionDto>(reactions.Count);
+            mapped.Add(new ChatMessageReactionDto
+            {
+                Emoji = emoji,
+                Count = distinctReactors.Count,
+                ReactedByMe = participantId is not null
+                    && distinctReactors.Contains(participantId, StringComparer.Ordinal),
+            });
+        }
+
+        if (mapped is null || mapped.Count == 0)
+        {
+            return null;
+        }
+
+        return mapped
+            .OrderByDescending(static r => r.Count)
+            .ToList();
     }
 
     /// <summary>
