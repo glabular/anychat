@@ -4,6 +4,7 @@ import {
   fetchChats,
   postChatMessage,
   spacesUrl,
+  toggleChatReaction,
 } from "./api.js";
 import {
   noteAnytypeReachable,
@@ -705,6 +706,194 @@ function applyReactionsUpdatedFromStream(state, messageId, reactions) {
   updateMessageRowReactions({
     messageId,
     reactions: nextReactions,
+  });
+}
+
+/** In-flight reaction toggles keyed by `messageId\0emoji`. */
+const pendingReactionToggles = new Set();
+
+/**
+ * Optimistic toggle of an existing emoji on a message's reaction list.
+ * Returns null when the emoji is not already present (add-new is out of scope).
+ * @param {object[]} reactions
+ * @param {string} emoji
+ * @returns {object[] | null}
+ */
+function optimisticToggleExistingReaction(reactions, emoji) {
+  if (!Array.isArray(reactions)) {
+    return null;
+  }
+
+  const next = reactions.map((entry) => ({ ...entry }));
+  const index = next.findIndex((entry) => entry?.emoji === emoji);
+  if (index < 0) {
+    return null;
+  }
+
+  const current = next[index];
+  const count =
+    typeof current.count === "number" && Number.isFinite(current.count)
+      ? Math.trunc(current.count)
+      : 0;
+
+  if (current.reactedByMe === true) {
+    const remaining = count - 1;
+    if (remaining <= 0) {
+      next.splice(index, 1);
+    } else {
+      next[index] = {
+        ...current,
+        count: remaining,
+        reactedByMe: false,
+      };
+    }
+  } else {
+    next[index] = {
+      ...current,
+      count: Math.max(count, 0) + 1,
+      reactedByMe: true,
+    };
+  }
+
+  next.sort(
+    (a, b) =>
+      (typeof b.count === "number" ? b.count : 0)
+      - (typeof a.count === "number" ? a.count : 0)
+  );
+  return next;
+}
+
+/**
+ * Click an existing reaction pill to toggle it for the current user.
+ * @param {string} messageId
+ * @param {string} emoji
+ */
+async function toggleExistingReactionOnMessage(messageId, emoji) {
+  const state = chatHistoryState;
+  if (
+    !state
+    || typeof messageId !== "string"
+    || messageId.length === 0
+    || typeof emoji !== "string"
+    || emoji.length === 0
+  ) {
+    return;
+  }
+
+  const pendingKey = `${messageId}\0${emoji}`;
+  if (pendingReactionToggles.has(pendingKey)) {
+    return;
+  }
+
+  const message = state.messages.find((entry) => entry?.id === messageId);
+  if (!message) {
+    return;
+  }
+
+  const previousReactions = Array.isArray(message.reactions)
+    ? message.reactions.map((entry) => ({ ...entry }))
+    : null;
+  const optimistic = optimisticToggleExistingReaction(
+    previousReactions ?? [],
+    emoji
+  );
+  if (optimistic === null) {
+    // Only existing pills are toggleable; do not invent new emojis.
+    return;
+  }
+
+  pendingReactionToggles.add(pendingKey);
+  message.reactions = optimistic.length > 0 ? optimistic : null;
+  updateMessageRowReactions({
+    messageId,
+    reactions: message.reactions,
+  });
+
+  const list = document.getElementById("chat-message-list");
+  const pill = list?.querySelector(
+    `[data-message-id="${CSS.escape(messageId)}"] .message-reaction[data-emoji="${CSS.escape(emoji)}"]`
+  );
+  if (pill instanceof HTMLButtonElement) {
+    pill.disabled = true;
+  }
+
+  try {
+    const serverReactions = await toggleChatReaction(
+      state.spaceId,
+      state.chatId,
+      messageId,
+      emoji
+    );
+    if (chatHistoryState !== state) {
+      return;
+    }
+
+    const next = Array.isArray(serverReactions) ? serverReactions : null;
+    message.reactions = next && next.length > 0 ? next : null;
+    updateMessageRowReactions({
+      messageId,
+      reactions: message.reactions,
+    });
+  } catch (error) {
+    console.error("Failed to toggle reaction:", error);
+    if (chatHistoryState === state) {
+      message.reactions = previousReactions;
+      updateMessageRowReactions({
+        messageId,
+        reactions: previousReactions,
+      });
+    }
+  } finally {
+    pendingReactionToggles.delete(pendingKey);
+    const livePill = document
+      .getElementById("chat-message-list")
+      ?.querySelector(
+        `[data-message-id="${CSS.escape(messageId)}"] .message-reaction[data-emoji="${CSS.escape(emoji)}"]`
+      );
+    if (livePill instanceof HTMLButtonElement) {
+      livePill.disabled = false;
+    }
+  }
+}
+
+function initMessageReactionClicks() {
+  const list = document.getElementById("chat-message-list");
+  if (!list || list.dataset.reactionClicksBound === "1") {
+    return;
+  }
+  list.dataset.reactionClicksBound = "1";
+
+  list.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const pill = target.closest(".message-reaction");
+    if (!(pill instanceof HTMLButtonElement) || !list.contains(pill)) {
+      return;
+    }
+
+    // Overflow expand/collapse uses a different button class.
+    if (pill.classList.contains("message-reactions-toggle")) {
+      return;
+    }
+
+    const messageRow = pill.closest(".message-row");
+    const messageId = messageRow?.dataset.messageId;
+    const emoji = pill.dataset.emoji;
+    if (
+      typeof messageId !== "string"
+      || messageId.length === 0
+      || typeof emoji !== "string"
+      || emoji.length === 0
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    void toggleExistingReactionOnMessage(messageId, emoji);
   });
 }
 
@@ -2703,6 +2892,7 @@ setOnOutgoingPreviewChanged((target, parts) => {
 
 initChatMessagesScroll(onChatMessagesScroll);
 initReplyQuoteJump();
+initMessageReactionClicks();
 setOnChatScrolledToLatest(rememberOpenChatScrollAtLatest);
 initChatHistoryRetry(() => {
   void loadOlderMessages({ retry: true });

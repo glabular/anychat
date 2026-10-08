@@ -524,6 +524,65 @@ public class ChatsController(
         }
     }
 
+    /// <summary>
+    /// Toggle an existing emoji reaction for the current user on a message.
+    /// Returns the mapped reactions list after the toggle (empty when none remain).
+    /// </summary>
+    [HttpPost("{chatId}/messages/{messageId}/reactions/toggle")]
+    public async Task<IActionResult> ToggleReaction(
+        string spaceId,
+        string chatId,
+        string messageId,
+        [FromBody] ToggleSpaceChatReactionRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(messageId))
+        {
+            return BadRequest(new { error = "Message id is required." });
+        }
+
+        var emoji = request.Emoji?.Trim();
+        if (string.IsNullOrEmpty(emoji))
+        {
+            return BadRequest(new { error = "Emoji is required." });
+        }
+
+        var client = session.TryGetClient();
+        if (client is null)
+        {
+            return AnytypeAuthExceptionFilter.CreateMissingResult();
+        }
+
+        try
+        {
+            await client.Chats.ToggleReactionAsync(
+                spaceId,
+                chatId,
+                messageId,
+                new ToggleChatReactionRequest { Emoji = emoji });
+
+            var message = await client.Chats.GetMessageAsync(spaceId, chatId, messageId);
+            var participantId = await memberResolver.ResolveParticipantIdAsync(spaceId);
+            var reactions = MapReactions(
+                message.Reactions,
+                participantId,
+                CurrentIdentityOrNull());
+
+            return Ok(reactions ?? Array.Empty<ChatMessageReactionDto>());
+        }
+        catch (AnytypeApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            return NotFound(new { error = "Message not found." });
+        }
+        catch (Exception ex) when (AnytypeAuthExceptionFilter.IsAnytypeAuthFailure(ex))
+        {
+            return AnytypeAuthExceptionFilter.CreateInvalidResult();
+        }
+        catch (Exception ex) when (AnytypeUnavailableExceptionFilter.IsAnytypeConnectivityFailure(ex))
+        {
+            return AnytypeUnavailableExceptionFilter.CreateResult();
+        }
+    }
+
     private async Task<bool> TryLearnIdentityAsync(string spaceId, string chatId, string messageId)
     {
         var client = session.TryGetClient();

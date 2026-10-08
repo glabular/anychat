@@ -479,6 +479,28 @@ export async function deleteChatMessage(spaceId, chatId, messageId) {
 }
 
 /**
+ * Toggle an emoji reaction on a message for the current user.
+ * @param {string} spaceId
+ * @param {string} chatId
+ * @param {string} messageId
+ * @param {string} emoji
+ * @returns {Promise<object[]>} mapped reactions after the toggle
+ */
+export async function toggleChatReaction(spaceId, chatId, messageId, emoji) {
+  const response = await fetch(
+    `${spacesUrl()}/${encodeURIComponent(spaceId)}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/reactions/toggle`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emoji }),
+    }
+  );
+
+  await throwIfNotOk(response, `Response status: ${response.status}`);
+  return await response.json();
+}
+
+/**
  * SSE URL for live messages in one chat (proxied by the API).
  * @param {string} spaceId
  * @param {string} chatId

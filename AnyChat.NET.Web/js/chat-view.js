@@ -1187,8 +1187,10 @@ function createReactionsRow(message) {
   row.setAttribute("aria-label", "Reactions");
 
   reactions.forEach((reaction, index) => {
-    const pill = document.createElement("span");
+    const pill = document.createElement("button");
+    pill.type = "button";
     pill.className = "message-reaction";
+    pill.dataset.emoji = reaction.emoji;
     if (reaction.reactedByMe) {
       pill.classList.add("message-reaction--mine");
     }
@@ -1199,16 +1201,21 @@ function createReactionsRow(message) {
     const emojiEl = document.createElement("span");
     emojiEl.className = "message-reaction-emoji";
     emojiEl.textContent = reaction.emoji;
+    emojiEl.setAttribute("aria-hidden", "true");
 
     const countEl = document.createElement("span");
     countEl.className = "message-reaction-count";
     countEl.textContent = String(reaction.count);
+    countEl.setAttribute("aria-hidden", "true");
 
-    const label =
-      reaction.count === 1
-        ? `${reaction.emoji} 1 reaction`
-        : `${reaction.emoji} ${reaction.count} reactions`;
+    const label = reaction.reactedByMe
+      ? `Remove ${reaction.emoji} reaction`
+      : `Add ${reaction.emoji} reaction`;
     pill.setAttribute("aria-label", label);
+    pill.setAttribute(
+      "aria-pressed",
+      reaction.reactedByMe ? "true" : "false"
+    );
     pill.append(emojiEl, countEl);
     row.appendChild(pill);
   });
