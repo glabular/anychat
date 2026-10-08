@@ -3,6 +3,7 @@ import { initializeSpaces } from "./spaces.js";
 import {
   initChatViewCloseBindings,
   initMessageMediaLayout,
+  initMessageReactionsToggle,
 } from "./chat-view.js";
 import { initIdleScrollbars } from "./idle-scrollbar.js";
 import { initFloatingDateIdle } from "./floating-date-idle.js";
@@ -36,6 +37,7 @@ document.addEventListener(
 initSpacesScroll();
 initChatViewCloseBindings();
 initMessageMediaLayout();
+initMessageReactionsToggle();
 initIdleScrollbars();
 initFloatingDateIdle();
 initChatsSidebarResize();

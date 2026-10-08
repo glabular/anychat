@@ -124,6 +124,16 @@ const composerDrafts = new Map();
 /** Chats whose sidebar preview should show "Draft:" for this session. */
 const listDraftIndicators = new Set();
 
+/** Max distinct emojis shown before a local +N expand toggle. */
+const REACTIONS_VISIBLE_CAP = 5;
+
+/**
+ * Message ids whose reaction overflow is expanded for this session.
+ * Survives bubble remounts (edit / message_updated).
+ * @type {Set<string>}
+ */
+const expandedReactionMessageIds = new Set();
+
 /** Fast loads finish without showing a spinner. */
 const MESSAGES_SPINNER_SHOW_DELAY_MS = 300;
 /** Once shown, keep the spinner visible long enough to avoid a brief flash. */
@@ -1112,6 +1122,209 @@ function placeMessageBubbleMetaSpacer(bubble, textEl, spacer) {
 }
 
 /**
+ * @param {unknown} value
+ * @returns {{ emoji: string, count: number, reactedByMe: boolean }[]}
+ */
+function normalizeMessageReactions(value) {
+  if (!Array.isArray(value) || value.length === 0) {
+    return [];
+  }
+
+  /** @type {{ emoji: string, count: number, reactedByMe: boolean }[]} */
+  const normalized = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") {
+      continue;
+    }
+    const emoji =
+      typeof entry.emoji === "string" ? entry.emoji.trim() : "";
+    const count =
+      typeof entry.count === "number" && Number.isFinite(entry.count)
+        ? Math.trunc(entry.count)
+        : 0;
+    if (!emoji || count <= 0) {
+      continue;
+    }
+    normalized.push({
+      emoji,
+      count,
+      reactedByMe: entry.reactedByMe === true,
+    });
+  }
+  return normalized;
+}
+
+/**
+ * Read-only reaction pills inside the bubble. Null when there are none.
+ * @param {object} message
+ * @returns {HTMLDivElement | null}
+ */
+function createReactionsRow(message) {
+  const reactions = normalizeMessageReactions(message?.reactions);
+  if (reactions.length === 0) {
+    return null;
+  }
+
+  const messageId =
+    typeof message?.id === "string" && message.id.length > 0
+      ? message.id
+      : null;
+  const needsToggle = reactions.length > REACTIONS_VISIBLE_CAP;
+  if (!needsToggle && messageId) {
+    expandedReactionMessageIds.delete(messageId);
+  }
+  const expanded =
+    needsToggle
+    && messageId !== null
+    && expandedReactionMessageIds.has(messageId);
+
+  const row = document.createElement("div");
+  row.className = "message-reactions";
+  if (expanded) {
+    row.classList.add("message-reactions--expanded");
+  }
+  row.setAttribute("role", "group");
+  row.setAttribute("aria-label", "Reactions");
+
+  reactions.forEach((reaction, index) => {
+    const pill = document.createElement("span");
+    pill.className = "message-reaction";
+    if (reaction.reactedByMe) {
+      pill.classList.add("message-reaction--mine");
+    }
+    if (needsToggle && index >= REACTIONS_VISIBLE_CAP) {
+      pill.classList.add("message-reaction--overflow");
+    }
+
+    const emojiEl = document.createElement("span");
+    emojiEl.className = "message-reaction-emoji";
+    emojiEl.textContent = reaction.emoji;
+
+    const countEl = document.createElement("span");
+    countEl.className = "message-reaction-count";
+    countEl.textContent = String(reaction.count);
+
+    const label =
+      reaction.count === 1
+        ? `${reaction.emoji} 1 reaction`
+        : `${reaction.emoji} ${reaction.count} reactions`;
+    pill.setAttribute("aria-label", label);
+    pill.append(emojiEl, countEl);
+    row.appendChild(pill);
+  });
+
+  if (needsToggle) {
+    const hiddenCount = reactions.length - REACTIONS_VISIBLE_CAP;
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "message-reactions-toggle";
+    toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+    if (expanded) {
+      toggle.textContent = "⌃";
+      toggle.setAttribute("aria-label", "Show fewer reactions");
+    } else {
+      toggle.textContent = `+${hiddenCount}`;
+      toggle.setAttribute(
+        "aria-label",
+        `Show ${hiddenCount} more reactions`
+      );
+    }
+    row.appendChild(toggle);
+  }
+
+  return row;
+}
+
+/**
+ * Sync toggle label / aria after expanding or collapsing overflow pills.
+ * @param {HTMLElement} reactionsRow
+ * @param {HTMLButtonElement} toggle
+ * @param {boolean} expanded
+ */
+function syncReactionsToggleUi(reactionsRow, toggle, expanded) {
+  const hiddenCount = reactionsRow.querySelectorAll(
+    ".message-reaction--overflow"
+  ).length;
+  toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+  if (expanded) {
+    toggle.textContent = "⌃";
+    toggle.setAttribute("aria-label", "Show fewer reactions");
+  } else {
+    toggle.textContent = `+${hiddenCount}`;
+    toggle.setAttribute(
+      "aria-label",
+      `Show ${hiddenCount} more reactions`
+    );
+  }
+}
+
+/**
+ * Delegated expand/collapse for reaction overflow. One list listener.
+ */
+export function initMessageReactionsToggle() {
+  const list = getChatMessageList();
+  if (!list || list.dataset.reactionsToggleBound === "1") {
+    return;
+  }
+  list.dataset.reactionsToggleBound = "1";
+
+  list.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const toggle = target.closest(".message-reactions-toggle");
+    if (!(toggle instanceof HTMLButtonElement) || !list.contains(toggle)) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const reactionsRow = toggle.closest(".message-reactions");
+    const messageRow = toggle.closest(".message-row");
+    if (!(reactionsRow instanceof HTMLElement) || !messageRow) {
+      return;
+    }
+
+    const container = document.getElementById("chat-messages");
+    const wasAtLatest = isChatMessagesAtLatest(container);
+    const prevHeight = container?.scrollHeight ?? 0;
+    const prevTop = container?.scrollTop ?? 0;
+
+    const expanded = reactionsRow.classList.toggle(
+      "message-reactions--expanded"
+    );
+    const messageId = messageRow.dataset.messageId;
+    if (typeof messageId === "string" && messageId.length > 0) {
+      if (expanded) {
+        expandedReactionMessageIds.add(messageId);
+      } else {
+        expandedReactionMessageIds.delete(messageId);
+      }
+    }
+
+    syncReactionsToggleUi(reactionsRow, toggle, expanded);
+
+    if (!container) {
+      return;
+    }
+
+    if (wasAtLatest) {
+      scrollChatToLatest({ behavior: "auto" });
+      return;
+    }
+
+    // Keep content above the viewport stable when height grows above.
+    const delta = container.scrollHeight - prevHeight;
+    if (delta !== 0) {
+      container.scrollTop = prevTop + delta;
+    }
+  });
+}
+
+/**
  * Compact attachment chip (document icon + label) above caption text.
  * @param {string} label
  * @returns {HTMLElement}
@@ -1803,6 +2016,12 @@ function createMessageRow(message) {
     bubble.appendChild(textEl);
   }
 
+  const reactionsRow = createReactionsRow(message);
+  if (reactionsRow) {
+    bubble.classList.add("message-bubble--has-reactions");
+    bubble.appendChild(reactionsRow);
+  }
+
   const timeLabel = formatTimeHhMm(message.createdAt);
   const edited = isMessageEdited(message);
   const sendStatus = resolveOutgoingSendStatus(message);
@@ -1810,10 +2029,15 @@ function createMessageRow(message) {
   if (timeLabel || edited || sendStatus) {
     // Reserve last-line room for absolute meta. Prefer the last content host
     // (text → file chip → media) so block attachments do not force a blank row.
+    // With reactions, the spacer lives in that row so time shares the last line.
     const spacer = document.createElement("span");
     spacer.className = "message-bubble-meta-spacer";
     spacer.setAttribute("aria-hidden", "true");
-    placeMessageBubbleMetaSpacer(bubble, textEl, spacer);
+    if (reactionsRow) {
+      reactionsRow.appendChild(spacer);
+    } else {
+      placeMessageBubbleMetaSpacer(bubble, textEl, spacer);
+    }
 
     const meta = document.createElement("div");
     meta.className = "message-bubble-meta";
@@ -1923,6 +2147,86 @@ export function updateMessageRowSendStatus({ clientTempId, messageId, status }) 
   if (messageId) {
     row.dataset.messageId = messageId;
   }
+}
+
+/**
+ * Replace or remove the reaction pills on an existing bubble (live updates).
+ * Does not mutate open-chat message state — the caller owns that.
+ * @param {{
+ *   messageId: string,
+ *   reactions?: Array<{ emoji?: string, count?: number, reactedByMe?: boolean }> | null,
+ * }} options
+ */
+export function updateMessageRowReactions({ messageId, reactions }) {
+  const list = getChatMessageList();
+  if (!list || typeof messageId !== "string" || messageId.length === 0) {
+    return;
+  }
+
+  const row = list.querySelector(
+    `[data-message-id="${CSS.escape(messageId)}"]`
+  );
+  const bubble = row?.querySelector(".message-bubble");
+  if (!bubble) {
+    return;
+  }
+
+  const hadMeta = Boolean(
+    bubble.querySelector(":scope > .message-bubble-meta")
+  );
+  /** @type {HTMLElement | null} */
+  let spacer = bubble.querySelector(".message-bubble-meta-spacer");
+  if (spacer) {
+    spacer.remove();
+  }
+
+  bubble.querySelector(":scope > .message-reactions")?.remove();
+  bubble.classList.remove("message-bubble--has-reactions");
+  bubble.classList.remove("message-bubble--meta-on-media");
+  bubble
+    .querySelector(".message-media-frame--with-meta")
+    ?.classList.remove("message-media-frame--with-meta");
+
+  const reactionsRow = createReactionsRow({
+    id: messageId,
+    reactions: Array.isArray(reactions) ? reactions : null,
+  });
+
+  if (reactionsRow) {
+    bubble.classList.add("message-bubble--has-reactions");
+    const meta = bubble.querySelector(":scope > .message-bubble-meta");
+    if (meta) {
+      bubble.insertBefore(reactionsRow, meta);
+    } else {
+      bubble.appendChild(reactionsRow);
+    }
+
+    if (hadMeta) {
+      if (!(spacer instanceof HTMLElement)) {
+        spacer = document.createElement("span");
+        spacer.className = "message-bubble-meta-spacer";
+        spacer.setAttribute("aria-hidden", "true");
+      }
+      reactionsRow.appendChild(spacer);
+    }
+    return;
+  }
+
+  if (!hadMeta) {
+    return;
+  }
+
+  if (!(spacer instanceof HTMLElement)) {
+    spacer = document.createElement("span");
+    spacer.className = "message-bubble-meta-spacer";
+    spacer.setAttribute("aria-hidden", "true");
+  }
+  const textHost = bubble.querySelector(":scope > .message-bubble-text");
+  placeMessageBubbleMetaSpacer(
+    bubble,
+    textHost instanceof HTMLElement ? textHost : null,
+    spacer
+  );
 }
 
 /**

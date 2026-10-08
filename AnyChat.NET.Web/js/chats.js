@@ -837,6 +837,11 @@ function hydrateMessageFromServer(target, incoming) {
   if (typeof incoming.isMine === "boolean") {
     target.isMine = incoming.isMine;
   }
+  if (Object.prototype.hasOwnProperty.call(incoming, "reactions")) {
+    target.reactions = Array.isArray(incoming.reactions)
+      ? incoming.reactions
+      : null;
+  }
   if (
     target.clientSendStatus === "sending"
     || target.clientSendStatus === "sent"
