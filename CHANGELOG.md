@@ -14,14 +14,14 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 - FAQ pane
 - Reply messages show a quote (author + one-line parent text); click jumps to the parent within a small older-page seek budget; empty parent text shows as Attachment
 - Edited messages show a quiet edited mark; hover shows when it was last changed
-- Message bubble context menu (right-click); Edit enabled for own sent messages
+- Message bubble context menu
 - Edit your own messages: context menu or empty-composer ArrowUp, Save in the composer, park in-progress edits across chat switches
-- Context menu Copy text for message bubbles (own and others’)
+- Context menu Copy text for message bubbles
 - Delete your own messages from the context menu
 - Context menu Copy message link
-- Display image attachments in chat bubbles (photo-only messages included)
+- Display image attachments in chat bubbles 
 - Chat list shows Photo / File when the latest message has no text
-- Click a bubble photo to open an in-window image viewer (Esc / backdrop / × to close)
+- Click a bubble photo to open an in-window image viewer
 
 ### Changed
 
