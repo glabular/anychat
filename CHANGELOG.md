@@ -8,8 +8,12 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-12
+
 ### Added
 
+- Create a space from the spaces rail; Manage spaces to rename, reorder, and hide spaces
+- 1:1 chats use the peer’s name as the title
 - About pane: author, GitHub repo link, and invite to the anychat public space
 - FAQ pane
 - Reply messages show a quote (author + one-line parent text); click jumps to the parent within a small older-page seek budget; empty parent text shows as Attachment
@@ -19,9 +23,10 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 - Context menu Copy text for message bubbles
 - Delete your own messages from the context menu
 - Context menu Copy message link
-- Display image attachments in chat bubbles 
+- Display image attachments in chat bubbles
 - Chat list shows Photo / File when the latest message has no text
 - Click a bubble photo to open an in-window image viewer
+- Message reactions: in-bubble pills, click to toggle, context-menu quick react, live `reactions_updated` (full emoji picker not yet)
 
 ### Changed
 
@@ -40,7 +45,7 @@ Before tagging a release, add a `## [X.Y.Z] - YYYY-MM-DD` section with what chan
 - Photo-only bubbles show time/status on hover
 - Non-image attachments show as a file chip above the caption instead of italic “File” jammed into the text
 - Attachment-only bubbles keep a compact file chip with time on the same row (no stretch over the timestamp)
-- Editing a message with a photo keeps the attachment 
+- Editing a message with a photo keeps the attachment
 - Message time sits on the last line of short captions (including under photos) instead of always wrapping alone
 - Quote click on replies to attachment-only (hidden) parents no longer jumps to latest; tip says the message cannot be opened
 - Sticky “at latest” scroll survives image layout and space hops until you scroll away; mid-chat offsets still restore after photos settle
